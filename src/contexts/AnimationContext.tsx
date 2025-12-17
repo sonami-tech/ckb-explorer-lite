@@ -3,7 +3,6 @@ import {
 	createContext,
 	useContext,
 	useState,
-	useEffect,
 	useCallback,
 	type ReactNode,
 } from 'react';
@@ -47,15 +46,6 @@ export function AnimationProvider({ children }: { children: ReactNode }) {
 	const toggle = useCallback(() => {
 		setIsPlaying(!isPlaying);
 	}, [isPlaying, setIsPlaying]);
-
-	// Set default on first visit based on screen size.
-	useEffect(() => {
-		const stored = getStoredState();
-		if (stored === null) {
-			// First visit - set based on screen size but don't save yet.
-			setIsPlayingState(getDefaultEnabled());
-		}
-	}, []);
 
 	return (
 		<AnimationContext.Provider value={{ isPlaying, setIsPlaying, toggle }}>

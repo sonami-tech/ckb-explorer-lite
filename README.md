@@ -23,6 +23,14 @@ A lightweight web-based block explorer for CKB archive nodes with historical sta
 - **Skeleton Loading**: Animated loading placeholders for all data views.
 - **Error Handling**: Error display with retry functionality.
 
+### Time Slider (Archive Networks Only)
+- **Historical Navigation**: Drag or click to scrub through blockchain history from genesis to current tip.
+- **Event Markers**: Visual markers for significant network events (genesis, hardforks, halvings).
+- **Event Info Cards**: Click markers to view event details with descriptions and documentation links.
+- **Date Estimation**: Approximate date display based on block number and average block time.
+- **Click-to-Edit**: Click block number to type specific height directly.
+- **Keyboard Navigation**: Arrow keys for fine control, Home/End for genesis/latest.
+
 ### Data Display
 - **Copy to Clipboard**: One-click copy buttons for hashes and addresses with visual feedback.
 - **Hash Truncation**: Truncated display (0x1234...5678) with full hash on hover.
@@ -32,6 +40,7 @@ A lightweight web-based block explorer for CKB archive nodes with historical sta
 ## Pages
 
 ### Home
+- Time slider for navigating blockchain history (archive networks only).
 - Latest blocks and transactions feeds with auto-refresh.
 - Stats cards showing tip block, latest block time, and transaction count.
 
@@ -71,16 +80,42 @@ A lightweight web-based block explorer for CKB archive nodes with historical sta
 ## Prerequisites
 
 - [Bun](https://bun.sh/) runtime
-- CKB archive node running with RPC enabled at `http://127.0.0.1:8114`
+- CKB node(s) running with RPC enabled
 
 ## Configuration
 
-Environment variables in `.env`:
+### Network Configuration
+
+Networks are configured in `src/config/networks.ts`:
+
+```typescript
+export const networks: NetworkConfig[] = [
+	{
+		name: 'Mainnet (Archive)',
+		url: 'http://127.0.0.1:8114',
+		type: 'mainnet',
+		isArchive: true,
+	},
+	{
+		name: 'Testnet',
+		url: 'https://testnet.ckb.dev/rpc',
+		type: 'testnet',
+		isArchive: false,
+	},
+];
+```
+
+Each network specifies:
+- **name**: Display name in the selector.
+- **url**: RPC endpoint URL.
+- **type**: Network type (`mainnet`, `testnet`, or `devnet`) for event markers.
+- **isArchive**: Whether archive mode (time slider) is enabled.
+
+### Environment Variables
+
+Optional environment variables in `.env`:
 
 ```env
-# CKB node RPC endpoint.
-VITE_CKB_RPC_URL=http://127.0.0.1:8114
-
 # Polling interval for new blocks (milliseconds).
 VITE_POLL_INTERVAL_MS=8000
 ```
@@ -143,6 +178,7 @@ Routes:
 
 ### State Management
 
+- **NetworkContext**: Multi-network support with network selection, RPC client creation, and archive mode detection.
 - **ThemeContext**: Theme preference (light/dark/auto) with localStorage persistence.
 - **ArchiveContext**: Archive height state with URL synchronization and tip block polling.
 
@@ -160,17 +196,29 @@ Uses @ckb-ccc/core for parsing CKB addresses. Supports:
 src/
 ├── components/          # Reusable UI components
 │   ├── AnimatedBackground.tsx  # Canvas particle animation
-│   ├── ArchiveHeightSelector.tsx
 │   ├── CopyButton.tsx   # Copy button and HashDisplay
 │   ├── ErrorDisplay.tsx
 │   ├── Footer.tsx
 │   ├── Header.tsx
 │   ├── Layout.tsx
+│   ├── NetworkBlockSelector.tsx  # Network and archive height selector
+│   ├── RelativeTime.tsx
 │   ├── SearchBar.tsx
 │   ├── Skeleton.tsx     # Loading placeholders
-│   └── ThemeToggle.tsx
+│   ├── ThemeToggle.tsx
+│   └── TimeSlider/      # Historical timeline slider
+│       ├── EventInfoCard.tsx
+│       ├── EventMarker.tsx
+│       ├── TimeSlider.tsx
+│       └── index.ts
+├── config/              # Configuration
+│   ├── defaults.ts      # Default values and constants
+│   ├── events.ts        # Network timeline events
+│   ├── index.ts
+│   └── networks.ts      # Network configurations
 ├── contexts/            # React contexts
 │   ├── ArchiveContext.tsx
+│   ├── NetworkContext.tsx
 │   └── ThemeContext.tsx
 ├── hooks/               # Custom hooks
 │   └── useRouter.ts
@@ -236,12 +284,6 @@ The explorer uses official Nervos brand colors:
 - Primary: `#00CC9B` (nervos green)
 - Dark variant: `#00B388`
 - Light variant: `#33D6AF`
-
-## Known Limitations
-
-### Search Hash Ambiguity
-
-Block hashes and transaction hashes are both 66-character hex strings (32 bytes). When searching by hash, the explorer currently assumes it's a transaction hash. If the hash is actually a block hash, the user will see a "Transaction not found" error and must manually navigate to `/block/:hash`. A future improvement could implement fallback detection to try both lookup types.
 
 ## License
 
