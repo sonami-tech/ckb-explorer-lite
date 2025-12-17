@@ -1,0 +1,238 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useRpc } from '../contexts/NetworkContext';
+import {
+	formatCkb,
+	truncateHex,
+} from '../lib/format';
+import { navigate, generateLink } from '../lib/router';
+import { useArchive } from '../contexts/ArchiveContext';
+import { SkeletonDetail } from '../components/Skeleton';
+import { ErrorDisplay } from '../components/ErrorDisplay';
+import { HashDisplay, CopyButton } from '../components/CopyButton';
+import type { RpcLiveCell, RpcCellOutput } from '../types/rpc';
+
+interface CellPageProps {
+	txHash: string;
+	index: number;
+}
+
+export function CellPage({ txHash, index }: CellPageProps) {
+	const rpc = useRpc();
+	const { archiveHeight } = useArchive();
+	const [cellData, setCellData] = useState<RpcLiveCell | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<Error | null>(null);
+
+	const fetchCell = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
+
+		try {
+			const result = await rpc.getLiveCell(txHash, index, archiveHeight);
+			setCellData(result);
+
+			if (result.status === 'unknown' && !result.cell) {
+				throw new Error(`Cell not found: ${txHash}:${index}`);
+			}
+		} catch (err) {
+			setError(err instanceof Error ? err : new Error('Failed to fetch cell.'));
+		} finally {
+			setIsLoading(false);
+		}
+	}, [rpc, txHash, index, archiveHeight]);
+
+	useEffect(() => {
+		fetchCell();
+	}, [fetchCell]);
+
+	if (isLoading) {
+		return (
+			<div className="max-w-7xl mx-auto px-4 py-6">
+				<SkeletonDetail />
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="max-w-7xl mx-auto px-4 py-6">
+				<ErrorDisplay error={error} title="Cell not found" onRetry={fetchCell} />
+			</div>
+		);
+	}
+
+	const cell = cellData?.cell;
+	const status = cellData?.status;
+
+	return (
+		<div className="max-w-7xl mx-auto px-4 py-6">
+			{/* Header. */}
+			<div className="mb-6">
+				<div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+					<button onClick={() => navigate(generateLink('/'))} className="hover:text-nervos">
+						Home
+					</button>
+					<span>/</span>
+					<span>Cell</span>
+				</div>
+				<div className="flex items-center gap-2">
+					<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+						Cell Details
+					</h1>
+					<StatusBadge status={status || 'unknown'} />
+				</div>
+			</div>
+
+			{/* Cell details. */}
+			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+					<h2 className="font-semibold text-gray-900 dark:text-white">Overview</h2>
+				</div>
+				<div className="divide-y divide-gray-200 dark:divide-gray-700">
+					<DetailRow label="OutPoint">
+						<div className="flex items-center gap-2">
+							<button
+								onClick={() => navigate(generateLink(`/tx/${txHash}`, archiveHeight))}
+								className="text-nervos hover:underline font-mono text-sm"
+							>
+								{truncateHex(txHash, 10, 10)}
+							</button>
+							<span className="text-gray-500">:</span>
+							<span className="font-mono">{index}</span>
+							<CopyButton text={`${txHash}:${index}`} />
+						</div>
+					</DetailRow>
+					<DetailRow label="Transaction">
+						<button
+							onClick={() => navigate(generateLink(`/tx/${txHash}`, archiveHeight))}
+							className="text-nervos hover:underline"
+						>
+							<HashDisplay hash={txHash} />
+						</button>
+					</DetailRow>
+					<DetailRow label="Status">
+						<StatusBadge status={status || 'unknown'} />
+						{status === 'dead' && (
+							<span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+								(Cell has been consumed)
+							</span>
+						)}
+					</DetailRow>
+					{cell && (
+						<DetailRow label="Capacity">
+							<span className="text-lg font-semibold text-nervos">
+								{formatCkb(cell.output.capacity)}
+							</span>
+						</DetailRow>
+					)}
+				</div>
+			</div>
+
+			{/* Lock Script. */}
+			{cell && (
+				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+					<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+						<h2 className="font-semibold text-gray-900 dark:text-white">Lock Script</h2>
+					</div>
+					<ScriptDetails script={cell.output.lock} />
+				</div>
+			)}
+
+			{/* Type Script. */}
+			{cell?.output.type && (
+				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+					<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+						<h2 className="font-semibold text-gray-900 dark:text-white">Type Script</h2>
+					</div>
+					<ScriptDetails script={cell.output.type} />
+				</div>
+			)}
+
+			{/* Cell Data. */}
+			{cell?.data && (
+				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+					<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+						<h2 className="font-semibold text-gray-900 dark:text-white">Cell Data</h2>
+						<span className="text-sm text-gray-500 dark:text-gray-400">
+							{((cell.data.content.length - 2) / 2)} bytes
+						</span>
+					</div>
+					<div className="p-4">
+						{cell.data.content === '0x' ? (
+							<span className="text-sm text-gray-500 dark:text-gray-400 italic">
+								Empty data
+							</span>
+						) : (
+							<>
+								<div className="mb-2 flex items-center gap-2">
+									<span className="text-sm text-gray-500 dark:text-gray-400">Data Hash:</span>
+									<HashDisplay hash={cell.data.hash} />
+								</div>
+								<pre className="text-xs font-mono bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-x-auto max-h-64">
+									{cell.data.content.length > 1000
+										? cell.data.content.slice(0, 1000) + '...'
+										: cell.data.content
+									}
+								</pre>
+								{cell.data.content.length > 1000 && (
+									<p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+										Showing first 1000 characters of {cell.data.content.length} total.
+									</p>
+								)}
+							</>
+						)}
+					</div>
+				</div>
+			)}
+		</div>
+	);
+}
+
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+	return (
+		<div className="flex flex-col md:flex-row md:items-center p-4 gap-2">
+			<span className="w-40 flex-shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400">
+				{label}
+			</span>
+			<div className="flex-1 flex items-center gap-2 text-sm text-gray-900 dark:text-white break-all">
+				{children}
+			</div>
+		</div>
+	);
+}
+
+function ScriptDetails({ script }: { script: RpcCellOutput['lock'] }) {
+	return (
+		<div className="divide-y divide-gray-200 dark:divide-gray-700">
+			<DetailRow label="Code Hash">
+				<HashDisplay hash={script.code_hash} />
+			</DetailRow>
+			<DetailRow label="Hash Type">
+				<span className="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
+					{script.hash_type}
+				</span>
+			</DetailRow>
+			<DetailRow label="Args">
+				{script.args === '0x' ? (
+					<span className="text-gray-500 dark:text-gray-400 italic">Empty</span>
+				) : (
+					<HashDisplay hash={script.args} truncate={script.args.length > 66} />
+				)}
+			</DetailRow>
+		</div>
+	);
+}
+
+function StatusBadge({ status }: { status: string }) {
+	const statusStyles: Record<string, string> = {
+		live: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+		dead: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+		unknown: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-400',
+	};
+
+	return (
+		<span className={`px-2 py-1 rounded text-xs font-medium ${statusStyles[status] || statusStyles.unknown}`}>
+			{status.charAt(0).toUpperCase() + status.slice(1)}
+		</span>
+	);
+}
