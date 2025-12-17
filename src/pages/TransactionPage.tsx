@@ -11,7 +11,7 @@ import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
-import type { RpcTransactionWithStatus } from '../types/rpc';
+import type { RpcTransaction, RpcTransactionWithStatus } from '../types/rpc';
 
 interface TransactionPageProps {
 	hash: string;
@@ -35,11 +35,17 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 			const result = await rpc.getTransaction(hash, archiveHeight);
 
-			if (!result) {
+			if (!result || !result.transaction) {
+				// Transaction not found - try as block hash and redirect if found.
+				const blockResult = await rpc.getBlockByHash(hash, archiveHeight);
+				if (blockResult) {
+					navigate(generateLink(`/block/${hash}`, archiveHeight), { replace: true });
+					return;
+				}
 				throw new Error(`Transaction not found: ${hash}`);
 			}
 
-			setTxData(result);
+			setTxData(result as RpcTransactionWithStatus & { transaction: RpcTransaction });
 		} catch (err) {
 			setError(err instanceof Error ? err : new Error('Failed to fetch transaction.'));
 		} finally {
@@ -73,6 +79,11 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 	const { transaction, tx_status } = txData;
 
+	// Guard against null transaction (should not happen after fetch check, but TypeScript needs this).
+	if (!transaction) {
+		return null;
+	}
+
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
 			{/* Header. */}
@@ -103,17 +114,23 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					</DetailRow>
 					{tx_status.block_hash && (
 						<DetailRow label="Block">
-							<button
-								onClick={() => navigate(generateLink(`/block/${tx_status.block_hash}`, archiveHeight))}
-								className="text-nervos hover:underline"
-							>
+							<div className="flex items-center gap-2">
 								<HashDisplay hash={tx_status.block_hash} />
-							</button>
-							{tx_status.block_number && (
-								<span className="ml-2 text-gray-500 dark:text-gray-400">
-									(#{formatNumber(BigInt(tx_status.block_number))})
-								</span>
-							)}
+								<button
+									onClick={() => navigate(generateLink(`/block/${tx_status.block_hash}`, archiveHeight))}
+									className="text-nervos hover:text-nervos-dark"
+									title="Go to block"
+								>
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+									</svg>
+								</button>
+								{tx_status.block_number && (
+									<span className="text-gray-500 dark:text-gray-400">
+										(#{formatNumber(BigInt(tx_status.block_number))})
+									</span>
+								)}
+							</div>
 						</DetailRow>
 					)}
 					<DetailRow label="Version">

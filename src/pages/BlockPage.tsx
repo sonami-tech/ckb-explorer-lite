@@ -139,12 +139,18 @@ export function BlockPage({ id }: BlockPageProps) {
 						{proposals.length}
 					</DetailRow>
 					<DetailRow label="Parent Hash">
-						<button
-							onClick={() => navigate(generateLink(`/block/${header.parent_hash}`, archiveHeight))}
-							className="text-nervos hover:underline"
-						>
+						<div className="flex items-center gap-2">
 							<HashDisplay hash={header.parent_hash} />
-						</button>
+							<button
+								onClick={() => navigate(generateLink(`/block/${header.parent_hash}`, archiveHeight))}
+								className="text-nervos hover:text-nervos-dark"
+								title="Go to parent block"
+							>
+								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+								</svg>
+							</button>
+						</div>
 					</DetailRow>
 					<DetailRow label="Transactions Root">
 						<HashDisplay hash={header.transactions_root} />

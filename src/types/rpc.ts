@@ -42,6 +42,8 @@ export interface RpcTransaction {
 	outputs: RpcCellOutput[];
 	outputs_data: Hex[];
 	witnesses: Hex[];
+	/** Transaction hash - only present when fetched with verbosity 0x2. */
+	hash?: Hex;
 }
 
 export interface RpcBlockHeader {
@@ -67,7 +69,7 @@ export interface RpcBlock {
 }
 
 export interface RpcTransactionWithStatus {
-	transaction: RpcTransaction;
+	transaction: RpcTransaction | null;
 	tx_status: {
 		status: 'pending' | 'proposed' | 'committed' | 'unknown' | 'rejected';
 		block_hash?: Hex | null;

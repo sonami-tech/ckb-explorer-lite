@@ -1,14 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRpc } from '../contexts/NetworkContext';
-import {
-	formatCkb,
-	truncateHex,
-} from '../lib/format';
+import { formatCkb } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
-import { HashDisplay, CopyButton } from '../components/CopyButton';
+import { HashDisplay } from '../components/CopyButton';
 import type { RpcLiveCell, RpcCellOutput } from '../types/rpc';
 
 interface CellPageProps {
@@ -29,11 +26,16 @@ export function CellPage({ txHash, index }: CellPageProps) {
 
 		try {
 			const result = await rpc.getLiveCell(txHash, index, archiveHeight);
-			setCellData(result);
 
 			if (result.status === 'unknown' && !result.cell) {
-				throw new Error(`Cell not found: ${txHash}:${index}`);
+				// Cell not found - may have been spent or never existed.
+				throw new Error(
+					`Cell not found: ${txHash}:${index}. ` +
+					`This cell may have been consumed in a later transaction, or it may not exist.`
+				);
 			}
+
+			setCellData(result);
 		} catch (err) {
 			setError(err instanceof Error ? err : new Error('Failed to fetch cell.'));
 		} finally {
@@ -91,24 +93,33 @@ export function CellPage({ txHash, index }: CellPageProps) {
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
 					<DetailRow label="OutPoint">
 						<div className="flex items-center gap-2">
-							<button
-								onClick={() => navigate(generateLink(`/tx/${txHash}`, archiveHeight))}
-								className="text-nervos hover:underline font-mono text-sm"
-							>
-								{truncateHex(txHash, 10, 10)}
-							</button>
+							<HashDisplay hash={txHash} />
 							<span className="text-gray-500">:</span>
 							<span className="font-mono">{index}</span>
-							<CopyButton text={`${txHash}:${index}`} />
+							<button
+								onClick={() => navigate(generateLink(`/tx/${txHash}`, archiveHeight))}
+								className="text-nervos hover:text-nervos-dark"
+								title="Go to transaction"
+							>
+								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+								</svg>
+							</button>
 						</div>
 					</DetailRow>
 					<DetailRow label="Transaction">
-						<button
-							onClick={() => navigate(generateLink(`/tx/${txHash}`, archiveHeight))}
-							className="text-nervos hover:underline"
-						>
+						<div className="flex items-center gap-2">
 							<HashDisplay hash={txHash} />
-						</button>
+							<button
+								onClick={() => navigate(generateLink(`/tx/${txHash}`, archiveHeight))}
+								className="text-nervos hover:text-nervos-dark"
+								title="Go to transaction"
+							>
+								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+								</svg>
+							</button>
+						</div>
 					</DetailRow>
 					<DetailRow label="Status">
 						<StatusBadge status={status || 'unknown'} />

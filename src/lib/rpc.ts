@@ -157,15 +157,18 @@ export function createRpcClient(rpcUrl: string) {
 		 * Get a block by number.
 		 * @param blockNumber - Block number.
 		 * @param height - Optional archive height for historical query.
+		 * @param withTxHashes - If true, includes transaction hashes in response (verbosity 0x2).
 		 */
 		async getBlockByNumber(
 			blockNumber: number | bigint,
 			height?: number,
+			withTxHashes: boolean = false,
 		): Promise<RpcBlock | null> {
+			const verbosity = withTxHashes ? '0x2' : null;
 			if (height !== undefined) {
-				return sendArchiveRequest<RpcBlock | null>(height, 'get_block_by_number', [toHex(blockNumber)]);
+				return sendArchiveRequest<RpcBlock | null>(height, 'get_block_by_number', [toHex(blockNumber), verbosity]);
 			}
-			return sendRequest<RpcBlock | null>('get_block_by_number', [toHex(blockNumber)]);
+			return sendRequest<RpcBlock | null>('get_block_by_number', [toHex(blockNumber), verbosity]);
 		},
 
 		/**

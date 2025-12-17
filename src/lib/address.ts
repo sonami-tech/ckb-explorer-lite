@@ -33,7 +33,19 @@ export function parseAddress(address: string): {
 	script?: RpcScript;
 	isDeprecated: boolean;
 } {
-	const { prefix, format, payload } = addressPayloadFromString(address);
+	let prefix: string;
+	let format: number;
+	let payload: Uint8Array;
+
+	try {
+		const result = addressPayloadFromString(address);
+		prefix = result.prefix;
+		format = result.format;
+		payload = result.payload;
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Invalid encoding';
+		throw new Error(`Unknown address format ${address.length > 20 ? address.substring(0, 20) + '...' : address}: ${message}`);
+	}
 
 	const isDeprecated = format !== AddressFormat.Full;
 
