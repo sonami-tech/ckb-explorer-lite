@@ -8,7 +8,7 @@ import {
 	useCallback,
 	type ReactNode,
 } from 'react';
-import { parseNetworks, type NetworkConfig } from '../lib/networks';
+import { networks as configuredNetworks, type NetworkConfig } from '../config';
 import { createRpcClient, type RpcClient } from '../lib/rpc';
 
 const STORAGE_KEY = 'ckb-explorer-selected-network';
@@ -75,11 +75,11 @@ function updateUrlWithNetwork(networkName: string): void {
 }
 
 export function NetworkProvider({ children }: { children: ReactNode }) {
-	const networks = useMemo(() => parseNetworks(), []);
+	const networks = configuredNetworks;
 	const [selectedIndex, setSelectedIndex] = useState(() => getInitialNetworkIndex(networks));
 
 	const configError = networks.length === 0
-		? 'No networks configured. Please add VITE_CKB_NETWORK_0 to your .env file.'
+		? 'No networks configured. Add networks to src/config/networks.ts.'
 		: null;
 
 	const currentNetwork = networks[selectedIndex] ?? null;

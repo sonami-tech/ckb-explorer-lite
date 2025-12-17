@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useRpc } from '../contexts/NetworkContext';
+import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import { formatNumber, truncateHex } from '../lib/format';
+import { TimeSlider } from '../components/TimeSlider';
 import { navigate, generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonBlockItem, SkeletonTransactionItem } from '../components/Skeleton';
 import { ErrorDisplay, ConnectionError } from '../components/ErrorDisplay';
 import { RelativeTime } from '../components/RelativeTime';
 import type { RpcBlock } from '../types/rpc';
-
-const POLL_INTERVAL = parseInt(import.meta.env.VITE_POLL_INTERVAL_MS || '8000', 10);
-const ITEMS_TO_SHOW = 10;
+import { POLL_INTERVAL_MS, HOME_ITEMS_TO_SHOW } from '../config';
 
 interface BlockInfo {
 	number: bigint;
@@ -29,6 +28,7 @@ interface TransactionInfo {
 
 export function HomePage() {
 	const rpc = useRpc();
+	const { isArchiveSupported } = useNetwork();
 	const { archiveHeight, tipBlockNumber, isLoading: archiveLoading, error: archiveError, refreshTip } = useArchive();
 	const [blocks, setBlocks] = useState<BlockInfo[]>([]);
 	const [transactions, setTransactions] = useState<TransactionInfo[]>([]);
@@ -50,7 +50,7 @@ export function HomePage() {
 			const blockPromises: Promise<RpcBlock | null>[] = [];
 
 			// Fetch blocks starting from displayTip with transaction hashes.
-			for (let i = 0; i < ITEMS_TO_SHOW; i++) {
+			for (let i = 0; i < HOME_ITEMS_TO_SHOW; i++) {
 				const blockNum = displayTip - BigInt(i);
 				if (blockNum >= 0n) {
 					blockPromises.push(rpc.getBlockByNumber(blockNum, archiveHeight, true));
@@ -89,7 +89,7 @@ export function HomePage() {
 			}
 
 			setBlocks(blockInfos);
-			setTransactions(txInfos.slice(0, ITEMS_TO_SHOW));
+			setTransactions(txInfos.slice(0, HOME_ITEMS_TO_SHOW));
 		} catch (err) {
 			setBlocksError(err instanceof Error ? err : new Error('Failed to fetch blocks.'));
 		} finally {
@@ -106,7 +106,7 @@ export function HomePage() {
 			const interval = setInterval(() => {
 				refreshTip();
 				fetchBlocks();
-			}, POLL_INTERVAL);
+			}, POLL_INTERVAL_MS);
 			return () => clearInterval(interval);
 		}
 	}, [fetchBlocks, refreshTip, archiveHeight]);
@@ -122,6 +122,9 @@ export function HomePage() {
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
+			{/* Time slider for archive networks - positioned above stats. */}
+			{isArchiveSupported && <TimeSlider className="mb-4" />}
+
 			{/* Stats section. */}
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
 				<StatCard title={archiveHeight !== undefined ? 'Archive Height' : 'Tip Block'}>
@@ -144,7 +147,7 @@ export function HomePage() {
 					<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
 						{isLoadingBlocks ? (
 							<>
-								{[...Array(ITEMS_TO_SHOW)].map((_, i) => (
+								{[...Array(HOME_ITEMS_TO_SHOW)].map((_, i) => (
 									<SkeletonBlockItem key={i} />
 								))}
 							</>
@@ -168,7 +171,7 @@ export function HomePage() {
 					<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
 						{isLoadingBlocks ? (
 							<>
-								{[...Array(ITEMS_TO_SHOW)].map((_, i) => (
+								{[...Array(HOME_ITEMS_TO_SHOW)].map((_, i) => (
 									<SkeletonTransactionItem key={i} />
 								))}
 							</>

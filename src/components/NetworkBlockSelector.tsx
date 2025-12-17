@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNetwork } from '../contexts/NetworkContext';
 import { useArchive } from '../contexts/ArchiveContext';
-import { getNetworkTypeLabel } from '../lib/networks';
+import { getNetworkTypeLabel } from '../config';
 import { formatNumber } from '../lib/format';
 
 /**
@@ -73,7 +73,6 @@ export function NetworkBlockSelector() {
 	}
 
 	const networkLabel = currentNetwork.name;
-	const typeLabel = getNetworkTypeLabel(currentNetwork.type);
 	const blockLabel = isTrackingLatest
 		? 'Latest'
 		: `#${formatNumber(BigInt(archiveHeight!))}`;

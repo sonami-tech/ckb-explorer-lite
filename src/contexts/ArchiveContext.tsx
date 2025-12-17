@@ -9,6 +9,8 @@ import {
 	type ReactNode,
 } from 'react';
 import { useNetwork } from './NetworkContext';
+import { POLL_INTERVAL_MS } from '../config';
+
 
 interface ArchiveContextValue {
 	/**
@@ -50,8 +52,6 @@ interface ArchiveContextValue {
 }
 
 const ArchiveContext = createContext<ArchiveContextValue | null>(null);
-
-const POLL_INTERVAL = parseInt(import.meta.env.VITE_POLL_INTERVAL_MS || '8000', 10);
 
 export function ArchiveProvider({ children }: { children: ReactNode }) {
 	const { rpc, currentNetwork, isArchiveSupported } = useNetwork();
@@ -151,7 +151,7 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
 
 	// Poll for tip updates.
 	useEffect(() => {
-		const interval = setInterval(refreshTip, POLL_INTERVAL);
+		const interval = setInterval(refreshTip, POLL_INTERVAL_MS);
 		return () => clearInterval(interval);
 	}, [refreshTip]);
 
