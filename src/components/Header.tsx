@@ -6,8 +6,11 @@ import { NetworkBlockSelector } from './NetworkBlockSelector';
 
 export function Header() {
 	return (
-		<header className="relative bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 overflow-hidden">
-			<AnimatedBackground />
+		<header className="relative bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+			{/* Wrapper for animated background to contain overflow without affecting dropdown. */}
+			<div className="absolute inset-0 overflow-hidden">
+				<AnimatedBackground />
+			</div>
 
 			<div className="relative z-10 max-w-7xl mx-auto px-4 py-4">
 				{/* Top row: Logo, Network/Block selector, Controls. */}
