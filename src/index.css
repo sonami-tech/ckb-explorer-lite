@@ -44,3 +44,26 @@
 		min-height: 100dvh;
 	}
 }
+
+/* Timeline pulse animation - moves left to right, fully traversing and exiting the track. */
+@keyframes timeline-pulse {
+	0% {
+		transform: translateX(-100%);
+		opacity: 0;
+	}
+	5% {
+		opacity: 1;
+	}
+	95% {
+		opacity: 1;
+	}
+	100% {
+		/* Element is 10% width. translateX(1000%) moves left edge to 100% of container, fully exiting. */
+		transform: translateX(1000%);
+		opacity: 0;
+	}
+}
+
+.timeline-pulse {
+	animation: timeline-pulse 4s ease-in-out infinite;
+}

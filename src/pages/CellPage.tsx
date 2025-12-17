@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRpc } from '../contexts/NetworkContext';
 import { formatCkb } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
@@ -20,12 +20,20 @@ export function CellPage({ txHash, index }: CellPageProps) {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
 
+	// Track fetch ID to ignore stale responses when archiveHeight changes during navigation.
+	const fetchIdRef = useRef(0);
+
 	const fetchCell = useCallback(async () => {
+		const fetchId = ++fetchIdRef.current;
+
 		setIsLoading(true);
 		setError(null);
 
 		try {
 			const result = await rpc.getLiveCell(txHash, index, archiveHeight);
+
+			// Ignore stale response if a newer fetch has started.
+			if (fetchId !== fetchIdRef.current) return;
 
 			if (result.status === 'unknown' && !result.cell) {
 				// Cell not found - may have been spent or never existed.
@@ -37,9 +45,14 @@ export function CellPage({ txHash, index }: CellPageProps) {
 
 			setCellData(result);
 		} catch (err) {
+			// Ignore stale errors if a newer fetch has started.
+			if (fetchId !== fetchIdRef.current) return;
 			setError(err instanceof Error ? err : new Error('Failed to fetch cell.'));
 		} finally {
-			setIsLoading(false);
+			// Only update loading state if this is still the current fetch.
+			if (fetchId === fetchIdRef.current) {
+				setIsLoading(false);
+			}
 		}
 	}, [rpc, txHash, index, archiveHeight]);
 
@@ -96,20 +109,6 @@ export function CellPage({ txHash, index }: CellPageProps) {
 							<HashDisplay hash={txHash} />
 							<span className="text-gray-500">:</span>
 							<span className="font-mono">{index}</span>
-							<button
-								onClick={() => navigate(generateLink(`/tx/${txHash}`, archiveHeight))}
-								className="text-nervos hover:text-nervos-dark"
-								title="Go to transaction"
-							>
-								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-								</svg>
-							</button>
-						</div>
-					</DetailRow>
-					<DetailRow label="Transaction">
-						<div className="flex items-center gap-2">
-							<HashDisplay hash={txHash} />
 							<button
 								onClick={() => navigate(generateLink(`/tx/${txHash}`, archiveHeight))}
 								className="text-nervos hover:text-nervos-dark"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRpc } from '../contexts/NetworkContext';
 import {
 	formatNumber,
@@ -27,7 +27,12 @@ export function BlockPage({ id }: BlockPageProps) {
 	const [error, setError] = useState<Error | null>(null);
 	const [expandedTx, setExpandedTx] = useState<Set<number>>(new Set());
 
+	// Track fetch ID to ignore stale responses when archiveHeight changes during navigation.
+	const fetchIdRef = useRef(0);
+
 	const fetchBlock = useCallback(async () => {
+		const fetchId = ++fetchIdRef.current;
+
 		setIsLoading(true);
 		setError(null);
 
@@ -43,15 +48,23 @@ export function BlockPage({ id }: BlockPageProps) {
 				throw new Error('Invalid block identifier. Please provide a block number or hash.');
 			}
 
+			// Ignore stale response if a newer fetch has started.
+			if (fetchId !== fetchIdRef.current) return;
+
 			if (!result) {
 				throw new Error(`Block not found: ${id}`);
 			}
 
 			setBlock(result);
 		} catch (err) {
+			// Ignore stale errors if a newer fetch has started.
+			if (fetchId !== fetchIdRef.current) return;
 			setError(err instanceof Error ? err : new Error('Failed to fetch block.'));
 		} finally {
-			setIsLoading(false);
+			// Only update loading state if this is still the current fetch.
+			if (fetchId === fetchIdRef.current) {
+				setIsLoading(false);
+			}
 		}
 	}, [rpc, id, archiveHeight]);
 

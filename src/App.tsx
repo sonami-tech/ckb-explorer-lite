@@ -2,6 +2,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AnimationProvider } from './contexts/AnimationContext';
 import { NetworkProvider } from './contexts/NetworkContext';
 import { ArchiveProvider } from './contexts/ArchiveContext';
+import { TickProvider } from './contexts/TickContext';
 import { Layout } from './components/Layout';
 import { useRouter } from './hooks/useRouter';
 import { HomePage } from './pages/HomePage';
@@ -37,9 +38,11 @@ function App() {
 			<AnimationProvider>
 				<NetworkProvider>
 					<ArchiveProvider>
-						<Layout>
-							<Router />
-						</Layout>
+						<TickProvider>
+							<Layout>
+								<Router />
+							</Layout>
+						</TickProvider>
 					</ArchiveProvider>
 				</NetworkProvider>
 			</AnimationProvider>

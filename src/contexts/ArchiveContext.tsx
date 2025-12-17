@@ -64,16 +64,40 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
 	// Track previous network URL to detect network changes.
 	const prevNetworkUrlRef = useRef<string | null>(null);
 
-	// Parse height from URL on initial load.
-	useEffect(() => {
-		if (!isArchiveSupported) return;
+	// Sync archive height state from URL without modifying URL.
+	// This is called on initial load, popstate (back/forward), and SPA navigation.
+	const syncFromUrl = useCallback(() => {
+		if (!isArchiveSupported) {
+			setArchiveHeightState(undefined);
+			return;
+		}
 
 		const params = new URLSearchParams(window.location.search);
 		const heightParam = params.get('height');
 		if (heightParam && /^\d+$/.test(heightParam)) {
 			setArchiveHeightState(parseInt(heightParam, 10));
+		} else {
+			setArchiveHeightState(undefined);
 		}
 	}, [isArchiveSupported]);
+
+	// Parse height from URL on initial load and when isArchiveSupported changes.
+	useEffect(() => {
+		syncFromUrl();
+	}, [syncFromUrl]);
+
+	// Listen for browser back/forward and SPA navigation events.
+	useEffect(() => {
+		const handleNavigation = () => {
+			syncFromUrl();
+		};
+		window.addEventListener('popstate', handleNavigation);
+		window.addEventListener('spa-navigate', handleNavigation);
+		return () => {
+			window.removeEventListener('popstate', handleNavigation);
+			window.removeEventListener('spa-navigate', handleNavigation);
+		};
+	}, [syncFromUrl]);
 
 	// Clear archive height when network changes or when archive not supported.
 	useEffect(() => {

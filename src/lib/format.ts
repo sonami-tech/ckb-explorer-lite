@@ -6,13 +6,26 @@ import type { Hex } from '../types/rpc';
 const SHANNONS_PER_CKB = 100_000_000n;
 
 /**
- * Format Shannon amount to CKB string with up to 8 decimal places.
- * Trims trailing zeros for cleaner display.
+ * Format Shannon amount to CKB string.
+ * @param shannons - Amount in shannons.
+ * @param decimals - Number of decimal places to show. If undefined, shows up to 8 with trailing zeros trimmed.
  */
-export function formatCkb(shannons: bigint | string): string {
+export function formatCkb(shannons: bigint | string, decimals?: number): string {
 	const value = typeof shannons === 'string' ? BigInt(shannons) : shannons;
 	const whole = value / SHANNONS_PER_CKB;
 	const fraction = value % SHANNONS_PER_CKB;
+
+	if (decimals !== undefined) {
+		// Round to specified decimal places.
+		const divisor = 10n ** BigInt(8 - decimals);
+		const roundedFraction = (fraction + divisor / 2n) / divisor;
+		// Handle case where rounding causes overflow (e.g., 0.999... → 1.0).
+		if (roundedFraction >= 10n ** BigInt(decimals)) {
+			return formatNumber(whole + 1n) + '.' + '0'.repeat(decimals) + ' CKB';
+		}
+		const fractionStr = roundedFraction.toString().padStart(decimals, '0');
+		return formatNumber(whole) + '.' + fractionStr + ' CKB';
+	}
 
 	if (fraction === 0n) {
 		return formatNumber(whole) + ' CKB';
@@ -97,18 +110,25 @@ export function formatAbsoluteTime(timestamp: bigint | number): string {
 
 /**
  * Format epoch number to human readable format.
- * CKB epoch format: lower 24 bits = block index, next 16 bits = epoch length, upper 24 bits = epoch number.
+ * CKB epoch encoding: (length << 40) | (index << 24) | number
+ * - Bits 0-23: epoch number (24 bits)
+ * - Bits 24-39: block index within epoch (16 bits)
+ * - Bits 40-63: epoch length (24 bits)
  */
 export function formatEpoch(epoch: bigint | string): string {
 	const value = typeof epoch === 'string' ? BigInt(epoch) : epoch;
-	const epochNumber = value >> 40n;
-	const epochLength = (value >> 24n) & 0xFFFFn;
-	const epochIndex = value & 0xFFFFFFn;
+	const epochNumber = value & 0xFFFFFFn;
+	const epochIndex = (value >> 24n) & 0xFFFFn;
+	const epochLength = value >> 40n;
 	return `${epochNumber} (${epochIndex}/${epochLength})`;
 }
 
 /**
  * Parse an epoch value to its components.
+ * CKB epoch encoding: (length << 40) | (index << 24) | number
+ * - Bits 0-23: epoch number (24 bits)
+ * - Bits 24-39: block index within epoch (16 bits)
+ * - Bits 40-63: epoch length (24 bits)
  */
 export function parseEpoch(epoch: bigint | string): {
 	number: bigint;
@@ -117,10 +137,70 @@ export function parseEpoch(epoch: bigint | string): {
 } {
 	const value = typeof epoch === 'string' ? BigInt(epoch) : epoch;
 	return {
-		number: value >> 40n,
-		length: (value >> 24n) & 0xFFFFn,
-		index: value & 0xFFFFFFn,
+		number: value & 0xFFFFFFn,
+		index: (value >> 24n) & 0xFFFFn,
+		length: value >> 40n,
 	};
+}
+
+/**
+ * Format a large number with SI prefix (K, M, G, T, P, E).
+ * Used for hash rates and difficulty values.
+ */
+export function formatSiNumber(value: bigint | number, decimals = 2): string {
+	const num = typeof value === 'bigint' ? Number(value) : value;
+
+	const units = ['', 'K', 'M', 'G', 'T', 'P', 'E'];
+	let unitIndex = 0;
+	let scaledValue = num;
+
+	while (scaledValue >= 1000 && unitIndex < units.length - 1) {
+		scaledValue /= 1000;
+		unitIndex++;
+	}
+
+	// Format with specified decimal places, trimming trailing zeros.
+	const formatted = scaledValue.toFixed(decimals).replace(/\.?0+$/, '');
+	return `${formatted} ${units[unitIndex]}`.trim();
+}
+
+/**
+ * Format difficulty value for display.
+ * Difficulty is returned as a hex string from get_blockchain_info.
+ */
+export function formatDifficulty(difficultyHex: string): string {
+	const difficulty = BigInt(difficultyHex);
+	return formatSiNumber(difficulty) + 'H';
+}
+
+/**
+ * Calculate and format hash rate from difficulty and average block time.
+ * Hash rate ≈ difficulty / block_time (in H/s).
+ */
+export function formatHashRate(difficultyHex: string, avgBlockTimeSeconds: number): string {
+	if (avgBlockTimeSeconds <= 0) return '0 H/s';
+	const difficulty = BigInt(difficultyHex);
+	const hashRate = Number(difficulty) / avgBlockTimeSeconds;
+	return formatSiNumber(hashRate) + 'H/s';
+}
+
+/**
+ * Format duration in seconds to human-readable format.
+ */
+export function formatDuration(seconds: number): string {
+	if (seconds < 0) return '0s';
+
+	const hours = Math.floor(seconds / 3600);
+	const minutes = Math.floor((seconds % 3600) / 60);
+	const secs = Math.floor(seconds % 60);
+
+	if (hours > 0) {
+		return `${hours}h ${minutes}m`;
+	}
+	if (minutes > 0) {
+		return `${minutes}m ${secs}s`;
+	}
+	return `${secs}s`;
 }
 
 /**

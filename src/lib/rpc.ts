@@ -3,6 +3,7 @@ import type {
 	RpcBlock,
 	RpcBlockHeader,
 	RpcBlockchainInfo,
+	RpcEpoch,
 	RpcGetCellsResponse,
 	RpcGetTransactionsResponse,
 	RpcLiveCell,
@@ -151,6 +152,13 @@ export function createRpcClient(rpcUrl: string) {
 		 */
 		async getTipHeader(): Promise<RpcBlockHeader> {
 			return sendRequest<RpcBlockHeader>('get_tip_header', []);
+		},
+
+		/**
+		 * Get the current epoch information.
+		 */
+		async getCurrentEpoch(): Promise<RpcEpoch> {
+			return sendRequest<RpcEpoch>('get_current_epoch', []);
 		},
 
 		/**

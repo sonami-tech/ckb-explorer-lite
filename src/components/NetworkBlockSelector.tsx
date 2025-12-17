@@ -19,6 +19,12 @@ export function NetworkBlockSelector() {
 
 	const isTrackingLatest = archiveHeight === undefined;
 
+	// Track if user is editing a specific block height (for radio button visual state).
+	const isEditingSpecific = heightInput.trim() !== '';
+
+	// The "specific block" radio should appear selected if already at a specific block OR if user is typing.
+	const showSpecificSelected = !isTrackingLatest || isEditingSpecific;
+
 	// Close dropdown when clicking outside.
 	useEffect(() => {
 		function handleClickOutside(event: MouseEvent) {
@@ -36,6 +42,15 @@ export function NetworkBlockSelector() {
 			inputRef.current.focus();
 		}
 	}, [isOpen, isTrackingLatest]);
+
+	// Sync heightInput with archiveHeight when it changes from outside (e.g., timeline slider).
+	useEffect(() => {
+		if (archiveHeight !== undefined) {
+			setHeightInput(archiveHeight.toString());
+		} else {
+			setHeightInput('');
+		}
+	}, [archiveHeight]);
 
 	const handleNetworkChange = useCallback((index: number) => {
 		selectNetwork(index);
@@ -79,12 +94,12 @@ export function NetworkBlockSelector() {
 
 	return (
 		<div className="relative" ref={dropdownRef}>
-			{/* Trigger button. */}
+			{/* Trigger button - full width on mobile, auto width on desktop, height matches search bar. */}
 			<button
 				onClick={() => setIsOpen(!isOpen)}
 				className={`
-					flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm
-					bg-white dark:bg-gray-800
+					w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 px-3 py-2.5 rounded-lg text-sm
+					bg-white dark:bg-gray-900
 					border border-gray-300 dark:border-gray-600
 					hover:border-gray-400 dark:hover:border-gray-500
 					transition-all duration-200
@@ -125,7 +140,7 @@ export function NetworkBlockSelector() {
 
 			{/* Dropdown. */}
 			{isOpen && (
-				<div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg z-50">
+				<div className="absolute left-0 right-0 sm:left-auto sm:right-0 mt-2 sm:w-72 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg z-[100]">
 					{/* Network section. */}
 					{networks.length > 1 && (
 						<>
@@ -188,7 +203,7 @@ export function NetworkBlockSelector() {
 									className={`
 										w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-left
 										transition-colors
-										${isTrackingLatest
+										${!showSpecificSelected
 											? 'bg-nervos/10 text-nervos'
 											: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
 										}
@@ -197,12 +212,12 @@ export function NetworkBlockSelector() {
 									{/* Radio indicator. */}
 									<span className={`
 										w-4 h-4 rounded-full border-2 flex items-center justify-center
-										${isTrackingLatest
+										${!showSpecificSelected
 											? 'border-nervos'
 											: 'border-gray-300 dark:border-gray-600'
 										}
 									`}>
-										{isTrackingLatest && (
+										{!showSpecificSelected && (
 											<span className="w-2 h-2 rounded-full bg-nervos" />
 										)}
 									</span>
@@ -222,7 +237,7 @@ export function NetworkBlockSelector() {
 								{/* Specific block option. */}
 								<div className={`
 									flex items-center gap-2 px-3 py-2 rounded-md
-									${!isTrackingLatest
+									${showSpecificSelected
 										? 'bg-nervos/10'
 										: 'hover:bg-gray-100 dark:hover:bg-gray-700'
 									}
@@ -230,22 +245,20 @@ export function NetworkBlockSelector() {
 									{/* Radio indicator - clickable to switch mode. */}
 									<button
 										onClick={() => {
-											if (isTrackingLatest) {
+											if (!showSpecificSelected && tipBlockNumber !== null) {
 												// Switch to specific mode with current tip.
-												if (tipBlockNumber !== null) {
-													setHeightInput(tipBlockNumber.toString());
-												}
+												setHeightInput(tipBlockNumber.toString());
 											}
 										}}
 										className={`
 											w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0
-											${!isTrackingLatest
+											${showSpecificSelected
 												? 'border-nervos'
 												: 'border-gray-300 dark:border-gray-600'
 											}
 										`}
 									>
-										{!isTrackingLatest && (
+										{showSpecificSelected && (
 											<span className="w-2 h-2 rounded-full bg-nervos" />
 										)}
 									</button>
@@ -268,7 +281,7 @@ export function NetworkBlockSelector() {
 											bg-white dark:bg-gray-900
 											placeholder:text-gray-400 dark:placeholder:text-gray-500
 											focus:outline-none focus:ring-1 focus:ring-nervos
-											${!isTrackingLatest
+											${showSpecificSelected
 												? 'border-nervos text-nervos'
 												: 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
 											}

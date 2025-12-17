@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useTick } from '../contexts/TickContext';
 import { formatRelativeTime } from '../lib/format';
 
 interface RelativeTimeProps {
@@ -7,17 +7,11 @@ interface RelativeTimeProps {
 
 /**
  * Displays a relative time string that updates every second.
+ * Uses a shared timer context to synchronize all instances.
  */
 export function RelativeTime({ timestamp }: RelativeTimeProps) {
-	const [, setTick] = useState(0);
-
-	useEffect(() => {
-		const interval = setInterval(() => {
-			setTick((t) => t + 1);
-		}, 1000);
-
-		return () => clearInterval(interval);
-	}, []);
+	// Subscribe to the global tick to trigger re-renders.
+	useTick();
 
 	return <>{formatRelativeTime(timestamp)}</>;
 }

@@ -108,9 +108,23 @@ export interface RpcBlockchainInfo {
 	chain: string;
 	median_time: Uint64;
 	epoch: Uint64;
-	difficulty: string;
+	difficulty: Hex;
 	is_initial_block_download: boolean;
 	alerts: unknown[];
+}
+
+/**
+ * Epoch information from get_current_epoch.
+ */
+export interface RpcEpoch {
+	/** Epoch number. */
+	number: Uint64;
+	/** Block number of the first block in the epoch. */
+	start_number: Uint64;
+	/** Number of blocks in the epoch. */
+	length: Uint64;
+	/** Compact target for PoW. */
+	compact_target: Uint32;
 }
 
 export interface RpcLiveCell {

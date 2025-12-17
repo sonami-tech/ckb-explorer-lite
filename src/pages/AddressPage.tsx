@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRpc } from '../contexts/NetworkContext';
 import { parseAddress, getNetworkFromPrefix } from '../lib/address';
 import {
@@ -43,6 +43,9 @@ export function AddressPage({ address }: AddressPageProps) {
 	const [error, setError] = useState<Error | null>(null);
 	const [pageSize, setPageSize] = useState(getStoredPageSize);
 
+	// Track fetch ID to ignore stale responses when archiveHeight changes during navigation.
+	const fetchIdRef = useRef(0);
+
 	// Parse address on mount.
 	useEffect(() => {
 		try {
@@ -63,6 +66,8 @@ export function AddressPage({ address }: AddressPageProps) {
 	const fetchData = useCallback(async () => {
 		if (!script) return;
 
+		const fetchId = ++fetchIdRef.current;
+
 		setIsLoading(true);
 		setError(null);
 
@@ -80,14 +85,22 @@ export function AddressPage({ address }: AddressPageProps) {
 				rpc.getCells(searchKey, 'desc', pageSize, undefined, archiveHeight),
 			]);
 
+			// Ignore stale response if a newer fetch has started.
+			if (fetchId !== fetchIdRef.current) return;
+
 			setBalance(balanceResult);
 			setCells(cellsResult.objects);
 			setCursor(cellsResult.last_cursor);
 			setHasMore(cellsResult.objects.length >= pageSize);
 		} catch (err) {
+			// Ignore stale errors if a newer fetch has started.
+			if (fetchId !== fetchIdRef.current) return;
 			setError(err instanceof Error ? err : new Error('Failed to fetch address data.'));
 		} finally {
-			setIsLoading(false);
+			// Only update loading state if this is still the current fetch.
+			if (fetchId === fetchIdRef.current) {
+				setIsLoading(false);
+			}
 		}
 	}, [rpc, script, archiveHeight, pageSize]);
 

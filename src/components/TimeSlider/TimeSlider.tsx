@@ -185,23 +185,33 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 
 	/**
 	 * Handle keyboard navigation.
+	 * Left/Right: Fine-grained navigation by 1 block (or 10 with Shift).
+	 * Up/Down: Coarse navigation by ~1% of timeline (or 10% with Shift).
 	 */
 	const handleKeyDown = useCallback(
 		(e: React.KeyboardEvent) => {
-			const step = e.shiftKey ? 10 : 1;
-			let newPosition = displayPosition;
+			let newBlock = displayBlock;
+
+			// Fine step: 1 block (or 10 with Shift).
+			const fineStep = e.shiftKey ? 10 : 1;
+			// Coarse step: ~1% of tip (or 10% with Shift), minimum 100 blocks.
+			const coarseStep = Math.max(100, Math.floor(tipNumber * (e.shiftKey ? 0.1 : 0.01)));
 
 			switch (e.key) {
 				case 'ArrowLeft':
-				case 'ArrowDown':
-					newPosition = Math.max(0, displayPosition - step);
+					newBlock = Math.max(0, displayBlock - fineStep);
 					break;
 				case 'ArrowRight':
+					newBlock = Math.min(tipNumber, displayBlock + fineStep);
+					break;
+				case 'ArrowDown':
+					newBlock = Math.max(0, displayBlock - coarseStep);
+					break;
 				case 'ArrowUp':
-					newPosition = Math.min(100, displayPosition + step);
+					newBlock = Math.min(tipNumber, displayBlock + coarseStep);
 					break;
 				case 'Home':
-					newPosition = 0;
+					newBlock = 0;
 					break;
 				case 'End':
 					handleGoLive();
@@ -211,10 +221,13 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 			}
 
 			e.preventDefault();
-			const newBlock = positionToBlock(newPosition, tipNumber);
-			setArchiveHeight(newBlock);
+			if (newBlock >= tipNumber - 1) {
+				setArchiveHeight(undefined);
+			} else {
+				setArchiveHeight(newBlock);
+			}
 		},
-		[displayPosition, tipNumber, setArchiveHeight, handleGoLive],
+		[displayBlock, tipNumber, setArchiveHeight, handleGoLive],
 	);
 
 	/**
@@ -429,8 +442,17 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 					className="
 						absolute top-1/2 -translate-y-1/2 left-0 right-0 h-1
 						bg-gray-200 dark:bg-gray-700 rounded-full
+						overflow-hidden
 					"
-				/>
+				>
+					{/* Animated pulse - nervos green glow moving left to right. */}
+					<div
+						className="
+							timeline-pulse absolute inset-y-0 w-[10%]
+							bg-gradient-to-r from-transparent via-nervos/60 to-transparent
+						"
+					/>
+				</div>
 
 				{/* Filled portion (subtle). */}
 				<div

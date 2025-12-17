@@ -52,9 +52,12 @@ export function setRouteChangeCallback(callback: RouteChangeCallback): void {
 
 /**
  * Navigate to a route programmatically.
+ * Dispatches a custom event for contexts to sync state from the new URL.
  */
 export function navigate(path: string): void {
 	router.navigate(path);
+	// Dispatch event for ArchiveContext to sync state from the new URL.
+	window.dispatchEvent(new Event('spa-navigate'));
 }
 
 /**

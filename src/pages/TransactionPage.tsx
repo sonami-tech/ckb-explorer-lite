@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useRpc } from '../contexts/NetworkContext';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import {
 	formatNumber,
 	formatCkb,
@@ -19,12 +19,18 @@ interface TransactionPageProps {
 
 export function TransactionPage({ hash }: TransactionPageProps) {
 	const rpc = useRpc();
+	const { isArchiveSupported } = useNetwork();
 	const { archiveHeight } = useArchive();
 	const [txData, setTxData] = useState<RpcTransactionWithStatus | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
 
+	// Track fetch ID to ignore stale responses when archiveHeight changes during navigation.
+	const fetchIdRef = useRef(0);
+
 	const fetchTransaction = useCallback(async () => {
+		const fetchId = ++fetchIdRef.current;
+
 		setIsLoading(true);
 		setError(null);
 
@@ -35,11 +41,15 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 			const result = await rpc.getTransaction(hash, archiveHeight);
 
+			// Ignore stale response if a newer fetch has started.
+			if (fetchId !== fetchIdRef.current) return;
+
 			if (!result || !result.transaction) {
 				// Transaction not found - try as block hash and redirect if found.
 				const blockResult = await rpc.getBlockByHash(hash, archiveHeight);
+				if (fetchId !== fetchIdRef.current) return;
 				if (blockResult) {
-					navigate(generateLink(`/block/${hash}`, archiveHeight), { replace: true });
+					navigate(generateLink(`/block/${hash}`, archiveHeight));
 					return;
 				}
 				throw new Error(`Transaction not found: ${hash}`);
@@ -47,9 +57,14 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 			setTxData(result as RpcTransactionWithStatus & { transaction: RpcTransaction });
 		} catch (err) {
+			// Ignore stale errors if a newer fetch has started.
+			if (fetchId !== fetchIdRef.current) return;
 			setError(err instanceof Error ? err : new Error('Failed to fetch transaction.'));
 		} finally {
-			setIsLoading(false);
+			// Only update loading state if this is still the current fetch.
+			if (fetchId === fetchIdRef.current) {
+				setIsLoading(false);
+			}
 		}
 	}, [rpc, hash, archiveHeight]);
 
@@ -152,30 +167,97 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							No inputs (Cellbase transaction)
 						</div>
 					) : (
-						transaction.inputs.map((input, index) => (
-							<div key={index} className="p-4">
-								<div className="flex items-center gap-2 mb-2">
-									<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-										#{index}
-									</span>
+						transaction.inputs.map((input, index) => {
+							// Check if this is a cellbase input (null outpoint).
+							// Cellbase inputs have tx_hash of all zeros and index 0xffffffff.
+							const isNullOutpoint =
+								input.previous_output.tx_hash === '0x0000000000000000000000000000000000000000000000000000000000000000' &&
+								input.previous_output.index === '0xffffffff';
+
+							if (isNullOutpoint) {
+								return (
+									<div key={index} className="p-4">
+										<div className="flex items-center gap-2 mb-2">
+											<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+												#{index}
+											</span>
+											<span className="px-1.5 py-0.5 text-[10px] font-semibold bg-nervos/10 text-nervos rounded">
+												Cellbase
+											</span>
+										</div>
+										<div className="text-sm text-gray-500 dark:text-gray-400">
+											Mining reward - no previous output
+										</div>
+									</div>
+								);
+							}
+
+							// Calculate historical block height for viewing consumed inputs.
+							// The cell was consumed in this transaction, so view it at the previous block.
+							const consumingBlockNumber = tx_status.block_number
+								? parseInt(tx_status.block_number, 16)
+								: null;
+							const historicalHeight = consumingBlockNumber !== null
+								? consumingBlockNumber - 1
+								: archiveHeight;
+
+							const handlePreviousOutputClick = () => {
+								if (!isArchiveSupported && consumingBlockNumber !== null) {
+									alert(
+										'Archive mode is required to view consumed cells.\n\n' +
+										'This cell was consumed in this transaction and no longer exists at the current block height. ' +
+										'Connect to an archive node to view historical cell state.'
+									);
+									return;
+								}
+								// Navigate to cell page with height param. ArchiveContext syncs from URL automatically.
+								navigate(generateLink(
+									`/cell/${input.previous_output.tx_hash}/${parseInt(input.previous_output.index, 16)}`,
+									historicalHeight
+								));
+							};
+
+							return (
+								<div key={index} className="p-4">
+									<div className="flex items-center gap-2 mb-2">
+										<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+											#{index}
+										</span>
+									</div>
+									<div className="text-sm">
+										<span className="text-gray-500 dark:text-gray-400">Previous Output: </span>
+										<button
+											onClick={handlePreviousOutputClick}
+											className="text-nervos hover:underline font-mono inline-flex items-center gap-1"
+											title={
+												isArchiveSupported && consumingBlockNumber !== null
+													? `View cell at block #${formatNumber(BigInt(historicalHeight!))} (before consumption)`
+													: !isArchiveSupported
+														? 'Archive mode required to view consumed cells'
+														: undefined
+											}
+										>
+											{truncateHex(input.previous_output.tx_hash, 8, 8)}:{parseInt(input.previous_output.index, 16)}
+											{/* Historical view indicator. */}
+											{consumingBlockNumber !== null && (
+												<svg
+													className={`w-3.5 h-3.5 ${isArchiveSupported ? 'text-amber-500' : 'text-gray-400'}`}
+													fill="none"
+													stroke="currentColor"
+													viewBox="0 0 24 24"
+													title={isArchiveSupported ? 'Historical view' : 'Archive required'}
+												>
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+												</svg>
+											)}
+										</button>
+									</div>
+									<div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+										Since: {input.since}
+									</div>
 								</div>
-								<div className="text-sm">
-									<span className="text-gray-500 dark:text-gray-400">Previous Output: </span>
-									<button
-										onClick={() => navigate(generateLink(
-											`/cell/${input.previous_output.tx_hash}/${parseInt(input.previous_output.index, 16)}`,
-											archiveHeight
-										))}
-										className="text-nervos hover:underline font-mono"
-									>
-										{truncateHex(input.previous_output.tx_hash, 8, 8)}:{parseInt(input.previous_output.index, 16)}
-									</button>
-								</div>
-								<div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-									Since: {input.since}
-								</div>
-							</div>
-						))
+							);
+						})
 					)}
 				</div>
 			</div>
