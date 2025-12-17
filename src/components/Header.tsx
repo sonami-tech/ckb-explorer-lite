@@ -24,7 +24,7 @@ export function Header() {
 							<span className="text-white font-bold text-sm">CKB</span>
 						</div>
 						<span className="text-lg font-bold text-gray-900 dark:text-white">
-							Explorer
+							Explorer Lite
 						</span>
 					</button>
 

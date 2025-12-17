@@ -113,13 +113,6 @@ export function NetworkBlockSelector() {
 					</span>
 				)}
 
-				{/* Archive mode indicator. */}
-				{!isTrackingLatest && (
-					<span className="px-1.5 py-0.5 text-xs font-medium bg-nervos/10 text-nervos rounded">
-						Archive
-					</span>
-				)}
-
 				{/* Chevron. */}
 				<svg
 					className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
