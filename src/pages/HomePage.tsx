@@ -211,15 +211,13 @@ export function HomePage() {
 
 			{/* Stats section - 3 grouped cards. */}
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-				{/* Mining stats. */}
-				<StatGroup title="Mining">
-					<StatItem label="Difficulty">
-						{networkStats ? formatDifficulty(networkStats.difficulty) : '...'}
+				{/* Block stats. */}
+				<StatGroup title="Blocks">
+					<StatItem label={archiveHeight !== undefined ? 'Archive Height' : 'Tip Block'}>
+						{displayTip !== null ? formatNumber(displayTip) : '...'}
 					</StatItem>
-					<StatItem label="Hash Rate">
-						{networkStats && avgBlockTime > 0
-							? formatHashRate(networkStats.difficulty, avgBlockTime)
-							: '...'}
+					<StatItem label="Avg Block Time">
+						{avgBlockTime > 0 ? `${avgBlockTime.toFixed(2)}s` : '...'}
 					</StatItem>
 				</StatGroup>
 
@@ -237,13 +235,15 @@ export function HomePage() {
 					</StatItem>
 				</StatGroup>
 
-				{/* Block stats. */}
-				<StatGroup title="Blocks">
-					<StatItem label="Avg Block Time">
-						{avgBlockTime > 0 ? `${avgBlockTime.toFixed(2)}s` : '...'}
+				{/* Mining stats. */}
+				<StatGroup title="Mining">
+					<StatItem label="Hash Rate">
+						{networkStats && avgBlockTime > 0
+							? formatHashRate(networkStats.difficulty, avgBlockTime)
+							: '...'}
 					</StatItem>
-					<StatItem label={archiveHeight !== undefined ? 'Archive Height' : 'Tip Block'}>
-						{displayTip !== null ? formatNumber(displayTip) : '...'}
+					<StatItem label="Difficulty">
+						{networkStats ? formatDifficulty(networkStats.difficulty) : '...'}
 					</StatItem>
 				</StatGroup>
 			</div>
