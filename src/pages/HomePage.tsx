@@ -100,12 +100,16 @@ export function HomePage() {
 			const validBlocks = results.filter((block): block is RpcBlock => block !== null);
 
 			// Calculate average block time from timestamps.
+			// Requires at least 2 blocks to calculate an average.
 			if (validBlocks.length >= 2) {
 				const firstTimestamp = BigInt(validBlocks[0].header.timestamp);
 				const lastTimestamp = BigInt(validBlocks[validBlocks.length - 1].header.timestamp);
 				const timeDiff = Number(firstTimestamp - lastTimestamp) / 1000; // Convert ms to seconds.
 				const blockCount = validBlocks.length - 1;
 				setAvgBlockTime(blockCount > 0 ? timeDiff / blockCount : 0);
+			} else {
+				// Reset to 0 when viewing single block (e.g., genesis).
+				setAvgBlockTime(0);
 			}
 
 			// Extract epoch info from the first block's header.
