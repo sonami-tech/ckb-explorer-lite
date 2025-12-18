@@ -3,14 +3,19 @@ import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import {
 	formatNumber,
 	formatCkb,
-	truncateHex,
+	formatAbsoluteTime,
+	formatRelativeTime,
+	truncateAddress,
 	isValidHex,
 } from '../lib/format';
+import { encodeAddress } from '../lib/address';
 import { navigate, generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
+import { TruncatedData } from '../components/TruncatedData';
+import { OutPointLink } from '../components/OutPointLink';
 import type { RpcTransaction, RpcTransactionWithStatus } from '../types/rpc';
 
 interface TransactionPageProps {
@@ -19,11 +24,14 @@ interface TransactionPageProps {
 
 export function TransactionPage({ hash }: TransactionPageProps) {
 	const rpc = useRpc();
-	const { isArchiveSupported } = useNetwork();
+	const { isArchiveSupported, currentNetwork } = useNetwork();
 	const { archiveHeight } = useArchive();
 	const [txData, setTxData] = useState<RpcTransactionWithStatus | null>(null);
+	const [blockTimestamp, setBlockTimestamp] = useState<bigint | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
+
+	const networkType = currentNetwork?.type ?? 'mainnet';
 
 	// Track fetch ID to ignore stale responses when archiveHeight changes during navigation.
 	const fetchIdRef = useRef(0);
@@ -33,6 +41,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 		setIsLoading(true);
 		setError(null);
+		setBlockTimestamp(null);
 
 		try {
 			if (!isValidHex(hash) || hash.length !== 66) {
@@ -56,6 +65,15 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 			}
 
 			setTxData(result as RpcTransactionWithStatus & { transaction: RpcTransaction });
+
+			// Fetch block header for timestamp if transaction is committed.
+			if (result.tx_status.block_hash) {
+				const blockResult = await rpc.getBlockByHash(result.tx_status.block_hash, archiveHeight);
+				if (fetchId !== fetchIdRef.current) return;
+				if (blockResult) {
+					setBlockTimestamp(BigInt(blockResult.header.timestamp));
+				}
+			}
 		} catch (err) {
 			// Ignore stale errors if a newer fetch has started.
 			if (fetchId !== fetchIdRef.current) return;
@@ -122,7 +140,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
 					<DetailRow label="Transaction Hash">
-						<HashDisplay hash={hash} truncate={false} />
+						<HashDisplay hash={hash} responsive />
 					</DetailRow>
 					<DetailRow label="Status">
 						<StatusBadge status={tx_status.status} />
@@ -148,9 +166,14 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							</div>
 						</DetailRow>
 					)}
-					<DetailRow label="Version">
-						{parseInt(transaction.version, 16)}
-					</DetailRow>
+					{blockTimestamp && (
+						<DetailRow label="Timestamp">
+							<span>{formatAbsoluteTime(blockTimestamp)}</span>
+							<span className="text-gray-500 dark:text-gray-400 ml-2">
+								({formatRelativeTime(blockTimestamp)})
+							</span>
+						</DetailRow>
+					)}
 				</div>
 			</div>
 
@@ -177,16 +200,16 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							if (isNullOutpoint) {
 								return (
 									<div key={index} className="p-4">
-										<div className="flex items-center gap-2 mb-2">
-											<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+										<div className="flex items-center gap-3">
+											<span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-6">
 												#{index}
 											</span>
 											<span className="px-1.5 py-0.5 text-[10px] font-semibold bg-nervos/10 text-nervos rounded">
 												Cellbase
 											</span>
-										</div>
-										<div className="text-sm text-gray-500 dark:text-gray-400">
-											Mining reward - no previous output
+											<span className="text-sm text-gray-500 dark:text-gray-400">
+												Mining reward
+											</span>
 										</div>
 									</div>
 								);
@@ -202,46 +225,26 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 								? Math.max(0, consumingBlockNumber - 1)
 								: archiveHeight;
 
-							const handlePreviousOutputClick = () => {
-								if (!isArchiveSupported && consumingBlockNumber !== null) {
-									alert(
-										'Archive mode is required to view consumed cells.\n\n' +
-										'This cell was consumed in this transaction and no longer exists at the current block height. ' +
-										'Connect to an archive node to view historical cell state.'
-									);
-									return;
-								}
-								// Navigate to cell page with height param. ArchiveContext syncs from URL automatically.
-								navigate(generateLink(
-									`/cell/${input.previous_output.tx_hash}/${parseInt(input.previous_output.index, 16)}`,
-									historicalHeight
-								));
-							};
-
 							return (
 								<div key={index} className="p-4">
-									<div className="flex items-center gap-2 mb-2">
-										<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+									<div className="flex items-center gap-3">
+										<span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-6">
 											#{index}
 										</span>
-									</div>
-									<div className="text-sm">
-										<span className="text-gray-500 dark:text-gray-400">Previous Output: </span>
-										<button
-											onClick={handlePreviousOutputClick}
-											className="text-nervos hover:underline font-mono inline-flex items-center gap-1"
-											title={
-												isArchiveSupported && consumingBlockNumber !== null
-													? `View cell at block #${formatNumber(BigInt(historicalHeight!))} (before consumption)`
-													: !isArchiveSupported
-														? 'Archive mode required to view consumed cells'
-														: undefined
-											}
-										>
-											{truncateHex(input.previous_output.tx_hash, 8, 8)}:{parseInt(input.previous_output.index, 16)}
+										<div className="flex items-center gap-2 flex-1 min-w-0">
+											<OutPointLink
+												txHash={input.previous_output.tx_hash}
+												index={parseInt(input.previous_output.index, 16)}
+												archiveHeight={historicalHeight}
+											/>
 											{/* Historical view indicator. */}
 											{consumingBlockNumber !== null && (
-												<span title={isArchiveSupported ? 'Historical view' : 'Archive required'}>
+												<span
+													title={isArchiveSupported
+														? `View at block #${formatNumber(BigInt(historicalHeight!))} (before consumption)`
+														: 'Archive mode required to view consumed cells'
+													}
+												>
 													<svg
 														className={`w-3.5 h-3.5 ${isArchiveSupported ? 'text-amber-500' : 'text-gray-400'}`}
 														fill="none"
@@ -252,10 +255,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 													</svg>
 												</span>
 											)}
-										</button>
-									</div>
-									<div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-										Since: {input.since}
+										</div>
 									</div>
 								</div>
 							);
@@ -272,42 +272,51 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					</h2>
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
-					{transaction.outputs.map((output, index) => (
-						<div key={index} className="p-4">
-							<div className="flex items-center justify-between mb-2">
-								<div className="flex items-center gap-2">
-									<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-										#{index}
+					{transaction.outputs.map((output, index) => {
+						// Derive address from lock script.
+						const address = encodeAddress(output.lock, networkType);
+
+						return (
+							<div key={index} className="p-4">
+								{/* Top row: index, type badge, capacity. */}
+								<div className="flex items-center justify-between mb-2">
+									<div className="flex items-center gap-2">
+										<span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-6">
+											#{index}
+										</span>
+										{output.type && (
+											<span className="px-1.5 py-0.5 text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+												Has Type
+											</span>
+										)}
+									</div>
+									<span className="font-mono text-sm font-medium">
+										{formatCkb(output.capacity)}
 									</span>
+								</div>
+								{/* Address row with navigation. */}
+								<div className="flex items-center gap-2 ml-8">
+									<button
+										onClick={() => navigate(generateLink(`/address/${address}`, archiveHeight))}
+										className="text-nervos hover:text-nervos-dark font-mono text-sm truncate"
+										title={address}
+									>
+										<span className="hidden sm:inline">{address}</span>
+										<span className="sm:hidden">{truncateAddress(address)}</span>
+									</button>
 									<button
 										onClick={() => navigate(generateLink(`/cell/${hash}/${index}`, archiveHeight))}
-										className="text-nervos hover:underline text-sm"
+										className="text-nervos hover:text-nervos-dark transition-colors flex-shrink-0"
+										title="View cell details"
 									>
-										View Cell
+										<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+										</svg>
 									</button>
 								</div>
-								<span className="font-mono text-sm">
-									{formatCkb(output.capacity)}
-								</span>
 							</div>
-							<div className="space-y-1 text-sm">
-								<div>
-									<span className="text-gray-500 dark:text-gray-400">Lock: </span>
-									<span className="font-mono text-xs">
-										{output.lock.hash_type}:{truncateHex(output.lock.code_hash, 6, 6)}
-									</span>
-								</div>
-								{output.type && (
-									<div>
-										<span className="text-gray-500 dark:text-gray-400">Type: </span>
-										<span className="font-mono text-xs">
-											{output.type.hash_type}:{truncateHex(output.type.code_hash, 6, 6)}
-										</span>
-									</div>
-								)}
-							</div>
-						</div>
-					))}
+						);
+					})}
 				</div>
 			</div>
 
@@ -321,19 +330,17 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					</div>
 					<div className="divide-y divide-gray-200 dark:divide-gray-700">
 						{transaction.cell_deps.map((dep, index) => (
-							<div key={index} className="p-4 text-sm">
-								<button
-									onClick={() => navigate(generateLink(
-										`/cell/${dep.out_point.tx_hash}/${parseInt(dep.out_point.index, 16)}`,
-										archiveHeight
-									))}
-									className="text-nervos hover:underline font-mono"
-								>
-									{truncateHex(dep.out_point.tx_hash, 8, 8)}:{parseInt(dep.out_point.index, 16)}
-								</button>
-								<span className="ml-2 text-gray-500 dark:text-gray-400">
-									({dep.dep_type})
-								</span>
+							<div key={index} className="p-4">
+								<div className="flex items-center gap-3">
+									<OutPointLink
+										txHash={dep.out_point.tx_hash}
+										index={parseInt(dep.out_point.index, 16)}
+										archiveHeight={archiveHeight}
+									/>
+									<span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
+										{dep.dep_type}
+									</span>
+								</div>
 							</div>
 						))}
 					</div>
@@ -355,9 +362,9 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 									<span className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">
 										#{index}
 									</span>
-									<pre className="text-xs font-mono bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto">
-										{witness}
-									</pre>
+									<div className="bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto">
+										<TruncatedData data={witness} />
+									</div>
 								</div>
 							))}
 						</div>

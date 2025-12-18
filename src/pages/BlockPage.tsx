@@ -131,7 +131,7 @@ export function BlockPage({ id }: BlockPageProps) {
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
 					<DetailRow label="Block Hash">
-						<HashDisplay hash={header.hash} truncate={false} />
+						<HashDisplay hash={header.hash} responsive />
 					</DetailRow>
 					<DetailRow label="Block Number">
 						{formatNumber(blockNumber)}
@@ -153,7 +153,7 @@ export function BlockPage({ id }: BlockPageProps) {
 					</DetailRow>
 					<DetailRow label="Parent Hash">
 						<div className="flex items-center gap-2">
-							<HashDisplay hash={header.parent_hash} />
+							<HashDisplay hash={header.parent_hash} responsive />
 							<button
 								onClick={() => navigate(generateLink(`/block/${header.parent_hash}`, archiveHeight))}
 								className="text-nervos hover:text-nervos-dark"
@@ -166,7 +166,7 @@ export function BlockPage({ id }: BlockPageProps) {
 						</div>
 					</DetailRow>
 					<DetailRow label="Transactions Root">
-						<HashDisplay hash={header.transactions_root} />
+						<HashDisplay hash={header.transactions_root} responsive />
 					</DetailRow>
 					<DetailRow label="Compact Target">
 						{header.compact_target}
@@ -298,7 +298,7 @@ function TransactionRow({
 									{(BigInt(output.capacity) / 100_000_000n).toString()} CKB
 								</span>
 								<span className="text-gray-400 font-mono text-xs">
-									Lock: {truncateHex(output.lock.code_hash, 4, 4)}
+									Lock: {truncateHex(output.lock.code_hash)}
 								</span>
 							</div>
 						))}

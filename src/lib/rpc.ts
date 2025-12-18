@@ -12,6 +12,7 @@ import type {
 	JsonRpcRequest,
 	JsonRpcResponse,
 } from '../types/rpc';
+import { CACHE_CONFIG } from '../config';
 
 /**
  * RPC error class with additional context.
@@ -43,10 +44,246 @@ export function fromHex(hex: Hex): bigint {
 }
 
 /**
+ * Cache policy types.
+ * - 'lru': Cached until evicted by LRU (for immutable/deep data).
+ * - 'short-ttl': Cached briefly (for shallow/mutable data).
+ * - 'no-cache': Not cached (for null results, errors).
+ */
+type CachePolicy = 'lru' | 'short-ttl' | 'no-cache';
+
+/**
+ * A cached RPC response.
+ */
+interface CacheEntry {
+	value: unknown;
+	cachedAt: number;
+	policy: CachePolicy;
+}
+
+/**
+ * Cache statistics for monitoring.
+ */
+export interface RpcCacheStats {
+	hits: number;
+	misses: number;
+	evictions: number;
+	size: number;
+	inFlight: number;
+}
+
+/**
+ * Methods that always use short TTL (current state queries).
+ */
+const SHORT_TTL_METHODS = new Set([
+	'get_tip_header',
+	'get_current_epoch',
+	'get_blockchain_info',
+]);
+
+/**
+ * Methods that are always immutable (hash-based lookups).
+ */
+const IMMUTABLE_METHODS = new Set([
+	'get_block',       // getBlockByHash
+	'get_transaction',
+]);
+
+/**
+ * RPC request cache with in-flight deduplication and LRU eviction.
+ * See src/CACHE_POLICY.md for detailed policy documentation.
+ */
+class RpcCache {
+	private cache = new Map<string, CacheEntry>();
+	private accessOrder: string[] = [];
+	private inFlight = new Map<string, Promise<unknown>>();
+	private stats = { hits: 0, misses: 0, evictions: 0 };
+	private lastKnownTip: bigint | null = null;
+
+	/**
+	 * Build a cache key from method, params, and archive height.
+	 */
+	buildKey(method: string, params: unknown[], archiveHeight?: number): string {
+		const heightPart = archiveHeight !== undefined ? `:${archiveHeight}` : '';
+		return `${method}:${JSON.stringify(params)}${heightPart}`;
+	}
+
+	/**
+	 * Determine the cache policy for a request.
+	 */
+	getCachePolicy(
+		method: string,
+		params: unknown[],
+		archiveHeight?: number,
+	): CachePolicy {
+		// Always short TTL methods.
+		if (SHORT_TTL_METHODS.has(method)) {
+			return 'short-ttl';
+		}
+
+		// Immutable methods (hash-based lookups).
+		if (IMMUTABLE_METHODS.has(method)) {
+			return 'lru';
+		}
+
+		// For depth-dependent methods, check if we have tip info.
+		if (this.lastKnownTip === null) {
+			// Tip unknown, use short TTL to be safe.
+			return 'short-ttl';
+		}
+
+		const threshold = BigInt(CACHE_CONFIG.depthThreshold);
+
+		// Check archive height depth.
+		if (archiveHeight !== undefined) {
+			const depth = this.lastKnownTip - BigInt(archiveHeight);
+			return depth > threshold ? 'lru' : 'short-ttl';
+		}
+
+		// For getBlockByNumber without archive, check the block number parameter.
+		if (method === 'get_block_by_number' && params[0]) {
+			const blockNum = BigInt(params[0] as string);
+			const depth = this.lastKnownTip - blockNum;
+			return depth > threshold ? 'lru' : 'short-ttl';
+		}
+
+		// Default to short TTL for other methods without archive height.
+		return 'short-ttl';
+	}
+
+	/**
+	 * Check if a cache entry is expired.
+	 */
+	private isExpired(entry: CacheEntry): boolean {
+		if (entry.policy === 'lru') {
+			return false; // LRU entries never expire by time.
+		}
+		return Date.now() - entry.cachedAt > CACHE_CONFIG.shortTtlMs;
+	}
+
+	/**
+	 * Update LRU access order for a key.
+	 */
+	private touchLru(key: string): void {
+		const index = this.accessOrder.indexOf(key);
+		if (index !== -1) {
+			this.accessOrder.splice(index, 1);
+		}
+		this.accessOrder.push(key);
+	}
+
+	/**
+	 * Evict least recently used entry.
+	 */
+	private evictLru(): void {
+		if (this.accessOrder.length === 0) return;
+		const oldest = this.accessOrder.shift()!;
+		this.cache.delete(oldest);
+		this.stats.evictions++;
+	}
+
+	/**
+	 * Get a cached value if valid.
+	 */
+	get<T>(key: string): T | undefined {
+		const entry = this.cache.get(key);
+		if (!entry) {
+			this.stats.misses++;
+			return undefined;
+		}
+		if (this.isExpired(entry)) {
+			this.cache.delete(key);
+			const index = this.accessOrder.indexOf(key);
+			if (index !== -1) this.accessOrder.splice(index, 1);
+			this.stats.misses++;
+			return undefined;
+		}
+		this.stats.hits++;
+		this.touchLru(key);
+		return entry.value as T;
+	}
+
+	/**
+	 * Store a value in the cache.
+	 */
+	set(key: string, value: unknown, policy: CachePolicy): void {
+		if (policy === 'no-cache') return;
+
+		// Evict if at capacity.
+		while (this.cache.size >= CACHE_CONFIG.maxEntries) {
+			this.evictLru();
+		}
+
+		this.cache.set(key, {
+			value,
+			cachedAt: Date.now(),
+			policy,
+		});
+		this.touchLru(key);
+	}
+
+	/**
+	 * Update the last known tip for depth calculations.
+	 */
+	updateTip(tip: bigint): void {
+		this.lastKnownTip = tip;
+	}
+
+	/**
+	 * Get an in-flight promise if one exists.
+	 */
+	getInFlight<T>(key: string): Promise<T> | undefined {
+		return this.inFlight.get(key) as Promise<T> | undefined;
+	}
+
+	/**
+	 * Register an in-flight request.
+	 */
+	setInFlight(key: string, promise: Promise<unknown>): void {
+		this.inFlight.set(key, promise);
+	}
+
+	/**
+	 * Clear an in-flight request.
+	 */
+	clearInFlight(key: string): void {
+		this.inFlight.delete(key);
+	}
+
+	/**
+	 * Get cache statistics.
+	 */
+	getStats(): RpcCacheStats {
+		return {
+			...this.stats,
+			size: this.cache.size,
+			inFlight: this.inFlight.size,
+		};
+	}
+}
+
+// Global cache instance (shared across RPC clients for same-origin deduplication).
+let globalCache: RpcCache | null = null;
+
+/**
+ * Get or create the global RPC cache.
+ */
+function getCache(): RpcCache {
+	if (!globalCache) {
+		globalCache = new RpcCache();
+		// Expose stats to developer console.
+		if (typeof window !== 'undefined') {
+			(window as unknown as Record<string, unknown>).rpcCacheStats = () => globalCache!.getStats();
+		}
+	}
+	return globalCache;
+}
+
+/**
  * Create an RPC client bound to a specific URL.
  */
 export function createRpcClient(rpcUrl: string) {
 	let requestId = 0;
+	const cache = getCache();
 
 	/**
 	 * Build a JSON-RPC request payload.
@@ -61,9 +298,9 @@ export function createRpcClient(rpcUrl: string) {
 	}
 
 	/**
-	 * Send a single JSON-RPC request.
+	 * Send a single JSON-RPC request (uncached).
 	 */
-	async function sendRequest<T>(method: string, params: unknown[]): Promise<T> {
+	async function sendRequestRaw<T>(method: string, params: unknown[]): Promise<T> {
 		const request = buildRequest(method, params);
 
 		const response = await fetch(rpcUrl, {
@@ -86,10 +323,10 @@ export function createRpcClient(rpcUrl: string) {
 	}
 
 	/**
-	 * Send a batch JSON-RPC request for archive mode.
+	 * Send a batch JSON-RPC request for archive mode (uncached).
 	 * The set_block_height call must be the first in the batch.
 	 */
-	async function sendArchiveRequest<T>(
+	async function sendArchiveRequestRaw<T>(
 		height: number,
 		method: string,
 		params: unknown[],
@@ -124,6 +361,67 @@ export function createRpcClient(rpcUrl: string) {
 		return json[1].result as T;
 	}
 
+	/**
+	 * Cached request wrapper with in-flight deduplication.
+	 */
+	async function cachedRequest<T>(
+		method: string,
+		params: unknown[],
+		archiveHeight: number | undefined,
+		fetcher: () => Promise<T>,
+	): Promise<T> {
+		// Skip cache if disabled.
+		if (!CACHE_CONFIG.enabled) {
+			return fetcher();
+		}
+
+		const key = cache.buildKey(method, params, archiveHeight);
+
+		// Check result cache first.
+		const cached = cache.get<T>(key);
+		if (cached !== undefined) {
+			return cached;
+		}
+
+		// Check in-flight requests.
+		const inFlight = cache.getInFlight<T>(key);
+		if (inFlight) {
+			return inFlight;
+		}
+
+		// Make the request.
+		const promise = fetcher();
+		cache.setInFlight(key, promise);
+
+		try {
+			const result = await promise;
+
+			// Don't cache null results.
+			if (result !== null) {
+				const policy = cache.getCachePolicy(method, params, archiveHeight);
+				cache.set(key, result, policy);
+			}
+
+			return result;
+		} finally {
+			cache.clearInFlight(key);
+		}
+	}
+
+	/**
+	 * Cached single request.
+	 */
+	function sendRequest<T>(method: string, params: unknown[]): Promise<T> {
+		return cachedRequest(method, params, undefined, () => sendRequestRaw<T>(method, params));
+	}
+
+	/**
+	 * Cached archive request.
+	 */
+	function sendArchiveRequest<T>(height: number, method: string, params: unknown[]): Promise<T> {
+		return cachedRequest(method, params, height, () => sendArchiveRequestRaw<T>(height, method, params));
+	}
+
 	return {
 		/**
 		 * Get the RPC URL this client is bound to.
@@ -140,18 +438,13 @@ export function createRpcClient(rpcUrl: string) {
 		},
 
 		/**
-		 * Get the current tip block number.
-		 */
-		async getTipBlockNumber(): Promise<bigint> {
-			const result = await sendRequest<Hex>('get_tip_block_number', []);
-			return fromHex(result);
-		},
-
-		/**
 		 * Get the tip header.
+		 * Also updates the cache's lastKnownTip for depth calculations.
 		 */
 		async getTipHeader(): Promise<RpcBlockHeader> {
-			return sendRequest<RpcBlockHeader>('get_tip_header', []);
+			const header = await sendRequest<RpcBlockHeader>('get_tip_header', []);
+			cache.updateTip(BigInt(header.number));
+			return header;
 		},
 
 		/**

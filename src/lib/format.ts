@@ -44,18 +44,46 @@ export function formatNumber(num: bigint | number): string {
 }
 
 /**
- * Truncate a hex string for display (e.g., "0x1234...abcd").
+ * Truncate a hex string for display (e.g., "0x12345678...12345678").
+ * Standard format for 66-char hashes (tx, block, code): 0x + 8 chars + ... + 8 chars.
  * @param hex - The hex string to truncate.
- * @param prefixLen - Number of characters to show at start (after 0x).
- * @param suffixLen - Number of characters to show at end.
+ * @param prefixLen - Number of characters to show at start (after 0x). Default 8.
+ * @param suffixLen - Number of characters to show at end. Default 8.
  */
-export function truncateHex(hex: Hex, prefixLen = 10, suffixLen = 10): string {
+export function truncateHex(hex: Hex, prefixLen = 8, suffixLen = 8): string {
 	if (hex.length <= prefixLen + suffixLen + 4) {
 		return hex;
 	}
 	const prefix = hex.slice(0, 2 + prefixLen);
 	const suffix = hex.slice(-suffixLen);
 	return `${prefix}...${suffix}`;
+}
+
+/**
+ * Truncate a CKB address for display.
+ * Standard format: 8 chars prefix + ... + 4 chars suffix.
+ * @param address - The CKB address to truncate.
+ * @param prefixLen - Number of characters to show at start. Default 8.
+ * @param suffixLen - Number of characters to show at end. Default 4.
+ */
+export function truncateAddress(address: string, prefixLen = 8, suffixLen = 4): string {
+	if (address.length <= prefixLen + suffixLen + 3) {
+		return address;
+	}
+	return `${address.slice(0, prefixLen)}...${address.slice(-suffixLen)}`;
+}
+
+/**
+ * Truncate variable-length data (args, cell data, witnesses) for display.
+ * Shows first N characters + "..." if longer than limit.
+ * @param data - The hex data to truncate.
+ * @param limit - Maximum characters to show before truncating. Default 128.
+ */
+export function truncateData(data: string, limit = 128): string {
+	if (data.length <= limit) {
+		return data;
+	}
+	return `${data.slice(0, limit)}...`;
 }
 
 /**

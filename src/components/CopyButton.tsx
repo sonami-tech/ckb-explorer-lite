@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 interface CopyButtonProps {
 	text: string;
@@ -64,6 +64,10 @@ interface HashDisplayProps {
 	hash: string;
 	/** Set to false to show full hash without truncation. */
 	truncate?: boolean;
+	/** Responsive mode: full on desktop/tablet, truncated on mobile only. Overrides truncate. */
+	responsive?: boolean;
+	/** Breakpoint for mobile in pixels. Default 640 (sm). Only used when responsive=true. */
+	breakpoint?: number;
 	/** Characters to show after 0x prefix. Default: 8. */
 	prefixLen?: number;
 	/** Characters to show at end. Default: 8. */
@@ -74,16 +78,36 @@ interface HashDisplayProps {
 export function HashDisplay({
 	hash,
 	truncate = true,
+	responsive = false,
+	breakpoint = 640,
 	prefixLen = 8,
 	suffixLen = 8,
 	className = '',
 }: HashDisplayProps) {
 	const [copied, setCopied] = useState(false);
 	const [showTooltip, setShowTooltip] = useState(false);
+	const [isMobile, setIsMobile] = useState(false);
+
+	// Handle responsive mode - detect mobile screen size.
+	useEffect(() => {
+		if (!responsive) return;
+
+		const checkMobile = () => {
+			setIsMobile(window.innerWidth < breakpoint);
+		};
+
+		checkMobile();
+		window.addEventListener('resize', checkMobile);
+		return () => window.removeEventListener('resize', checkMobile);
+	}, [responsive, breakpoint]);
+
+	// Determine if truncation should be applied.
+	// Responsive mode: truncate only on mobile. Otherwise use truncate prop.
+	const shouldTruncate = responsive ? isMobile : truncate;
 
 	// Truncate if enabled and hash is long enough to need it.
 	// Format: 0x + prefixLen chars + ... + suffixLen chars.
-	const needsTruncation = truncate && hash.length > 2 + prefixLen + suffixLen + 3;
+	const needsTruncation = shouldTruncate && hash.length > 2 + prefixLen + suffixLen + 3;
 	const displayHash = needsTruncation
 		? `${hash.slice(0, 2 + prefixLen)}...${hash.slice(-suffixLen)}`
 		: hash;

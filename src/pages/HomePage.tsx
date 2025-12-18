@@ -3,6 +3,7 @@ import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import {
 	formatNumber,
 	truncateHex,
+	truncateAddress,
 	formatDifficulty,
 	formatHashRate,
 	formatDuration,
@@ -49,7 +50,7 @@ interface NetworkStats {
 export function HomePage() {
 	const rpc = useRpc();
 	const { isArchiveSupported, currentNetwork } = useNetwork();
-	const { archiveHeight, tipBlockNumber, isLoading: archiveLoading, error: archiveError, refreshTip } = useArchive();
+	const { archiveHeight, tipBlockNumber, isLoading: archiveLoading, error: archiveError } = useArchive();
 	const [blocks, setBlocks] = useState<BlockInfo[]>([]);
 	const [transactions, setTransactions] = useState<TransactionInfo[]>([]);
 	const [isLoadingBlocks, setIsLoadingBlocks] = useState(true);
@@ -173,18 +174,16 @@ export function HomePage() {
 	}, [rpc, displayTip, archiveHeight, networkType]);
 
 	// Initial fetch and polling (skip polling in archive mode since historical data doesn't change).
+	// Note: Tip polling is handled by ArchiveContext; we only poll for block data here.
 	useEffect(() => {
 		fetchBlocks();
 
 		// Only poll for updates when viewing latest blocks.
 		if (archiveHeight === undefined) {
-			const interval = setInterval(() => {
-				refreshTip();
-				fetchBlocks();
-			}, POLL_INTERVAL_MS);
+			const interval = setInterval(fetchBlocks, POLL_INTERVAL_MS);
 			return () => clearInterval(interval);
 		}
-	}, [fetchBlocks, refreshTip, archiveHeight]);
+	}, [fetchBlocks, archiveHeight]);
 
 	// Show connection error if initial load fails.
 	if (archiveError && !archiveLoading) {
@@ -326,9 +325,9 @@ function StatItem({ label, children }: { label: string; children: React.ReactNod
 function BlockListItem({ block }: { block: BlockInfo }) {
 	const { archiveHeight } = useArchive();
 
-	// Truncate miner address for display.
+	// Truncate miner address for display (8...4 format).
 	const truncatedMiner = block.minerAddress
-		? block.minerAddress.slice(0, 8) + '...' + block.minerAddress.slice(-6)
+		? truncateAddress(block.minerAddress)
 		: '';
 
 	const txLabel = block.transactionCount === 1 ? '1 txn' : `${block.transactionCount} txns`;
@@ -411,8 +410,13 @@ function TransactionListItem({ tx }: { tx: TransactionInfo }) {
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
 					<span>Block #{formatNumber(tx.blockNumber)}</span>
-					<span className="text-gray-300 dark:text-gray-600">•</span>
-					<span>{inputLabel} / {outputLabel}</span>
+					{/* Hide input/output count for Cellbase - it's always 1/1 and semantically misleading. */}
+					{!tx.isCellbase && (
+						<>
+							<span className="text-gray-300 dark:text-gray-600">•</span>
+							<span>{inputLabel} / {outputLabel}</span>
+						</>
+					)}
 				</div>
 				<span className="text-xs font-medium text-gray-600 dark:text-gray-300">
 					{formatCkb(tx.totalAmount, 2)}

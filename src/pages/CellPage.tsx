@@ -6,6 +6,7 @@ import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
+import { TruncatedData } from '../components/TruncatedData';
 import type { RpcLiveCell, RpcCellOutput } from '../types/rpc';
 
 interface CellPageProps {
@@ -178,17 +179,9 @@ export function CellPage({ txHash, index }: CellPageProps) {
 									<span className="text-sm text-gray-500 dark:text-gray-400">Data Hash:</span>
 									<HashDisplay hash={cell.data.hash} />
 								</div>
-								<pre className="text-xs font-mono bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-x-auto max-h-64">
-									{cell.data.content.length > 1000
-										? cell.data.content.slice(0, 1000) + '...'
-										: cell.data.content
-									}
-								</pre>
-								{cell.data.content.length > 1000 && (
-									<p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-										Showing first 1000 characters of {cell.data.content.length} total.
-									</p>
-								)}
+								<div className="bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-x-auto">
+									<TruncatedData data={cell.data.content} />
+								</div>
 							</>
 						)}
 					</div>
@@ -226,7 +219,7 @@ function ScriptDetails({ script }: { script: RpcCellOutput['lock'] }) {
 				{script.args === '0x' ? (
 					<span className="text-gray-500 dark:text-gray-400 italic">Empty</span>
 				) : (
-					<HashDisplay hash={script.args} truncate={script.args.length > 66} />
+					<TruncatedData data={script.args} />
 				)}
 			</DetailRow>
 		</div>

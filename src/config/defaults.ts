@@ -28,3 +28,18 @@ export const HASH_TRUNCATE = {
 	/** Minimal truncation for inline display. */
 	minimal: { prefix: 4, suffix: 4 },
 } as const;
+
+/**
+ * RPC request cache configuration.
+ * See src/CACHE_POLICY.md for detailed cache policy documentation.
+ */
+export const CACHE_CONFIG = {
+	/** Enable or disable the RPC cache. */
+	enabled: true,
+	/** Maximum number of entries in the LRU cache. */
+	maxEntries: 1000,
+	/** Blocks within this distance from tip are considered shallow and may reorg. */
+	depthThreshold: 12,
+	/** Time-to-live for short-lived cache entries (milliseconds). */
+	shortTtlMs: 2000,
+} as const;
