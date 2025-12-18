@@ -362,7 +362,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 			<div className="flex items-center justify-between mb-3">
 				<div className="flex items-center gap-2 min-w-0">
 					{isEditingBlock ? (
-						// Show block input field.
+						// Show block input field with submit button.
 						<>
 							<span className="text-sm text-gray-500 dark:text-gray-400">Block #</span>
 							<input
@@ -372,7 +372,6 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 								value={blockInputValue}
 								onChange={handleBlockInputChange}
 								onKeyDown={handleBlockInputKeyDown}
-								onBlur={confirmBlockInput}
 								className="
 									w-28 px-1.5 py-0.5 text-sm font-mono
 									bg-gray-100 dark:bg-gray-700
@@ -381,6 +380,24 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 									text-gray-900 dark:text-white
 								"
 							/>
+							{/* Submit button. */}
+							<button
+								type="button"
+								onClick={confirmBlockInput}
+								disabled={blockInputValue.trim() === ''}
+								className={`
+									p-1 rounded transition-colors
+									${blockInputValue.trim()
+										? 'text-nervos hover:bg-nervos/10'
+										: 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+									}
+								`}
+								title="Go to block"
+							>
+								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+								</svg>
+							</button>
 						</>
 					) : (
 						// Show block number (clickable to edit).
