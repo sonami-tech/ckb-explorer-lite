@@ -31,6 +31,11 @@ interface ArchiveContextValue {
 	tipBlockNumber: bigint | null;
 
 	/**
+	 * Current tip block timestamp in milliseconds.
+	 */
+	tipBlockTimestamp: bigint | null;
+
+	/**
 	 * Whether the archive height exceeds the current tip.
 	 */
 	isHeightBeyondTip: boolean;
@@ -58,6 +63,7 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
 
 	const [archiveHeight, setArchiveHeightState] = useState<number | undefined>(undefined);
 	const [tipBlockNumber, setTipBlockNumber] = useState<bigint | null>(null);
+	const [tipBlockTimestamp, setTipBlockTimestamp] = useState<bigint | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
@@ -136,13 +142,14 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
 		window.history.replaceState({}, '', url.toString());
 	}, [isArchiveSupported]);
 
-	// Fetch tip block number.
+	// Fetch tip block header (number and timestamp).
 	const fetchTip = useCallback(async () => {
 		if (!rpc) return;
 
 		try {
-			const tip = await rpc.getTipBlockNumber();
-			setTipBlockNumber(tip);
+			const header = await rpc.getTipHeader();
+			setTipBlockNumber(BigInt(header.number));
+			setTipBlockTimestamp(BigInt(header.timestamp));
 			setError(null);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to connect to CKB node.';
@@ -161,13 +168,14 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
 		fetchTip().finally(() => setIsLoading(false));
 	}, [rpc, fetchTip]);
 
-	// Refresh just the tip block number (for external callers).
+	// Refresh the tip block header (for external callers).
 	const refreshTip = useCallback(async () => {
 		if (!rpc) return;
 
 		try {
-			const tip = await rpc.getTipBlockNumber();
-			setTipBlockNumber(tip);
+			const header = await rpc.getTipHeader();
+			setTipBlockNumber(BigInt(header.number));
+			setTipBlockTimestamp(BigInt(header.timestamp));
 		} catch {
 			// Silently fail on refresh - don't update error state.
 		}
@@ -190,6 +198,7 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
 				archiveHeight,
 				setArchiveHeight,
 				tipBlockNumber,
+				tipBlockTimestamp,
 				isHeightBeyondTip,
 				isLoading,
 				error,

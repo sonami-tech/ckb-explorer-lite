@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { useNetwork } from '../../contexts/NetworkContext';
+import { useNetwork, useRpc } from '../../contexts/NetworkContext';
 import { useArchive } from '../../contexts/ArchiveContext';
 import { getNetworkEvents, type NetworkEvent } from '../../config';
 import { formatNumber } from '../../lib/format';
@@ -10,13 +10,6 @@ interface TimeSliderProps {
 	/** Optional CSS class name for container. */
 	className?: string;
 }
-
-/** CKB mainnet genesis timestamp. */
-const GENESIS_TIMESTAMP = new Date('2019-11-15T21:09:50.812Z').getTime();
-
-/** Average block time in milliseconds (~10 seconds). */
-const AVG_BLOCK_TIME_MS = 10_000;
-
 
 /**
  * Convert block number to slider position (0-100).
@@ -34,17 +27,9 @@ function positionToBlock(position: number, tipBlock: number): number {
 }
 
 /**
- * Estimate date from block number.
+ * Format date for display.
  */
-function estimateDateFromBlock(blockNumber: number): Date {
-	const estimatedMs = GENESIS_TIMESTAMP + blockNumber * AVG_BLOCK_TIME_MS;
-	return new Date(estimatedMs);
-}
-
-/**
- * Format estimated date for display.
- */
-function formatEstimatedDate(date: Date): string {
+function formatDate(date: Date): string {
 	return date.toLocaleDateString('en-US', {
 		year: 'numeric',
 		month: 'short',
@@ -58,8 +43,9 @@ function formatEstimatedDate(date: Date): string {
  * Displays network events as markers and allows selecting any block height.
  */
 export function TimeSlider({ className = '' }: TimeSliderProps) {
+	const rpc = useRpc();
 	const { currentNetwork, isArchiveSupported } = useNetwork();
-	const { archiveHeight, setArchiveHeight, tipBlockNumber } = useArchive();
+	const { archiveHeight, setArchiveHeight, tipBlockNumber, tipBlockTimestamp } = useArchive();
 
 	const trackRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -69,6 +55,8 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 	const [isEditingBlock, setIsEditingBlock] = useState(false);
 	const [blockInputValue, setBlockInputValue] = useState('');
 	const [selectedEvent, setSelectedEvent] = useState<NetworkEvent | null>(null);
+	const [selectedBlockTimestamp, setSelectedBlockTimestamp] = useState<number | null>(null);
+	const [isLoadingTimestamp, setIsLoadingTimestamp] = useState(false);
 
 	// Get events for current network type.
 	const events = useMemo(() => {
@@ -78,6 +66,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 
 	// Compute derived values (safe even if tipBlockNumber is null).
 	const tipNumber = tipBlockNumber !== null ? Number(tipBlockNumber) : 0;
+	const tipTimestamp = tipBlockTimestamp !== null ? Number(tipBlockTimestamp) : Date.now();
 	const currentHeight = archiveHeight ?? tipNumber;
 	const isLive = archiveHeight === undefined;
 
@@ -93,10 +82,36 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 			? positionToBlock(localPosition, tipNumber)
 			: currentHeight;
 
-	// Estimate date for current position.
-	const estimatedDate = useMemo(() => {
-		return formatEstimatedDate(estimateDateFromBlock(displayBlock));
-	}, [displayBlock]);
+	// Fetch actual block timestamp when archiveHeight changes.
+	useEffect(() => {
+		if (archiveHeight === undefined) {
+			// Live mode - use tip timestamp.
+			setSelectedBlockTimestamp(tipTimestamp);
+			setIsLoadingTimestamp(false);
+			return;
+		}
+
+		// Fetch the header for the selected block to get its actual timestamp.
+		setIsLoadingTimestamp(true);
+		rpc.getBlockByNumber(archiveHeight)
+			.then((block) => {
+				if (block) {
+					setSelectedBlockTimestamp(Number(BigInt(block.header.timestamp)));
+				}
+			})
+			.catch(() => {
+				// Silently fail - timestamp is optional UI element.
+			})
+			.finally(() => {
+				setIsLoadingTimestamp(false);
+			});
+	}, [rpc, archiveHeight, tipTimestamp]);
+
+	// Format the selected block's actual date for display.
+	const formattedDate = useMemo(() => {
+		if (selectedBlockTimestamp === null) return null;
+		return formatDate(new Date(selectedBlockTimestamp));
+	}, [selectedBlockTimestamp]);
 
 	/**
 	 * Calculate position from mouse/touch event.
@@ -146,7 +161,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 		if (isDragging && localPosition !== null) {
 			const newBlock = positionToBlock(localPosition, tipNumber);
 			// If at or very close to tip, go live.
-			if (newBlock >= tipNumber - 1) {
+			if (newBlock >= tipNumber) {
 				setArchiveHeight(undefined);
 			} else {
 				setArchiveHeight(newBlock);
@@ -164,7 +179,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 			const pos = calculatePosition(e.clientX);
 			if (pos !== null) {
 				const newBlock = positionToBlock(pos, tipNumber);
-				if (newBlock >= tipNumber - 1) {
+				if (newBlock >= tipNumber) {
 					setArchiveHeight(undefined);
 				} else {
 					setArchiveHeight(newBlock);
@@ -221,7 +236,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 			}
 
 			e.preventDefault();
-			if (newBlock >= tipNumber - 1) {
+			if (newBlock >= tipNumber) {
 				setArchiveHeight(undefined);
 			} else {
 				setArchiveHeight(newBlock);
@@ -272,7 +287,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 		if (!isNaN(parsed) && parsed >= 0) {
 			// Clamp to tip if beyond.
 			const clampedBlock = Math.min(parsed, tipNumber);
-			if (clampedBlock >= tipNumber - 1) {
+			if (clampedBlock >= tipNumber) {
 				setArchiveHeight(undefined);
 			} else {
 				setArchiveHeight(clampedBlock);
@@ -384,10 +399,15 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 							>
 								Block #{formatNumber(BigInt(displayBlock))}
 							</button>
-							<span className="text-gray-300 dark:text-gray-600">&bull;</span>
-							<span className="text-sm text-gray-500 dark:text-gray-400">
-								{isLive && !isDragging ? 'Now' : `~${estimatedDate}`}
-							</span>
+							{/* Show date only when not dragging. */}
+							{!isDragging && (
+								<>
+									<span className="text-gray-300 dark:text-gray-600">&bull;</span>
+									<span className="text-sm text-gray-500 dark:text-gray-400">
+										{isLive ? 'Now' : isLoadingTimestamp ? '...' : formattedDate}
+									</span>
+								</>
+							)}
 						</>
 					)}
 				</div>
@@ -425,7 +445,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 				aria-valuemin={0}
 				aria-valuemax={tipNumber}
 				aria-valuenow={displayBlock}
-				aria-valuetext={`Block ${formatNumber(BigInt(displayBlock))}, ${estimatedDate}`}
+				aria-valuetext={`Block ${formatNumber(BigInt(displayBlock))}${formattedDate ? `, ${formattedDate}` : ''}`}
 				tabIndex={0}
 				onKeyDown={handleKeyDown}
 				onMouseDown={(e) => handleDragStart(e.clientX)}

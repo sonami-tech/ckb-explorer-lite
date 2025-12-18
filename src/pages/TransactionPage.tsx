@@ -194,11 +194,12 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 							// Calculate historical block height for viewing consumed inputs.
 							// The cell was consumed in this transaction, so view it at the previous block.
+							// For block 0 (genesis), clamp to 0 since there's no block -1.
 							const consumingBlockNumber = tx_status.block_number
 								? parseInt(tx_status.block_number, 16)
 								: null;
 							const historicalHeight = consumingBlockNumber !== null
-								? consumingBlockNumber - 1
+								? Math.max(0, consumingBlockNumber - 1)
 								: archiveHeight;
 
 							const handlePreviousOutputClick = () => {
@@ -240,15 +241,16 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 											{truncateHex(input.previous_output.tx_hash, 8, 8)}:{parseInt(input.previous_output.index, 16)}
 											{/* Historical view indicator. */}
 											{consumingBlockNumber !== null && (
-												<svg
-													className={`w-3.5 h-3.5 ${isArchiveSupported ? 'text-amber-500' : 'text-gray-400'}`}
-													fill="none"
-													stroke="currentColor"
-													viewBox="0 0 24 24"
-													title={isArchiveSupported ? 'Historical view' : 'Archive required'}
-												>
-													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-												</svg>
+												<span title={isArchiveSupported ? 'Historical view' : 'Archive required'}>
+													<svg
+														className={`w-3.5 h-3.5 ${isArchiveSupported ? 'text-amber-500' : 'text-gray-400'}`}
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+													</svg>
+												</span>
 											)}
 										</button>
 									</div>

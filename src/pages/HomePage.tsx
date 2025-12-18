@@ -145,11 +145,13 @@ export function HomePage() {
 			});
 
 			// Extract transactions from all blocks.
+			// Per RFC0022: "a transaction is older if its position in a block is before another transaction."
+			// So we iterate in reverse order (highest index first) to show newest transactions first.
 			const txInfos: TransactionInfo[] = [];
 			for (const block of validBlocks) {
 				const blockNum = BigInt(block.header.number);
 				const blockTime = BigInt(block.header.timestamp);
-				for (let i = 0; i < block.transactions.length; i++) {
+				for (let i = block.transactions.length - 1; i >= 0; i--) {
 					const tx = block.transactions[i];
 					if (tx.hash) {
 						// Total amount is sum of all output capacities.
