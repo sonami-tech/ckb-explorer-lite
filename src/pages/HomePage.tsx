@@ -8,6 +8,7 @@ import {
 	formatDuration,
 	formatCkb,
 	parseEpoch,
+	compactTargetToDifficulty,
 } from '../lib/format';
 import { encodeAddress } from '../lib/address';
 import { TimeSlider } from '../components/TimeSlider';
@@ -64,22 +65,6 @@ export function HomePage() {
 		? BigInt(archiveHeight)
 		: tipBlockNumber;
 
-	// Fetch network stats (blockchain info only - epoch comes from block header).
-	const fetchNetworkStats = useCallback(async () => {
-		try {
-			const blockchainInfo = await rpc.getBlockchainInfo();
-			// Only update difficulty here; epoch is set from block header in fetchBlocks.
-			setNetworkStats((prev) => ({
-				difficulty: blockchainInfo.difficulty,
-				epochNumber: prev?.epochNumber ?? 0n,
-				epochIndex: prev?.epochIndex ?? 0n,
-				epochLength: prev?.epochLength ?? 0n,
-			}));
-		} catch {
-			// Network stats are optional, don't fail the whole page.
-		}
-	}, [rpc]);
-
 	// Fetch latest blocks with transaction hashes.
 	const fetchBlocks = useCallback(async () => {
 		if (displayTip === null) return;
@@ -112,16 +97,18 @@ export function HomePage() {
 				setAvgBlockTime(0);
 			}
 
-			// Extract epoch info from the first block's header.
-			// This ensures we show correct epoch for historical blocks.
+			// Extract epoch and difficulty info from the first block's header.
+			// This ensures we show correct values for historical blocks.
 			if (validBlocks.length > 0) {
 				const epochParsed = parseEpoch(validBlocks[0].header.epoch);
-				setNetworkStats((prev) => ({
-					difficulty: prev?.difficulty ?? '0x0',
+				// Compute difficulty from the block header's compact_target for historical accuracy.
+				const historicalDifficulty = compactTargetToDifficulty(validBlocks[0].header.compact_target);
+				setNetworkStats({
+					difficulty: historicalDifficulty,
 					epochNumber: epochParsed.number,
 					epochIndex: epochParsed.index,
 					epochLength: epochParsed.length,
-				}));
+				});
 			}
 
 			// Extract block info with miner and reward.
@@ -188,18 +175,16 @@ export function HomePage() {
 	// Initial fetch and polling (skip polling in archive mode since historical data doesn't change).
 	useEffect(() => {
 		fetchBlocks();
-		fetchNetworkStats();
 
 		// Only poll for updates when viewing latest blocks.
 		if (archiveHeight === undefined) {
 			const interval = setInterval(() => {
 				refreshTip();
 				fetchBlocks();
-				fetchNetworkStats();
 			}, POLL_INTERVAL_MS);
 			return () => clearInterval(interval);
 		}
-	}, [fetchBlocks, fetchNetworkStats, refreshTip, archiveHeight]);
+	}, [fetchBlocks, refreshTip, archiveHeight]);
 
 	// Show connection error if initial load fails.
 	if (archiveError && !archiveLoading) {

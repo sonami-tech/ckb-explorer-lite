@@ -165,8 +165,54 @@ export function formatSiNumber(value: bigint | number, decimals = 2): string {
 }
 
 /**
+ * Convert compact target (from block header) to difficulty.
+ * CKB uses a compact target format similar to Bitcoin's "nBits".
+ * - Exponent: bits 24-31 (1 byte)
+ * - Mantissa: bits 0-23 (3 bytes)
+ * - Target = mantissa * 2^(8 * (exponent - 3))
+ * - Difficulty = HSPACE / target, where HSPACE = 2^256
+ *
+ * @param compactTarget - The compact_target hex string from block header.
+ * @returns Difficulty as hex string (matching get_blockchain_info format).
+ */
+export function compactTargetToDifficulty(compactTarget: string): string {
+	const compact = BigInt(compactTarget);
+
+	// Extract exponent (high byte) and mantissa (low 3 bytes).
+	const exponent = Number((compact >> 24n) & 0xFFn);
+	const mantissa = compact & 0xFFFFFFn;
+
+	// Handle edge case: zero mantissa means zero target (infinite difficulty).
+	if (mantissa === 0n) {
+		return '0x0';
+	}
+
+	// Calculate target = mantissa * 2^(8 * (exponent - 3)).
+	// For exponent < 3, this effectively right-shifts the mantissa.
+	let target: bigint;
+	if (exponent <= 3) {
+		target = mantissa >> BigInt(8 * (3 - exponent));
+	} else {
+		target = mantissa << BigInt(8 * (exponent - 3));
+	}
+
+	// Avoid division by zero.
+	if (target === 0n) {
+		return '0x0';
+	}
+
+	// HSPACE = 2^256 (the total hash space).
+	const HSPACE = 1n << 256n;
+
+	// Difficulty = HSPACE / target.
+	const difficulty = HSPACE / target;
+
+	return '0x' + difficulty.toString(16);
+}
+
+/**
  * Format difficulty value for display.
- * Difficulty is returned as a hex string from get_blockchain_info.
+ * Difficulty is returned as a hex string from get_blockchain_info or computed from compact_target.
  */
 export function formatDifficulty(difficultyHex: string): string {
 	const difficulty = BigInt(difficultyHex);
