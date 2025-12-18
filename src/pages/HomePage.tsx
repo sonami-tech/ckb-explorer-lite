@@ -227,13 +227,20 @@ export function HomePage() {
 				<StatGroup title="Epoch">
 					<StatItem label="Progress">
 						{networkStats
-							? `${formatNumber(networkStats.epochNumber)} (${networkStats.epochIndex}/${networkStats.epochLength})`
+							? <>
+								{formatNumber(networkStats.epochNumber)}
+								{networkStats.epochLength > 0n && (
+									<span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-1">
+										{networkStats.epochIndex.toString()}/{networkStats.epochLength.toString()}
+									</span>
+								)}
+							</>
 							: '...'}
 					</StatItem>
 					<StatItem label="Est. Time Left">
-						{networkStats && avgBlockTime > 0
+						{networkStats && avgBlockTime > 0 && networkStats.epochLength > 0n
 							? formatDuration(Number(networkStats.epochLength - networkStats.epochIndex) * avgBlockTime)
-							: '...'}
+							: '—'}
 					</StatItem>
 				</StatGroup>
 
@@ -311,7 +318,7 @@ function StatGroup({ title, children }: { title: string; children: React.ReactNo
 					{title}
 				</h3>
 			</div>
-			<div className="p-4 grid grid-cols-2 gap-4">
+			<div className="p-4 grid grid-cols-2 md:grid-cols-1 lg:grid-cols-2 gap-4">
 				{children}
 			</div>
 		</div>
