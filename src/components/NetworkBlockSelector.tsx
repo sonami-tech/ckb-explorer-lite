@@ -3,6 +3,7 @@ import { useNetwork } from '../contexts/NetworkContext';
 import { useArchive } from '../contexts/ArchiveContext';
 import { getNetworkTypeLabel } from '../config';
 import { formatNumber } from '../lib/format';
+import { useClickOutside } from '../hooks/ui';
 
 /**
  * Combined network and block height selector.
@@ -26,15 +27,7 @@ export function NetworkBlockSelector() {
 	const showSpecificSelected = !isTrackingLatest || isEditingSpecific;
 
 	// Close dropdown when clicking outside.
-	useEffect(() => {
-		function handleClickOutside(event: MouseEvent) {
-			if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-				setIsOpen(false);
-			}
-		}
-		document.addEventListener('mousedown', handleClickOutside);
-		return () => document.removeEventListener('mousedown', handleClickOutside);
-	}, []);
+	useClickOutside(dropdownRef, useCallback(() => setIsOpen(false), []));
 
 	// Focus input when switching to specific mode.
 	useEffect(() => {

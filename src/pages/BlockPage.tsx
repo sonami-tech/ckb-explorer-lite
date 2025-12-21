@@ -13,6 +13,7 @@ import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
+import { DetailRow } from '../components/DetailRow';
 import type { RpcBlock, RpcTransaction } from '../types/rpc';
 
 interface BlockPageProps {
@@ -196,19 +197,6 @@ export function BlockPage({ id }: BlockPageProps) {
 						/>
 					))}
 				</div>
-			</div>
-		</div>
-	);
-}
-
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
-	return (
-		<div className="flex flex-col md:flex-row md:items-center p-4 gap-2">
-			<span className="w-32 lg:w-40 flex-shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400">
-				{label}
-			</span>
-			<div className="flex-1 text-sm text-gray-900 dark:text-white break-all">
-				{children}
 			</div>
 		</div>
 	);

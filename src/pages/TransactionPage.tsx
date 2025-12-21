@@ -16,6 +16,7 @@ import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
 import { TruncatedData } from '../components/TruncatedData';
 import { OutPointLink } from '../components/OutPointLink';
+import { DetailRow } from '../components/DetailRow';
 import type { RpcTransaction, RpcTransactionWithStatus } from '../types/rpc';
 
 interface TransactionPageProps {
@@ -371,19 +372,6 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					</details>
 				</div>
 			)}
-		</div>
-	);
-}
-
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
-	return (
-		<div className="flex flex-col md:flex-row md:items-center p-4 gap-2">
-			<span className="w-40 flex-shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400">
-				{label}
-			</span>
-			<div className="flex-1 text-sm text-gray-900 dark:text-white break-all">
-				{children}
-			</div>
 		</div>
 	);
 }

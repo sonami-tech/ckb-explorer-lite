@@ -11,6 +11,7 @@ import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay, CopyButton } from '../components/CopyButton';
+import { DetailRow } from '../components/DetailRow';
 import type { RpcCell, RpcScript, IndexerSearchKey } from '../types/rpc';
 
 interface AddressPageProps {
@@ -194,8 +195,10 @@ export function AddressPage({ address }: AddressPageProps) {
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
 					<DetailRow label="Address">
-						<span className="font-mono text-sm break-all">{address}</span>
-						<CopyButton text={address} />
+						<div className="flex items-center gap-2">
+							<span className="font-mono text-sm break-all">{address}</span>
+							<CopyButton text={address} />
+						</div>
 					</DetailRow>
 					<DetailRow label="Balance">
 						<span className="text-lg font-semibold text-nervos">
@@ -272,19 +275,6 @@ export function AddressPage({ address }: AddressPageProps) {
 						)}
 					</div>
 				)}
-			</div>
-		</div>
-	);
-}
-
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
-	return (
-		<div className="flex flex-col md:flex-row md:items-center p-4 gap-2">
-			<span className="w-40 flex-shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400">
-				{label}
-			</span>
-			<div className="flex-1 flex items-center gap-2 text-sm text-gray-900 dark:text-white break-all">
-				{children}
 			</div>
 		</div>
 	);

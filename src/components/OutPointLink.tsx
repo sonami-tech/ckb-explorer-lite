@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { navigate, generateLink } from '../lib/router';
 import { truncateHex } from '../lib/format';
+import { useIsMobile } from '../hooks/ui';
 
 interface OutPointLinkProps {
 	/** Transaction hash. */
@@ -29,20 +29,7 @@ export function OutPointLink({
 	responsive = true,
 	className = '',
 }: OutPointLinkProps) {
-	const [isMobile, setIsMobile] = useState(false);
-
-	useEffect(() => {
-		if (!responsive) return;
-
-		const checkMobile = () => {
-			setIsMobile(window.innerWidth < 640);
-		};
-
-		checkMobile();
-		window.addEventListener('resize', checkMobile);
-		return () => window.removeEventListener('resize', checkMobile);
-	}, [responsive]);
-
+	const isMobile = useIsMobile();
 	const shouldTruncate = responsive ? isMobile : true;
 	const displayHash = shouldTruncate ? truncateHex(txHash, 8, 8) : txHash;
 

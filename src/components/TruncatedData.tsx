@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
 import { CopyButton } from './CopyButton';
+import { useIsMobile } from '../hooks/ui';
 
 interface TruncatedDataProps {
 	/** The data to display. */
@@ -47,18 +47,7 @@ export function TruncatedData({
 	showCopy = true,
 	className = '',
 }: TruncatedDataProps) {
-	const [isMobile, setIsMobile] = useState(false);
-
-	useEffect(() => {
-		const checkMobile = () => {
-			setIsMobile(window.innerWidth < breakpoint);
-		};
-
-		checkMobile();
-		window.addEventListener('resize', checkMobile);
-		return () => window.removeEventListener('resize', checkMobile);
-	}, [breakpoint]);
-
+	const isMobile = useIsMobile(breakpoint);
 	const limit = isMobile ? mobileLimit : desktopLimit;
 	const isTruncated = data.length > limit;
 	const displayData = isTruncated ? `${data.slice(0, limit)}...` : data;

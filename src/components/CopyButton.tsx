@@ -1,4 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { copyToClipboard } from '../lib/clipboard';
+import { useIsMobile } from '../hooks/ui';
 
 interface CopyButtonProps {
 	text: string;
@@ -9,21 +11,9 @@ export function CopyButton({ text, className = '' }: CopyButtonProps) {
 	const [copied, setCopied] = useState(false);
 
 	const handleCopy = useCallback(async () => {
-		try {
-			await navigator.clipboard.writeText(text);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		} catch {
-			// Fallback for older browsers.
-			const textarea = document.createElement('textarea');
-			textarea.value = text;
-			document.body.appendChild(textarea);
-			textarea.select();
-			document.execCommand('copy');
-			document.body.removeChild(textarea);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		}
+		await copyToClipboard(text);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 2000);
 	}, [text]);
 
 	return (
@@ -86,20 +76,7 @@ export function HashDisplay({
 }: HashDisplayProps) {
 	const [copied, setCopied] = useState(false);
 	const [showTooltip, setShowTooltip] = useState(false);
-	const [isMobile, setIsMobile] = useState(false);
-
-	// Handle responsive mode - detect mobile screen size.
-	useEffect(() => {
-		if (!responsive) return;
-
-		const checkMobile = () => {
-			setIsMobile(window.innerWidth < breakpoint);
-		};
-
-		checkMobile();
-		window.addEventListener('resize', checkMobile);
-		return () => window.removeEventListener('resize', checkMobile);
-	}, [responsive, breakpoint]);
+	const isMobile = useIsMobile(breakpoint);
 
 	// Determine if truncation should be applied.
 	// Responsive mode: truncate only on mobile. Otherwise use truncate prop.
@@ -113,29 +90,13 @@ export function HashDisplay({
 		: hash;
 
 	const handleCopy = useCallback(async () => {
-		try {
-			await navigator.clipboard.writeText(hash);
-			setCopied(true);
-			setShowTooltip(true);
-			setTimeout(() => {
-				setCopied(false);
-				setShowTooltip(false);
-			}, 2000);
-		} catch {
-			// Fallback for older browsers.
-			const textarea = document.createElement('textarea');
-			textarea.value = hash;
-			document.body.appendChild(textarea);
-			textarea.select();
-			document.execCommand('copy');
-			document.body.removeChild(textarea);
-			setCopied(true);
-			setShowTooltip(true);
-			setTimeout(() => {
-				setCopied(false);
-				setShowTooltip(false);
-			}, 2000);
-		}
+		await copyToClipboard(hash);
+		setCopied(true);
+		setShowTooltip(true);
+		setTimeout(() => {
+			setCopied(false);
+			setShowTooltip(false);
+		}, 2000);
 	}, [hash]);
 
 	const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
