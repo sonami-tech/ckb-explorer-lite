@@ -3,6 +3,7 @@ import type {
 	RpcBlock,
 	RpcBlockHeader,
 	RpcBlockchainInfo,
+	RpcCellWithLifecycle,
 	RpcEpoch,
 	RpcGetCellsResponse,
 	RpcGetTransactionsResponse,
@@ -84,8 +85,9 @@ const SHORT_TTL_METHODS = new Set([
  * Methods that are always immutable (hash-based lookups).
  */
 const IMMUTABLE_METHODS = new Set([
-	'get_block',       // getBlockByHash
+	'get_block',           // getBlockByHash
 	'get_transaction',
+	'get_cell_lifecycle',  // Cell lifecycle never changes after consumption.
 ]);
 
 /**
@@ -519,6 +521,22 @@ export function createRpcClient(rpcUrl: string) {
 				return sendArchiveRequest<RpcLiveCell>(height, 'get_live_cell', [outPoint, true]);
 			}
 			return sendRequest<RpcLiveCell>('get_live_cell', [outPoint, true]);
+		},
+
+		/**
+		 * Get cell lifecycle information (archive module).
+		 * Returns when the cell was created and consumed.
+		 * @param txHash - Transaction hash of the cell.
+		 * @param index - Output index of the cell.
+		 * @param withData - Whether to include cell data (default: true).
+		 */
+		async getCellLifecycle(
+			txHash: Hex,
+			index: number,
+			withData: boolean = true,
+		): Promise<RpcCellWithLifecycle | null> {
+			const outPoint = { tx_hash: txHash, index: toHex(index) };
+			return sendRequest<RpcCellWithLifecycle | null>('get_cell_lifecycle', [outPoint, withData]);
 		},
 
 		/**

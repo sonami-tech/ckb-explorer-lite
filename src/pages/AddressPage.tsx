@@ -238,7 +238,6 @@ export function AddressPage({ address }: AddressPageProps) {
 							<CellListItem
 								key={`${cell.out_point.tx_hash}-${cell.out_point.index}`}
 								cell={cell}
-								archiveHeight={archiveHeight}
 							/>
 						))
 					)}
@@ -282,16 +281,13 @@ export function AddressPage({ address }: AddressPageProps) {
 
 function CellListItem({
 	cell,
-	archiveHeight,
 }: {
 	cell: RpcCell;
-	archiveHeight: number | undefined;
 }) {
 	return (
 		<button
 			onClick={() => navigate(generateLink(
-				`/cell/${cell.out_point.tx_hash}/${parseInt(cell.out_point.index, 16)}`,
-				archiveHeight
+				`/cell/${cell.out_point.tx_hash}/${parseInt(cell.out_point.index, 16)}`
 			))}
 			className="w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
 		>

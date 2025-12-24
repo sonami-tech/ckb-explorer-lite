@@ -139,6 +139,18 @@ export interface RpcLiveCell {
 }
 
 /**
+ * Cell with lifecycle information from the archive module.
+ * Includes when the cell was created and consumed.
+ */
+export interface RpcCellWithLifecycle {
+	out_point: RpcOutPoint;
+	output: RpcCellOutput;
+	output_data: Hex | null;
+	created_block_number: Uint64;
+	consumed_block_number: Uint64 | null;
+}
+
+/**
  * Indexer search key for get_cells and get_transactions.
  */
 export interface IndexerSearchKey {

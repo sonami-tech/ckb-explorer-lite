@@ -193,7 +193,6 @@ export function BlockPage({ id }: BlockPageProps) {
 							index={index}
 							isExpanded={expandedTx.has(index)}
 							onToggle={() => toggleTx(index)}
-							archiveHeight={archiveHeight}
 						/>
 					))}
 				</div>
@@ -207,13 +206,11 @@ function TransactionRow({
 	index,
 	isExpanded,
 	onToggle,
-	archiveHeight,
 }: {
 	tx: RpcTransaction;
 	index: number;
 	isExpanded: boolean;
 	onToggle: () => void;
-	archiveHeight: number | undefined;
 }) {
 	return (
 		<div className="p-4">
@@ -261,8 +258,7 @@ function TransactionRow({
 										onClick={(e) => {
 											e.stopPropagation();
 											navigate(generateLink(
-												`/cell/${input.previous_output.tx_hash}/${parseInt(input.previous_output.index, 16)}`,
-												archiveHeight
+												`/cell/${input.previous_output.tx_hash}/${parseInt(input.previous_output.index, 16)}`
 											));
 										}}
 										className="text-nervos hover:underline font-mono"

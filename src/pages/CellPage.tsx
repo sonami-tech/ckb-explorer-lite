@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRpc } from '../contexts/NetworkContext';
-import { formatCkb } from '../lib/format';
+import { formatCkb, formatNumber } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
-import { useArchive } from '../contexts/ArchiveContext';
+import { fromHex } from '../lib/rpc';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
 import { TruncatedData } from '../components/TruncatedData';
 import { DetailRow } from '../components/DetailRow';
-import type { RpcLiveCell, RpcCellOutput } from '../types/rpc';
+import type { RpcCellWithLifecycle, RpcCellOutput } from '../types/rpc';
 
 interface CellPageProps {
 	txHash: string;
@@ -17,12 +17,11 @@ interface CellPageProps {
 
 export function CellPage({ txHash, index }: CellPageProps) {
 	const rpc = useRpc();
-	const { archiveHeight } = useArchive();
-	const [cellData, setCellData] = useState<RpcLiveCell | null>(null);
+	const [cellData, setCellData] = useState<RpcCellWithLifecycle | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
 
-	// Track fetch ID to ignore stale responses when archiveHeight changes during navigation.
+	// Track fetch ID to ignore stale responses during navigation.
 	const fetchIdRef = useRef(0);
 
 	const fetchCell = useCallback(async () => {
@@ -32,16 +31,18 @@ export function CellPage({ txHash, index }: CellPageProps) {
 		setError(null);
 
 		try {
-			const result = await rpc.getLiveCell(txHash, index, archiveHeight);
+			// Use getCellLifecycle which returns complete lifecycle info.
+			// No archive height needed - it returns the full history.
+			const result = await rpc.getCellLifecycle(txHash, index, true);
 
 			// Ignore stale response if a newer fetch has started.
 			if (fetchId !== fetchIdRef.current) return;
 
-			if (result.status === 'unknown' && !result.cell) {
-				// Cell not found - may have been spent or never existed.
+			if (result === null) {
+				// Cell never existed.
 				throw new Error(
 					`Cell not found: ${txHash}:${index}. ` +
-					`This cell may have been consumed in a later transaction, or it may not exist.`
+					`This cell does not exist in the blockchain.`
 				);
 			}
 
@@ -56,7 +57,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 				setIsLoading(false);
 			}
 		}
-	}, [rpc, txHash, index, archiveHeight]);
+	}, [rpc, txHash, index]);
 
 	useEffect(() => {
 		fetchCell();
@@ -78,8 +79,12 @@ export function CellPage({ txHash, index }: CellPageProps) {
 		);
 	}
 
-	const cell = cellData?.cell;
-	const status = cellData?.status;
+	// Derive status from lifecycle data.
+	const status = cellData?.consumed_block_number === null ? 'live' : 'dead';
+	const createdBlock = cellData ? Number(fromHex(cellData.created_block_number)) : null;
+	const consumedBlock = cellData?.consumed_block_number
+		? Number(fromHex(cellData.consumed_block_number))
+		: null;
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
@@ -96,7 +101,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
 						Cell Details
 					</h1>
-					<StatusBadge status={status || 'unknown'} />
+					{cellData && <StatusBadge status={status} />}
 				</div>
 			</div>
 
@@ -112,7 +117,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 							<span className="text-gray-500">:</span>
 							<span className="font-mono">{index}</span>
 							<button
-								onClick={() => navigate(generateLink(`/tx/${txHash}`, archiveHeight))}
+								onClick={() => navigate(generateLink(`/tx/${txHash}`))}
 								className="text-nervos hover:text-nervos-dark"
 								title="Go to transaction"
 							>
@@ -124,7 +129,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					</DetailRow>
 					<DetailRow label="Status">
 						<div className="flex items-center gap-2">
-							<StatusBadge status={status || 'unknown'} />
+							{cellData && <StatusBadge status={status} />}
 							{status === 'dead' && (
 								<span className="text-sm text-gray-500 dark:text-gray-400">
 									(Cell has been consumed)
@@ -132,60 +137,74 @@ export function CellPage({ txHash, index }: CellPageProps) {
 							)}
 						</div>
 					</DetailRow>
-					{cell && (
+					{cellData && (
 						<DetailRow label="Capacity">
 							<span className="text-lg font-semibold text-nervos">
-								{formatCkb(cell.output.capacity)}
+								{formatCkb(cellData.output.capacity)}
 							</span>
+						</DetailRow>
+					)}
+					{createdBlock !== null && (
+						<DetailRow label="Created at Block">
+							<button
+								onClick={() => navigate(generateLink(`/block/${createdBlock}`))}
+								className="font-mono text-nervos hover:text-nervos-dark"
+							>
+								{formatNumber(createdBlock)}
+							</button>
+						</DetailRow>
+					)}
+					{consumedBlock !== null && (
+						<DetailRow label="Consumed at Block">
+							<button
+								onClick={() => navigate(generateLink(`/block/${consumedBlock}`))}
+								className="font-mono text-nervos hover:text-nervos-dark"
+							>
+								{formatNumber(consumedBlock)}
+							</button>
 						</DetailRow>
 					)}
 				</div>
 			</div>
 
 			{/* Lock Script. */}
-			{cell && (
+			{cellData && (
 				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
 					<div className="p-4 border-b border-gray-200 dark:border-gray-700">
 						<h2 className="font-semibold text-gray-900 dark:text-white">Lock Script</h2>
 					</div>
-					<ScriptDetails script={cell.output.lock} />
+					<ScriptDetails script={cellData.output.lock} />
 				</div>
 			)}
 
 			{/* Type Script. */}
-			{cell?.output.type && (
+			{cellData?.output.type && (
 				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
 					<div className="p-4 border-b border-gray-200 dark:border-gray-700">
 						<h2 className="font-semibold text-gray-900 dark:text-white">Type Script</h2>
 					</div>
-					<ScriptDetails script={cell.output.type} />
+					<ScriptDetails script={cellData.output.type} />
 				</div>
 			)}
 
 			{/* Cell Data. */}
-			{cell?.data && (
+			{cellData && cellData.output_data !== null && (
 				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 					<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
 						<h2 className="font-semibold text-gray-900 dark:text-white">Cell Data</h2>
 						<span className="text-sm text-gray-500 dark:text-gray-400">
-							{((cell.data.content.length - 2) / 2)} bytes
+							{((cellData.output_data.length - 2) / 2)} bytes
 						</span>
 					</div>
 					<div className="p-4">
-						{cell.data.content === '0x' ? (
+						{cellData.output_data === '0x' ? (
 							<span className="text-sm text-gray-500 dark:text-gray-400 italic">
 								Empty data
 							</span>
 						) : (
-							<>
-								<div className="mb-2 flex items-center gap-2">
-									<span className="text-sm text-gray-500 dark:text-gray-400">Data Hash:</span>
-									<HashDisplay hash={cell.data.hash} />
-								</div>
-								<div className="bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-x-auto">
-									<TruncatedData data={cell.data.content} />
-								</div>
-							</>
+							<div className="bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-x-auto">
+								<TruncatedData data={cellData.output_data} />
+							</div>
 						)}
 					</div>
 				</div>

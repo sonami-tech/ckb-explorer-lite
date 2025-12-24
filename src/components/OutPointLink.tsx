@@ -7,8 +7,6 @@ interface OutPointLinkProps {
 	txHash: string;
 	/** Output index. */
 	index: number;
-	/** Archive height for navigation. */
-	archiveHeight?: number;
 	/** Show full hash on desktop/tablet, truncated on mobile. Default true. */
 	responsive?: boolean;
 	/** Additional CSS classes. */
@@ -21,11 +19,13 @@ interface OutPointLinkProps {
  * - Desktop/tablet: Full tx_hash (when responsive=true)
  * - Mobile: Truncated 8...8
  * - Click navigates to cell page.
+ *
+ * Note: No archive height needed - CellPage uses getCellLifecycle which
+ * returns complete lifecycle info regardless of when the cell was consumed.
  */
 export function OutPointLink({
 	txHash,
 	index,
-	archiveHeight,
 	responsive = true,
 	className = '',
 }: OutPointLinkProps) {
@@ -34,7 +34,7 @@ export function OutPointLink({
 	const displayHash = shouldTruncate ? truncateHex(txHash, 8, 8) : txHash;
 
 	const handleClick = () => {
-		navigate(generateLink(`/cell/${txHash}/${index}`, archiveHeight));
+		navigate(generateLink(`/cell/${txHash}/${index}`));
 	};
 
 	return (

@@ -25,7 +25,7 @@ interface TransactionPageProps {
 
 export function TransactionPage({ hash }: TransactionPageProps) {
 	const rpc = useRpc();
-	const { isArchiveSupported, currentNetwork } = useNetwork();
+	const { currentNetwork } = useNetwork();
 	const { archiveHeight } = useArchive();
 	const [txData, setTxData] = useState<RpcTransactionWithStatus | null>(null);
 	const [blockTimestamp, setBlockTimestamp] = useState<bigint | null>(null);
@@ -216,47 +216,16 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 								);
 							}
 
-							// Calculate historical block height for viewing consumed inputs.
-							// The cell was consumed in this transaction, so view it at the previous block.
-							// For block 0 (genesis), clamp to 0 since there's no block -1.
-							const consumingBlockNumber = tx_status.block_number
-								? parseInt(tx_status.block_number, 16)
-								: null;
-							const historicalHeight = consumingBlockNumber !== null
-								? Math.max(0, consumingBlockNumber - 1)
-								: archiveHeight;
-
 							return (
 								<div key={index} className="p-4">
 									<div className="flex items-center gap-3">
 										<span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-6">
 											#{index}
 										</span>
-										<div className="flex items-center gap-2 flex-1 min-w-0">
-											<OutPointLink
-												txHash={input.previous_output.tx_hash}
-												index={parseInt(input.previous_output.index, 16)}
-												archiveHeight={historicalHeight}
-											/>
-											{/* Historical view indicator. */}
-											{consumingBlockNumber !== null && (
-												<span
-													title={isArchiveSupported
-														? `View at block #${formatNumber(BigInt(historicalHeight!))} (before consumption)`
-														: 'Archive mode required to view consumed cells'
-													}
-												>
-													<svg
-														className={`w-3.5 h-3.5 ${isArchiveSupported ? 'text-amber-500' : 'text-gray-400'}`}
-														fill="none"
-														stroke="currentColor"
-														viewBox="0 0 24 24"
-													>
-														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-													</svg>
-												</span>
-											)}
-										</div>
+										<OutPointLink
+											txHash={input.previous_output.tx_hash}
+											index={parseInt(input.previous_output.index, 16)}
+										/>
 									</div>
 								</div>
 							);
@@ -306,7 +275,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 										<span className="sm:hidden">{truncateAddress(address)}</span>
 									</button>
 									<button
-										onClick={() => navigate(generateLink(`/cell/${hash}/${index}`, archiveHeight))}
+										onClick={() => navigate(generateLink(`/cell/${hash}/${index}`))}
 										className="text-nervos hover:text-nervos-dark transition-colors flex-shrink-0"
 										title="View cell details"
 									>
@@ -336,7 +305,6 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 									<OutPointLink
 										txHash={dep.out_point.tx_hash}
 										index={parseInt(dep.out_point.index, 16)}
-										archiveHeight={archiveHeight}
 									/>
 									<span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
 										{dep.dep_type}
