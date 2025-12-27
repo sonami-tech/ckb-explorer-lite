@@ -125,7 +125,7 @@ function ScriptBadge({ info }: { info: ScriptInfo }) {
 
 	const badge = (
 		<span
-			className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-sm font-medium bg-nervos/10 text-nervos ${hasLink ? 'cursor-pointer' : 'cursor-default'}`}
+			className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-sm font-medium bg-nervos/10 text-nervos ${hasLink ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'}`}
 		>
 			{info.name}
 			{hasLink && (
@@ -155,7 +155,7 @@ function ScriptBadge({ info }: { info: ScriptInfo }) {
 				href={info.sourceUrl}
 				target="_blank"
 				rel="noopener noreferrer"
-				className="relative hover:opacity-80 transition-opacity"
+				className="relative"
 				onMouseEnter={handleMouseEnter}
 				onMouseLeave={handleMouseLeave}
 				onClick={handleClick}
