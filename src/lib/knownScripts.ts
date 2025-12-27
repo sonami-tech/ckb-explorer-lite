@@ -23,6 +23,8 @@ export interface ScriptInfo {
 	dataFormat?: 'sudt' | 'xudt' | 'dao' | 'spore' | 'dep_group';
 	/** Args format (for lock scripts). */
 	argsFormat?: 'pubkey_hash' | 'omnilock' | 'acp' | 'multisig';
+	/** Base type name for args-specific scripts (e.g., "xUDT" for iCKB). */
+	baseTypeName?: string;
 }
 
 // RFC URLs for documentation links.
@@ -32,6 +34,7 @@ const RFC_0026 = 'https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0026-an
 const RFC_0042 = 'https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0042-omnilock/0042-omnilock.md';
 const RFC_0052 = 'https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0052-extensible-udt/0052-extensible-udt.md';
 const SPORE_DOCS = 'https://docs.spore.pro/resources/contracts';
+const ICKB_DOCS = 'https://github.com/ickb/v1-core';
 
 // Internal type for the registry (mainnet and testnet only).
 type RegistryNetwork = 'mainnet' | 'testnet';
@@ -197,6 +200,52 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 };
 
 /**
+ * Build a key for args-specific script lookup.
+ */
+function buildArgsKey(codeHash: string, hashType: string, args: string): string {
+	return `${codeHash}:${hashType}:${args}`;
+}
+
+/**
+ * Known type scripts that require args matching (specific tokens).
+ * Keyed by `${codeHash}:${hashType}:${args}`.
+ */
+export const KNOWN_TYPE_SCRIPTS_BY_ARGS: Record<RegistryNetwork, Record<string, ScriptInfo>> = {
+	mainnet: {
+		// iCKB - liquid staking token wrapping NervosDAO deposits.
+		// Args: iCKB Logic Script Hash + owner mode flag (0x80000000 LE).
+		[buildArgsKey(
+			'0x50bd8d6680b8b9cf98b73f3c08faf8b2a21914311954118ad6609be6e78a1b95',
+			'data1',
+			'0xb73b6ab39d79390c6de90a09c96b290c331baf1798ed6f97aed02590929734e800000080',
+		)]: {
+			name: 'iCKB',
+			description: 'iCKB liquid staking token (xUDT).',
+			hashType: 'data1',
+			sourceUrl: ICKB_DOCS,
+			dataFormat: 'xudt',
+			baseTypeName: 'xUDT',
+		},
+	},
+	testnet: {
+		// Add testnet-specific tokens here.
+	},
+};
+
+/**
+ * Known lock scripts that require args matching.
+ * Keyed by `${codeHash}:${hashType}:${args}`.
+ */
+export const KNOWN_LOCK_SCRIPTS_BY_ARGS: Record<RegistryNetwork, Record<string, ScriptInfo>> = {
+	mainnet: {
+		// Add mainnet-specific locks here.
+	},
+	testnet: {
+		// Add testnet-specific locks here.
+	},
+};
+
+/**
  * Map network type to registry network.
  * Devnet uses testnet scripts.
  */
@@ -205,17 +254,28 @@ function toRegistryNetwork(network: NetworkType): RegistryNetwork {
 }
 
 /**
- * Look up a type script by its code hash and hash type.
- * Both must match for a positive identification.
+ * Look up a type script by its code hash, hash type, and optionally args.
+ * Checks args-specific scripts first, then falls back to generic.
  */
 export function lookupTypeScript(
 	codeHash: string,
 	hashType: string,
 	network: NetworkType,
+	args?: string,
 ): ScriptInfo | null {
 	const registryNetwork = toRegistryNetwork(network);
+
+	// Check args-specific registry first.
+	if (args) {
+		const argsKey = buildArgsKey(codeHash, hashType, args);
+		const argsInfo = KNOWN_TYPE_SCRIPTS_BY_ARGS[registryNetwork][argsKey];
+		if (argsInfo) {
+			return argsInfo;
+		}
+	}
+
+	// Fall back to generic registry.
 	const info = KNOWN_TYPE_SCRIPTS[registryNetwork][codeHash];
-	// Both code_hash and hash_type must match.
 	if (info && info.hashType === hashType) {
 		return info;
 	}
@@ -223,17 +283,28 @@ export function lookupTypeScript(
 }
 
 /**
- * Look up a lock script by its code hash and hash type.
- * Both must match for a positive identification.
+ * Look up a lock script by its code hash, hash type, and optionally args.
+ * Checks args-specific scripts first, then falls back to generic.
  */
 export function lookupLockScript(
 	codeHash: string,
 	hashType: string,
 	network: NetworkType,
+	args?: string,
 ): ScriptInfo | null {
 	const registryNetwork = toRegistryNetwork(network);
+
+	// Check args-specific registry first.
+	if (args) {
+		const argsKey = buildArgsKey(codeHash, hashType, args);
+		const argsInfo = KNOWN_LOCK_SCRIPTS_BY_ARGS[registryNetwork][argsKey];
+		if (argsInfo) {
+			return argsInfo;
+		}
+	}
+
+	// Fall back to generic registry.
 	const info = KNOWN_LOCK_SCRIPTS[registryNetwork][codeHash];
-	// Both code_hash and hash_type must match.
 	if (info && info.hashType === hashType) {
 		return info;
 	}

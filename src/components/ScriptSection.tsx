@@ -32,8 +32,8 @@ export function ScriptSection({ title, script }: ScriptSectionProps) {
 
 	// Look up script info based on type.
 	const scriptInfo = title === 'Lock Script'
-		? lookupLockScript(script.code_hash, script.hash_type, networkType)
-		: lookupTypeScript(script.code_hash, script.hash_type, networkType);
+		? lookupLockScript(script.code_hash, script.hash_type, networkType, script.args)
+		: lookupTypeScript(script.code_hash, script.hash_type, networkType, script.args);
 
 	return (
 		<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">

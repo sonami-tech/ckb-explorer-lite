@@ -6,7 +6,6 @@ import { formatNumber } from '../lib/format';
 import {
 	decodeData,
 	decodeByFormat,
-	formatRawAmount,
 	formatTokenAmount,
 	type DecodedData,
 	type DepGroupData,
@@ -43,7 +42,7 @@ export function CellDataSection({
 	// Detect available modes based on type script.
 	const detectedFormat = useMemo(() => {
 		if (!typeScript) return null;
-		const scriptInfo = lookupTypeScript(typeScript.code_hash, typeScript.hash_type, networkType);
+		const scriptInfo = lookupTypeScript(typeScript.code_hash, typeScript.hash_type, networkType, typeScript.args);
 		return scriptInfo?.dataFormat ?? null;
 	}, [typeScript, networkType]);
 
@@ -285,34 +284,18 @@ function DepGroupDisplay({ outpoints }: { outpoints: DepGroupData['outpoints'] }
 }
 
 /**
- * Token amount display with decimal selector.
- * Shows raw comma-formatted amount by default.
- * User can select decimal places to format the value.
+ * Token amount display with decimal stepper.
+ * Defaults to 0 decimals. User can adjust decimal places (0-16).
  */
 function TokenAmountDisplay({ amount }: { amount: bigint }) {
-	const [decimals, setDecimals] = useState<number | null>(null);
-	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-	const dropdownRef = useRef<HTMLDivElement>(null);
+	const [decimals, setDecimals] = useState(0);
+	const minDecimals = 0;
+	const maxDecimals = 16;
 
-	// Close dropdown when clicking outside.
-	useEffect(() => {
-		if (!isDropdownOpen) return;
+	const decrement = () => setDecimals((d) => Math.max(minDecimals, d - 1));
+	const increment = () => setDecimals((d) => Math.min(maxDecimals, d + 1));
 
-		const handleClickOutside = (e: MouseEvent) => {
-			if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-				setIsDropdownOpen(false);
-			}
-		};
-
-		document.addEventListener('mousedown', handleClickOutside);
-		return () => document.removeEventListener('mousedown', handleClickOutside);
-	}, [isDropdownOpen]);
-
-	const displayAmount = decimals === null
-		? formatRawAmount(amount)
-		: formatTokenAmount(amount, decimals);
-
-	const decimalOptions = [null, 0, 2, 4, 6, 8, 10, 12, 16, 18];
+	const displayAmount = formatTokenAmount(amount, decimals);
 
 	return (
 		<div className="flex items-center gap-3 flex-wrap">
@@ -323,45 +306,27 @@ function TokenAmountDisplay({ amount }: { amount: bigint }) {
 				</span>
 			</div>
 
-			{/* Decimal selector. */}
-			<div className="relative" ref={dropdownRef}>
+			{/* Decimal stepper. */}
+			<div className="flex items-center select-none">
 				<button
-					onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-					className="flex items-center gap-1 px-2 py-0.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+					onClick={decrement}
+					disabled={decimals <= minDecimals}
+					className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-l border border-gray-300 dark:border-gray-600 transition-colors"
+					title="Decrease decimals"
 				>
-					<span>
-						{decimals === null ? 'Raw' : `${decimals} decimals`}
-					</span>
-					<svg
-						className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-					>
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-					</svg>
+					−
 				</button>
-
-				{isDropdownOpen && (
-					<div className="absolute left-0 mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
-						{decimalOptions.map((option) => (
-							<button
-								key={option ?? 'raw'}
-								onClick={() => {
-									setDecimals(option);
-									setIsDropdownOpen(false);
-								}}
-								className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-									decimals === option
-										? 'bg-nervos/10 text-nervos font-medium'
-										: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-								}`}
-							>
-								{option === null ? 'Raw (no decimals)' : `${option} decimals`}
-							</button>
-						))}
-					</div>
-				)}
+				<span className="px-2 py-0.5 text-xs bg-gray-50 dark:bg-gray-800 border-y border-gray-300 dark:border-gray-600 min-w-[5rem] text-center">
+					{decimals} decimals
+				</span>
+				<button
+					onClick={increment}
+					disabled={decimals >= maxDecimals}
+					className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-r border border-gray-300 dark:border-gray-600 transition-colors"
+					title="Increase decimals"
+				>
+					+
+				</button>
 			</div>
 		</div>
 	);

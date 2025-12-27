@@ -144,8 +144,8 @@ export function CellPage({ txHash, index }: CellPageProps) {
 							</div>
 						</DetailRow>
 					)}
-					{consumedBlock !== null && (
-						<DetailRow label="Consumed at Block">
+					<DetailRow label="Consumed at Block">
+						{consumedBlock !== null ? (
 							<div className="flex items-center gap-2">
 								<button
 									onClick={() => navigate(generateLink(`/block/${consumedBlock}`))}
@@ -163,8 +163,10 @@ export function CellPage({ txHash, index }: CellPageProps) {
 									</svg>
 								</button>
 							</div>
-						</DetailRow>
-					)}
+						) : (
+							<span className="text-gray-400 dark:text-gray-500">—</span>
+						)}
+					</DetailRow>
 				</div>
 			</div>
 

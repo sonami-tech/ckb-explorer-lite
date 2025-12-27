@@ -234,7 +234,7 @@ export function decodeData(
 
 	// Try auto-detection based on type script.
 	if (typeScript) {
-		const scriptInfo = lookupTypeScript(typeScript.code_hash, typeScript.hash_type, network);
+		const scriptInfo = lookupTypeScript(typeScript.code_hash, typeScript.hash_type, network, typeScript.args);
 		if (scriptInfo) {
 			return decodeByFormat(data, scriptInfo.dataFormat);
 		}
