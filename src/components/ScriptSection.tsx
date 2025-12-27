@@ -3,6 +3,7 @@
  * Includes known script detection with badge, tooltip, and documentation link.
  */
 
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNetwork } from '../contexts/NetworkContext';
 import { lookupLockScript, lookupTypeScript, type ScriptInfo } from '../lib/knownScripts';
 import { HashDisplay } from './CopyButton';
@@ -65,16 +66,69 @@ export function ScriptSection({ title, script }: ScriptSectionProps) {
 
 /**
  * Badge showing known script name with tooltip and documentation link.
+ * Desktop: hover shows tooltip, click navigates.
+ * Touch: first tap shows tooltip, second tap navigates.
  */
 function ScriptBadge({ info }: { info: ScriptInfo }) {
+	const [isHovered, setIsHovered] = useState(false);
+	const [isPinned, setIsPinned] = useState(false);
+	const badgeRef = useRef<HTMLAnchorElement | HTMLSpanElement>(null);
+	const tooltipRef = useRef<HTMLSpanElement>(null);
+
 	const hasLink = !!info.sourceUrl;
+	const showTooltip = isHovered || isPinned;
+
+	// Detect if device supports hover.
+	const supportsHover = typeof window !== 'undefined' &&
+		window.matchMedia('(hover: hover)').matches;
+
+	// Unpin tooltip when clicking outside.
+	useEffect(() => {
+		if (!isPinned) return;
+
+		const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+			if (
+				badgeRef.current &&
+				!badgeRef.current.contains(e.target as Node) &&
+				tooltipRef.current &&
+				!tooltipRef.current.contains(e.target as Node)
+			) {
+				setIsPinned(false);
+			}
+		};
+
+		document.addEventListener('mousedown', handleClickOutside);
+		document.addEventListener('touchstart', handleClickOutside);
+
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+			document.removeEventListener('touchstart', handleClickOutside);
+		};
+	}, [isPinned]);
+
+	const handleMouseEnter = useCallback(() => {
+		setIsHovered(true);
+	}, []);
+
+	const handleMouseLeave = useCallback(() => {
+		setIsHovered(false);
+	}, []);
+
+	const handleClick = useCallback((e: React.MouseEvent) => {
+		if (hasLink && !supportsHover && !isPinned) {
+			// Touch device, first tap: show tooltip, prevent navigation.
+			e.preventDefault();
+			setIsPinned(true);
+		}
+		// Desktop or second tap: allow navigation.
+	}, [hasLink, supportsHover, isPinned]);
+
 	const badge = (
 		<span
 			className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-sm font-medium bg-nervos/10 text-nervos ${hasLink ? 'cursor-pointer' : 'cursor-default'}`}
-			title={info.description}
 		>
 			{info.name}
-			{info.sourceUrl && (
+			{hasLink && (
 				<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
 				</svg>
@@ -82,20 +136,45 @@ function ScriptBadge({ info }: { info: ScriptInfo }) {
 		</span>
 	);
 
-	// Wrap in link if sourceUrl is available.
-	if (info.sourceUrl) {
+	const tooltip = showTooltip && (
+		<span
+			ref={tooltipRef}
+			className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 px-3 py-2 text-xs font-normal bg-gray-900 dark:bg-gray-700 text-white rounded shadow-lg whitespace-nowrap pointer-events-none"
+			role="tooltip"
+		>
+			{info.description}
+			{/* Tooltip arrow. */}
+			<span className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45" />
+		</span>
+	);
+
+	if (hasLink) {
 		return (
 			<a
+				ref={badgeRef as React.RefObject<HTMLAnchorElement>}
 				href={info.sourceUrl}
 				target="_blank"
 				rel="noopener noreferrer"
-				className="hover:opacity-80 transition-opacity"
-				title={info.description}
+				className="relative hover:opacity-80 transition-opacity"
+				onMouseEnter={handleMouseEnter}
+				onMouseLeave={handleMouseLeave}
+				onClick={handleClick}
 			>
 				{badge}
+				{tooltip}
 			</a>
 		);
 	}
 
-	return badge;
+	return (
+		<span
+			ref={badgeRef as React.RefObject<HTMLSpanElement>}
+			className="relative"
+			onMouseEnter={handleMouseEnter}
+			onMouseLeave={handleMouseLeave}
+		>
+			{badge}
+			{tooltip}
+		</span>
+	);
 }
