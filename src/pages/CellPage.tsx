@@ -5,12 +5,12 @@ import { navigate, generateLink } from '../lib/router';
 import { fromHex } from '../lib/rpc';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
-import { HashDisplay } from '../components/CopyButton';
-import { TruncatedData } from '../components/TruncatedData';
+import { CellDataSection } from '../components/CellDataDisplay';
 import { DetailRow } from '../components/DetailRow';
 import { OutPoint } from '../components/OutPoint';
-import { CellStatusIndicator, HashTypeIndicator } from '../components/OptionIndicator';
-import type { RpcCellWithLifecycle, RpcCellOutput } from '../types/rpc';
+import { CellStatusIndicator } from '../components/OptionIndicator';
+import { ScriptSection } from '../components/ScriptSection';
+import type { RpcCellWithLifecycle } from '../types/rpc';
 
 interface CellPageProps {
 	txHash: string;
@@ -170,66 +170,21 @@ export function CellPage({ txHash, index }: CellPageProps) {
 
 			{/* Lock Script. */}
 			{cellData && (
-				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
-					<div className="p-4 border-b border-gray-200 dark:border-gray-700">
-						<h2 className="font-semibold text-gray-900 dark:text-white">Lock Script</h2>
-					</div>
-					<ScriptDetails script={cellData.output.lock} />
-				</div>
+				<ScriptSection title="Lock Script" script={cellData.output.lock} />
 			)}
 
 			{/* Type Script. */}
 			{cellData?.output.type && (
-				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
-					<div className="p-4 border-b border-gray-200 dark:border-gray-700">
-						<h2 className="font-semibold text-gray-900 dark:text-white">Type Script</h2>
-					</div>
-					<ScriptDetails script={cellData.output.type} />
-				</div>
+				<ScriptSection title="Type Script" script={cellData.output.type} />
 			)}
 
 			{/* Cell Data. */}
 			{cellData && cellData.output_data !== null && (
-				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-					<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-						<h2 className="font-semibold text-gray-900 dark:text-white">Cell Data</h2>
-						<span className="text-sm text-gray-500 dark:text-gray-400">
-							{((cellData.output_data.length - 2) / 2)} bytes
-						</span>
-					</div>
-					<div className="p-4">
-						{cellData.output_data === '0x' ? (
-							<span className="text-sm text-gray-500 dark:text-gray-400 italic">
-								Empty data
-							</span>
-						) : (
-							<div className="bg-gray-50 dark:bg-gray-900 p-4 rounded overflow-x-auto">
-								<TruncatedData data={cellData.output_data} />
-							</div>
-						)}
-					</div>
-				</div>
+				<CellDataSection
+					data={cellData.output_data}
+					typeScript={cellData.output.type}
+				/>
 			)}
-		</div>
-	);
-}
-
-function ScriptDetails({ script }: { script: RpcCellOutput['lock'] }) {
-	return (
-		<div className="divide-y divide-gray-200 dark:divide-gray-700">
-			<DetailRow label="Code Hash">
-				<HashDisplay hash={script.code_hash} responsive />
-			</DetailRow>
-			<DetailRow label="Hash Type">
-				<HashTypeIndicator hashType={script.hash_type} />
-			</DetailRow>
-			<DetailRow label="Args">
-				{script.args === '0x' ? (
-					<span className="text-gray-500 dark:text-gray-400 italic">Empty</span>
-				) : (
-					<TruncatedData data={script.args} />
-				)}
-			</DetailRow>
 		</div>
 	);
 }

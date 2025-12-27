@@ -115,12 +115,46 @@ Small clipboard icon to the right of copyable text. Shows checkmark on success.
 />
 ```
 
+### CellDataDisplay
+```tsx
+// Auto-detect format based on type script
+<CellDataDisplay
+  data={cellData}
+  typeScript={typeScript}
+/>
+
+// Force specific decode mode
+<CellDataDisplay
+  data={cellData}
+  forceMode="dep_group"
+  hideToggle
+/>
+```
+
+**Supported decode formats:**
+- **SUDT**: 16-byte uint128 LE token amount
+- **xUDT**: SUDT amount + extension data
+- **DAO**: 8-byte deposit/withdraw indicator
+- **DEP_GROUP**: Molecule vector of OutPoints (rendered as clickable links)
+
 ## Helper Functions
 
 ### format.ts
 - `truncateHex(hex, prefixLen=8, suffixLen=8)` - Truncate 66-char hashes
 - `truncateAddress(address, prefixLen=8, suffixLen=4)` - Truncate CKB addresses
 - `truncateData(data, limit=128)` - Truncate variable-length data
+
+### decode.ts
+- `decodeSudt(data)` - Decode SUDT cell data to amount
+- `decodeXudt(data)` - Decode xUDT cell data to amount + extension
+- `decodeDao(data)` - Decode NervosDAO cell data to deposit/withdraw phase
+- `decodeDepGroup(data)` - Decode DEP_GROUP to list of OutPoints
+- `decodeData(data, typeScript, network)` - Auto-detect and decode based on type script
+- `formatTokenAmount(amount, decimals=8)` - Format token amount with decimals
+
+### knownScripts.ts
+- `lookupTypeScript(codeHash, network)` - Look up type script info by code hash
+- `lookupLockScript(codeHash, network)` - Look up lock script info by code hash
 
 ## Word Break Strategy
 

@@ -43,3 +43,11 @@ export const CACHE_CONFIG = {
 	/** Time-to-live for short-lived cache entries (milliseconds). */
 	shortTtlMs: 2000,
 } as const;
+
+/**
+ * Cell data display configuration.
+ */
+export const CELL_DATA_CONFIG = {
+	/** Automatically decode cell data for known type scripts (SUDT, xUDT, DAO). */
+	autoDecodeKnownTypes: true,
+} as const;

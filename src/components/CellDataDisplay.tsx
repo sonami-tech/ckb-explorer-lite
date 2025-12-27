@@ -1,0 +1,371 @@
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useNetwork } from '../contexts/NetworkContext';
+import { CELL_DATA_CONFIG } from '../config';
+import { navigate, generateLink } from '../lib/router';
+import { formatNumber } from '../lib/format';
+import {
+	decodeData,
+	decodeByFormat,
+	formatRawAmount,
+	formatTokenAmount,
+	type DecodedData,
+	type DepGroupData,
+} from '../lib/decode';
+import { lookupTypeScript } from '../lib/knownScripts';
+import { TruncatedData } from './TruncatedData';
+import { OutPoint } from './OutPoint';
+
+type ViewMode = 'auto' | 'raw' | 'sudt' | 'xudt' | 'dao' | 'dep_group';
+
+interface CellDataSectionProps {
+	/** The hex data to display. */
+	data: string;
+	/** Type script for auto-detection. */
+	typeScript?: { code_hash: string; hash_type: string; args: string } | null;
+	/** Additional CSS classes for the container. */
+	className?: string;
+}
+
+/**
+ * Complete Cell Data section with header dropdown for decode options.
+ * Renders the full card including header with "Decode Data" dropdown.
+ */
+export function CellDataSection({
+	data,
+	typeScript,
+	className = '',
+}: CellDataSectionProps) {
+	const { currentNetwork } = useNetwork();
+	const networkType = currentNetwork?.type ?? 'mainnet';
+	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+	const dropdownRef = useRef<HTMLDivElement>(null);
+
+	// Detect available modes based on type script.
+	const detectedFormat = useMemo(() => {
+		if (!typeScript) return null;
+		const scriptInfo = lookupTypeScript(typeScript.code_hash, typeScript.hash_type, networkType);
+		return scriptInfo?.dataFormat ?? null;
+	}, [typeScript, networkType]);
+
+	// Available view modes - always show all options.
+	const availableModes = useMemo(() => {
+		const modes: ViewMode[] = [];
+		if (detectedFormat && detectedFormat !== 'spore') {
+			modes.push('auto');
+		}
+		modes.push('raw', 'sudt', 'xudt', 'dao', 'dep_group');
+		return modes;
+	}, [detectedFormat]);
+
+	// Default to 'auto' only if auto-decode is enabled and format is detected.
+	const defaultMode = (CELL_DATA_CONFIG.autoDecodeKnownTypes && detectedFormat) ? 'auto' : 'raw';
+	const [viewMode, setViewMode] = useState<ViewMode>(defaultMode);
+
+	// Close dropdown when clicking outside.
+	useEffect(() => {
+		if (!isDropdownOpen) return;
+
+		const handleClickOutside = (e: MouseEvent) => {
+			if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+				setIsDropdownOpen(false);
+			}
+		};
+
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => document.removeEventListener('mousedown', handleClickOutside);
+	}, [isDropdownOpen]);
+
+	const handleModeSelect = useCallback((mode: ViewMode) => {
+		setViewMode(mode);
+		setIsDropdownOpen(false);
+	}, []);
+
+	// Decode data based on current mode.
+	const decoded: DecodedData = useMemo(() => {
+		if (data === '0x') {
+			return { type: 'raw', hex: data };
+		}
+
+		if (viewMode === 'auto') {
+			return decodeData(data, typeScript ?? null, networkType);
+		}
+
+		if (viewMode === 'raw') {
+			return { type: 'raw', hex: data };
+		}
+
+		return decodeByFormat(data, viewMode);
+	}, [data, viewMode, typeScript, networkType]);
+
+	const byteCount = (data.length - 2) / 2;
+	const showDropdown = data !== '0x' && availableModes.length > 1;
+
+	return (
+		<div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 ${className}`}>
+			{/* Header with byte count and decode dropdown. */}
+			<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					<h2 className="font-semibold text-gray-900 dark:text-white">Cell Data</h2>
+					<span className="text-sm text-gray-500 dark:text-gray-400">
+						({byteCount} bytes)
+					</span>
+				</div>
+
+				{/* Decode dropdown. */}
+				{showDropdown && (
+					<div className="relative" ref={dropdownRef}>
+						<button
+							onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+							className="flex items-center gap-1.5 px-2.5 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+						>
+							<span className="text-gray-500 dark:text-gray-500">Decode:</span>
+							<span className="font-medium">{formatModeName(viewMode, detectedFormat)}</span>
+							<svg
+								className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+							</svg>
+						</button>
+
+						{/* Dropdown menu. */}
+						{isDropdownOpen && (
+							<div className="absolute right-0 mt-1 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
+								{availableModes.map((mode) => (
+									<button
+										key={mode}
+										onClick={() => handleModeSelect(mode)}
+										className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
+											viewMode === mode
+												? 'bg-nervos/10 text-nervos font-medium'
+												: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+										}`}
+									>
+										{formatModeName(mode, detectedFormat)}
+										{viewMode === mode && (
+											<svg className="inline w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+											</svg>
+										)}
+									</button>
+								))}
+							</div>
+						)}
+					</div>
+				)}
+			</div>
+
+			{/* Content. */}
+			<div className="p-4">
+				{data === '0x' ? (
+					<span className="text-sm text-gray-500 dark:text-gray-400 italic">
+						Empty data
+					</span>
+				) : (
+					<div className={`bg-gray-50 dark:bg-gray-900 p-4 rounded ${decoded.type === 'raw' ? 'overflow-x-auto' : 'overflow-visible'}`}>
+						<DecodedContent decoded={decoded} />
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+/**
+ * Render decoded content based on type.
+ */
+function DecodedContent({ decoded }: { decoded: DecodedData }) {
+	switch (decoded.type) {
+		case 'sudt':
+			return <TokenAmountDisplay amount={decoded.amount} />;
+
+		case 'xudt':
+			return (
+				<div className="space-y-3">
+					<TokenAmountDisplay amount={decoded.amount} />
+					{decoded.extensionData !== '0x' && (
+						<div>
+							<span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
+								Extension data:
+							</span>
+							<TruncatedData data={decoded.extensionData} />
+						</div>
+					)}
+				</div>
+			);
+
+		case 'dao':
+			return (
+				<div className="flex items-center gap-3">
+					<span
+						className={`px-2 py-1 rounded text-xs font-medium ${
+							decoded.phase === 'deposit'
+								? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+								: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+						}`}
+					>
+						{decoded.phase === 'deposit' ? 'Deposit' : 'Withdraw'}
+					</span>
+					{decoded.phase === 'withdraw' && decoded.withdrawBlockNumber !== undefined && (
+						<span className="text-sm text-gray-600 dark:text-gray-400">
+							Started at block{' '}
+							<button
+								onClick={() => navigate(generateLink(`/block/${decoded.withdrawBlockNumber}`))}
+								className="font-mono text-nervos hover:text-nervos-dark"
+							>
+								{formatNumber(decoded.withdrawBlockNumber)}
+							</button>
+						</span>
+					)}
+				</div>
+			);
+
+		case 'dep_group':
+			return <DepGroupDisplay outpoints={decoded.outpoints} />;
+
+		case 'raw':
+		default:
+			return <TruncatedData data={decoded.hex} />;
+	}
+}
+
+/**
+ * Format view mode name for display.
+ */
+function formatModeName(mode: ViewMode, detectedFormat: string | null): string {
+	switch (mode) {
+		case 'auto':
+			return detectedFormat ? `Auto (${detectedFormat.toUpperCase()})` : 'Auto';
+		case 'raw':
+			return 'Raw Hex';
+		case 'sudt':
+			return 'SUDT';
+		case 'xudt':
+			return 'xUDT';
+		case 'dao':
+			return 'DAO';
+		case 'dep_group':
+			return 'Dep Group';
+		default:
+			return mode;
+	}
+}
+
+/**
+ * Render dependency group outpoints as a list of clickable links.
+ */
+function DepGroupDisplay({ outpoints }: { outpoints: DepGroupData['outpoints'] }) {
+	if (outpoints.length === 0) {
+		return (
+			<span className="text-sm text-gray-500 dark:text-gray-400 italic">
+				Empty dependency group
+			</span>
+		);
+	}
+
+	return (
+		<div className="space-y-2">
+			<span className="text-sm text-gray-500 dark:text-gray-400">
+				{outpoints.length} cell{outpoints.length > 1 ? 's' : ''} in group:
+			</span>
+			<div className="space-y-1 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
+				{outpoints.map((op, i) => (
+					<div key={i} className="flex items-center gap-2">
+						<span className="text-xs text-gray-400 dark:text-gray-500 w-5">
+							{i + 1}.
+						</span>
+						<OutPoint txHash={op.txHash} index={op.index} />
+					</div>
+				))}
+			</div>
+		</div>
+	);
+}
+
+/**
+ * Token amount display with decimal selector.
+ * Shows raw comma-formatted amount by default.
+ * User can select decimal places to format the value.
+ */
+function TokenAmountDisplay({ amount }: { amount: bigint }) {
+	const [decimals, setDecimals] = useState<number | null>(null);
+	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+	const dropdownRef = useRef<HTMLDivElement>(null);
+
+	// Close dropdown when clicking outside.
+	useEffect(() => {
+		if (!isDropdownOpen) return;
+
+		const handleClickOutside = (e: MouseEvent) => {
+			if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+				setIsDropdownOpen(false);
+			}
+		};
+
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => document.removeEventListener('mousedown', handleClickOutside);
+	}, [isDropdownOpen]);
+
+	const displayAmount = decimals === null
+		? formatRawAmount(amount)
+		: formatTokenAmount(amount, decimals);
+
+	const decimalOptions = [null, 0, 2, 4, 6, 8, 10, 12, 16, 18];
+
+	return (
+		<div className="flex items-center gap-3 flex-wrap">
+			<div className="flex items-center gap-2">
+				<span className="text-sm text-gray-500 dark:text-gray-400">Amount:</span>
+				<span className="font-mono text-lg font-semibold">
+					{displayAmount}
+				</span>
+			</div>
+
+			{/* Decimal selector. */}
+			<div className="relative" ref={dropdownRef}>
+				<button
+					onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+					className="flex items-center gap-1 px-2 py-0.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+				>
+					<span>
+						{decimals === null ? 'Raw' : `${decimals} decimals`}
+					</span>
+					<svg
+						className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+					</svg>
+				</button>
+
+				{isDropdownOpen && (
+					<div className="absolute left-0 mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
+						{decimalOptions.map((option) => (
+							<button
+								key={option ?? 'raw'}
+								onClick={() => {
+									setDecimals(option);
+									setIsDropdownOpen(false);
+								}}
+								className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+									decimals === option
+										? 'bg-nervos/10 text-nervos font-medium'
+										: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+								}`}
+							>
+								{option === null ? 'Raw (no decimals)' : `${option} decimals`}
+							</button>
+						))}
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+// Legacy export for backwards compatibility.
+export { CellDataSection as CellDataDisplay };
