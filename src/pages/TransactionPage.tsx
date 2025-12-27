@@ -15,7 +15,7 @@ import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
 import { TruncatedData } from '../components/TruncatedData';
-import { OutPointLink } from '../components/OutPointLink';
+import { OutPoint } from '../components/OutPoint';
 import { DetailRow } from '../components/DetailRow';
 import type { RpcTransaction, RpcTransactionWithStatus } from '../types/rpc';
 
@@ -222,7 +222,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 										<span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-6">
 											#{index}
 										</span>
-										<OutPointLink
+										<OutPoint
 											txHash={input.previous_output.tx_hash}
 											index={parseInt(input.previous_output.index, 16)}
 										/>
@@ -302,7 +302,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 						{transaction.cell_deps.map((dep, index) => (
 							<div key={index} className="p-4">
 								<div className="flex items-center gap-3">
-									<OutPointLink
+									<OutPoint
 										txHash={dep.out_point.tx_hash}
 										index={parseInt(dep.out_point.index, 16)}
 									/>

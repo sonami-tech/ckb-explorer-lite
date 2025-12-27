@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { useRpc } from '../contexts/NetworkContext';
 import { formatCkb, formatNumber } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
@@ -8,6 +8,8 @@ import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
 import { TruncatedData } from '../components/TruncatedData';
 import { DetailRow } from '../components/DetailRow';
+import { OutPoint } from '../components/OutPoint';
+import { CellStatusIndicator, HashTypeIndicator } from '../components/OptionIndicator';
 import type { RpcCellWithLifecycle, RpcCellOutput } from '../types/rpc';
 
 interface CellPageProps {
@@ -97,12 +99,9 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					<span>/</span>
 					<span>Cell</span>
 				</div>
-				<div className="flex items-center gap-2">
-					<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-						Cell Details
-					</h1>
-					{cellData && <StatusBadge status={status} />}
-				</div>
+				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+					Cell Details
+				</h1>
 			</div>
 
 			{/* Cell details. */}
@@ -112,30 +111,10 @@ export function CellPage({ txHash, index }: CellPageProps) {
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
 					<DetailRow label="OutPoint">
-						<div className="flex items-center gap-2">
-							<HashDisplay hash={txHash} />
-							<span className="text-gray-500">:</span>
-							<span className="font-mono">{index}</span>
-							<button
-								onClick={() => navigate(generateLink(`/tx/${txHash}`))}
-								className="text-nervos hover:text-nervos-dark"
-								title="Go to transaction"
-							>
-								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-								</svg>
-							</button>
-						</div>
+						<OutPoint txHash={txHash} index={index} linkTo="transaction" showCopy />
 					</DetailRow>
 					<DetailRow label="Status">
-						<div className="flex items-center gap-2">
-							{cellData && <StatusBadge status={status} />}
-							{status === 'dead' && (
-								<span className="text-sm text-gray-500 dark:text-gray-400">
-									(Cell has been consumed)
-								</span>
-							)}
-						</div>
+						<CellStatusIndicator status={status} />
 					</DetailRow>
 					{cellData && (
 						<DetailRow label="Capacity">
@@ -146,22 +125,44 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					)}
 					{createdBlock !== null && (
 						<DetailRow label="Created at Block">
-							<button
-								onClick={() => navigate(generateLink(`/block/${createdBlock}`))}
-								className="font-mono text-nervos hover:text-nervos-dark"
-							>
-								{formatNumber(createdBlock)}
-							</button>
+							<div className="flex items-center gap-2">
+								<button
+									onClick={() => navigate(generateLink(`/block/${createdBlock}`))}
+									className="font-mono text-nervos hover:text-nervos-dark"
+								>
+									{formatNumber(createdBlock)}
+								</button>
+								<button
+									onClick={() => navigate(generateLink(`/block/${createdBlock}`))}
+									className="text-nervos hover:text-nervos-dark"
+									title="View block"
+								>
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+									</svg>
+								</button>
+							</div>
 						</DetailRow>
 					)}
 					{consumedBlock !== null && (
 						<DetailRow label="Consumed at Block">
-							<button
-								onClick={() => navigate(generateLink(`/block/${consumedBlock}`))}
-								className="font-mono text-nervos hover:text-nervos-dark"
-							>
-								{formatNumber(consumedBlock)}
-							</button>
+							<div className="flex items-center gap-2">
+								<button
+									onClick={() => navigate(generateLink(`/block/${consumedBlock}`))}
+									className="font-mono text-nervos hover:text-nervos-dark"
+								>
+									{formatNumber(consumedBlock)}
+								</button>
+								<button
+									onClick={() => navigate(generateLink(`/block/${consumedBlock}`))}
+									className="text-nervos hover:text-nervos-dark"
+									title="View block"
+								>
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+									</svg>
+								</button>
+							</div>
 						</DetailRow>
 					)}
 				</div>
@@ -217,12 +218,10 @@ function ScriptDetails({ script }: { script: RpcCellOutput['lock'] }) {
 	return (
 		<div className="divide-y divide-gray-200 dark:divide-gray-700">
 			<DetailRow label="Code Hash">
-				<HashDisplay hash={script.code_hash} />
+				<HashDisplay hash={script.code_hash} responsive />
 			</DetailRow>
 			<DetailRow label="Hash Type">
-				<span className="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
-					{script.hash_type}
-				</span>
+				<HashTypeIndicator hashType={script.hash_type} />
 			</DetailRow>
 			<DetailRow label="Args">
 				{script.args === '0x' ? (
@@ -235,16 +234,3 @@ function ScriptDetails({ script }: { script: RpcCellOutput['lock'] }) {
 	);
 }
 
-function StatusBadge({ status }: { status: string }) {
-	const statusStyles: Record<string, string> = {
-		live: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
-		dead: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-		unknown: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-400',
-	};
-
-	return (
-		<span className={`px-2 py-1 rounded text-xs font-medium ${statusStyles[status] || statusStyles.unknown}`}>
-			{status.charAt(0).toUpperCase() + status.slice(1)}
-		</span>
-	);
-}

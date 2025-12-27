@@ -26,9 +26,11 @@ This document defines the standardized formats for displaying blockchain data in
 
 | Context | Desktop/Tablet | Mobile | Component |
 |---------|----------------|--------|-----------|
-| All contexts | Full hash:index | 8...8:index | `OutPointLink` |
+| All contexts | Full hash:index (CSS truncation) | Truncated hash:index | `OutPoint` |
 
 **Format**: Hash format + `:` + decimal index = `0x12345678...12345678:0`
+
+**Features**: No-wrap, hash truncates with ellipsis if container is narrow, configurable copy button and link target.
 
 ### Variable-Length Data (Args, Cell Data, Witnesses)
 
@@ -45,7 +47,7 @@ Components with responsive display (full on desktop/tablet, truncated on mobile)
 | Component | Prop | Default |
 |-----------|------|---------|
 | `HashDisplay` | `responsive={true}` | `false` |
-| `OutPointLink` | `responsive={true}` | `true` |
+| `OutPoint` | CSS-based truncation | N/A |
 | `TruncatedData` | Always responsive | N/A |
 
 **Breakpoint**: 640px (Tailwind `sm`)
@@ -57,7 +59,7 @@ Components with responsive display (full on desktop/tablet, truncated on mobile)
 - Addresses with copy button
 
 ### Navigate on Click
-- OutPoints → Cell page (`OutPointLink`)
+- OutPoints → Cell page or Transaction page (`OutPoint` with `linkTo` prop)
 - Addresses in outputs → Address page
 - Block hashes with link icon → Block page
 
@@ -88,14 +90,16 @@ Small clipboard icon to the right of copyable text. Shows checkmark on success.
 <HashDisplay hash={hash} truncate={false} />
 ```
 
-### OutPointLink
+### OutPoint
 ```tsx
-// Responsive by default, navigates to cell page
-<OutPointLink
-  txHash={txHash}
-  index={index}
-  archiveHeight={archiveHeight}
-/>
+// Navigate to cell page (default)
+<OutPoint txHash={txHash} index={index} />
+
+// Navigate to transaction page with copy button
+<OutPoint txHash={txHash} index={index} linkTo="transaction" showCopy />
+
+// No navigation link
+<OutPoint txHash={txHash} index={index} linkTo="none" showCopy />
 ```
 
 ### TruncatedData
