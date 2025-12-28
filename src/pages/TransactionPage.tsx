@@ -131,7 +131,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					<span>Transaction</span>
 				</div>
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-					Transaction Details
+					Transaction Details{archiveHeight !== undefined && ` @ Block ${formatNumber(archiveHeight)}`}
 				</h1>
 			</div>
 

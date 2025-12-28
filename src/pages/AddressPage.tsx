@@ -175,7 +175,7 @@ export function AddressPage({ address }: AddressPageProps) {
 				</div>
 				<div className="flex items-center gap-2">
 					<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-						Address
+						Address{archiveHeight !== undefined && ` @ Block ${formatNumber(archiveHeight)}`}
 					</h1>
 					{isDeprecated && (
 						<span className="px-2 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded">
