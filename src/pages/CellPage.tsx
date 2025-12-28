@@ -133,7 +133,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 								>
 									{formatNumber(createdBlock)}
 								</button>
-								<Tooltip content="View block">
+								<Tooltip content="View block" interactive>
 									<button
 										onClick={() => navigate(generateLink(`/block/${createdBlock}`))}
 										className="text-nervos hover:text-nervos-dark"
@@ -155,7 +155,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 								>
 									{formatNumber(consumedBlock)}
 								</button>
-								<Tooltip content="View block">
+								<Tooltip content="View block" interactive>
 									<button
 										onClick={() => navigate(generateLink(`/block/${consumedBlock}`))}
 										className="text-nervos hover:text-nervos-dark"

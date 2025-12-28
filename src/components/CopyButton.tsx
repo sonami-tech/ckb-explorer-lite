@@ -18,7 +18,7 @@ export function CopyButton({ text, className = '' }: CopyButtonProps) {
 	}, [text]);
 
 	return (
-		<Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
+		<Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'} interactive>
 			<span
 				role="button"
 				tabIndex={0}
@@ -120,7 +120,7 @@ export function HashDisplay({
 			className={`inline-flex items-center gap-1 font-mono text-sm whitespace-nowrap ${className}`}
 		>
 			{/* Hash text with tooltip. */}
-			<Tooltip content={tooltipContent}>
+			<Tooltip content={tooltipContent} interactive>
 				<span
 					role="button"
 					tabIndex={0}
@@ -133,7 +133,7 @@ export function HashDisplay({
 			</Tooltip>
 
 			{/* Copy button icon for visual affordance. */}
-			<Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
+			<Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'} interactive>
 				<span
 					role="button"
 					tabIndex={0}

@@ -156,7 +156,7 @@ export function BlockPage({ id }: BlockPageProps) {
 					<DetailRow label="Parent Hash">
 						<div className="flex items-center gap-2">
 							<HashDisplay hash={header.parent_hash} responsive />
-							<Tooltip content="Go to parent block">
+							<Tooltip content="Go to parent block" interactive>
 								<button
 									onClick={() => navigate(generateLink(`/block/${header.parent_hash}`, archiveHeight))}
 									className="text-nervos hover:text-nervos-dark"

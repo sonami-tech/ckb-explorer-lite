@@ -44,7 +44,7 @@ export function EventMarker({ event, position, onSelect }: EventMarkerProps) {
 	};
 
 	return (
-		<Tooltip content={event.name}>
+		<Tooltip content={event.name} interactive>
 			<button
 				type="button"
 				onMouseDown={handleInteraction}

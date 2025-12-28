@@ -382,7 +382,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 								"
 							/>
 							{/* Submit button. */}
-							<Tooltip content="Go to block">
+							<Tooltip content="Go to block" interactive>
 								<button
 									type="button"
 									onClick={confirmBlockInput}

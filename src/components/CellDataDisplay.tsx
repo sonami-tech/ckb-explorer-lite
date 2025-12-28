@@ -309,7 +309,7 @@ function TokenAmountDisplay({ amount }: { amount: bigint }) {
 
 			{/* Decimal stepper. */}
 			<div className="flex items-center select-none">
-				<Tooltip content="Decrease decimals">
+				<Tooltip content="Decrease decimals" interactive>
 					<button
 						onClick={decrement}
 						disabled={decimals <= minDecimals}
@@ -321,7 +321,7 @@ function TokenAmountDisplay({ amount }: { amount: bigint }) {
 				<span className="px-2 py-0.5 text-xs bg-gray-50 dark:bg-gray-800 border-y border-gray-300 dark:border-gray-600 min-w-[5rem] text-center">
 					{decimals} decimals
 				</span>
-				<Tooltip content="Increase decimals">
+				<Tooltip content="Increase decimals" interactive>
 					<button
 						onClick={increment}
 						disabled={decimals >= maxDecimals}

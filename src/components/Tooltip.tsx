@@ -5,9 +5,10 @@
  * - Shifts horizontally to stay in view
  * - Arrow points to trigger element
  * - Portal rendering to avoid z-index issues
+ * - Touch-friendly interactive mode for clickable elements
  */
 
-import { useState, useRef, cloneElement } from 'react';
+import { useState, useRef, useEffect, cloneElement } from 'react';
 import type { ReactNode, ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -31,7 +32,17 @@ interface TooltipProps {
 	placement?: Placement;
 	/** Whether the tooltip is disabled. */
 	disabled?: boolean;
+	/**
+	 * Enable for clickable elements (links, buttons). On touch devices,
+	 * first tap shows tooltip, second tap triggers the click action.
+	 */
+	interactive?: boolean;
 }
+
+// Detect if device can't hover (touch device).
+// Evaluated as a function to avoid SSR/HMR caching issues.
+const isTouchDevice = () => typeof window !== 'undefined'
+	&& !window.matchMedia('(hover: hover)').matches;
 
 /**
  * Wrap any element to show a tooltip on hover/focus.
@@ -40,15 +51,23 @@ interface TooltipProps {
  * <Tooltip content="Click to copy">
  *   <button>Copy</button>
  * </Tooltip>
+ *
+ * @example
+ * // For clickable elements, use interactive for touch support.
+ * <Tooltip content="View transaction" interactive>
+ *   <Link to="/tx/...">0x1234...</Link>
+ * </Tooltip>
  */
 export function Tooltip({
 	content,
 	children,
 	placement = 'top',
 	disabled = false,
+	interactive = false,
 }: TooltipProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const arrowRef = useRef<HTMLSpanElement>(null);
+	const referenceRef = useRef<HTMLElement>(null);
 
 	const { refs, floatingStyles, middlewareData, placement: actualPlacement } = useFloating({
 		open: isOpen,
@@ -71,10 +90,48 @@ export function Tooltip({
 		],
 	});
 
+	// Handle click-outside to close tooltip in interactive mode.
+	useEffect(() => {
+		if (!interactive || !isOpen) return;
+
+		const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+			const target = e.target as Node;
+			if (referenceRef.current && !referenceRef.current.contains(target)) {
+				setIsOpen(false);
+			}
+		};
+
+		document.addEventListener('mousedown', handleClickOutside);
+		document.addEventListener('touchstart', handleClickOutside);
+
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+			document.removeEventListener('touchstart', handleClickOutside);
+		};
+	}, [interactive, isOpen]);
+
 	// Don't render tooltip if disabled or no content.
 	if (disabled || !content) {
 		return children;
 	}
+
+	// Handle click for interactive mode on touch devices.
+	const handleClick = (e: React.MouseEvent) => {
+		if (interactive && isTouchDevice() && !isOpen) {
+			// First tap on touch device: show tooltip, prevent navigation.
+			e.preventDefault();
+			setIsOpen(true);
+			return;
+		}
+		// Normal click (mouse or second tap): forward to original handler.
+		children.props.onClick?.(e);
+	};
+
+	// Combine floating-ui ref with our click-outside detection ref.
+	const setRefs = (el: HTMLElement | null) => {
+		refs.setReference(el);
+		(referenceRef as React.MutableRefObject<HTMLElement | null>).current = el;
+	};
 
 	// Calculate arrow position based on actual placement after flip/shift.
 	const arrowX = middlewareData.arrow?.x;
@@ -95,9 +152,13 @@ export function Tooltip({
 	return (
 		<>
 			{cloneElement(children, {
-				ref: refs.setReference,
+				ref: setRefs,
 				onMouseEnter: (e: React.MouseEvent) => {
-					setIsOpen(true);
+					// On touch devices with interactive tooltips, don't open on mouseenter.
+					// The handleClick will manage showing the tooltip on first tap.
+					if (!(interactive && isTouchDevice())) {
+						setIsOpen(true);
+					}
 					children.props.onMouseEnter?.(e);
 				},
 				onMouseLeave: (e: React.MouseEvent) => {
@@ -112,6 +173,7 @@ export function Tooltip({
 					setIsOpen(false);
 					children.props.onBlur?.(e);
 				},
+				onClick: handleClick,
 			})}
 			{isOpen && createPortal(
 				<div

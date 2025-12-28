@@ -151,7 +151,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 						<DetailRow label="Block">
 							<div className="flex items-center gap-2">
 								<HashDisplay hash={tx_status.block_hash} />
-								<Tooltip content="Go to block">
+								<Tooltip content="Go to block" interactive>
 									<button
 										onClick={() => navigate(generateLink(`/block/${tx_status.block_hash}`, archiveHeight))}
 										className="text-nervos hover:text-nervos-dark"
@@ -268,7 +268,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 								</div>
 								{/* Address row with navigation. */}
 								<div className="flex items-center gap-2 ml-8">
-									<Tooltip content={address}>
+									<Tooltip content={address} interactive>
 										<button
 											onClick={() => navigate(generateLink(`/address/${address}`, archiveHeight))}
 											className="text-nervos hover:text-nervos-dark font-mono text-sm truncate"
@@ -277,7 +277,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 											<span className="sm:hidden">{truncateAddress(address)}</span>
 										</button>
 									</Tooltip>
-									<Tooltip content="View cell details">
+									<Tooltip content="View cell details" interactive>
 										<button
 											onClick={() => navigate(generateLink(`/cell/${hash}/${index}`))}
 											className="text-nervos hover:text-nervos-dark transition-colors flex-shrink-0"

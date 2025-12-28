@@ -137,6 +137,49 @@ Small clipboard icon to the right of copyable text. Shows checkmark on success.
 - **DAO**: 8-byte deposit/withdraw indicator
 - **DEP_GROUP**: Molecule vector of OutPoints (rendered as clickable links)
 
+### Tooltip
+```tsx
+// Basic tooltip (hover/focus to show)
+<Tooltip content="Helpful information">
+  <span>Hover me</span>
+</Tooltip>
+
+// Interactive tooltip for clickable elements (buttons, links)
+<Tooltip content="View transaction" interactive>
+  <button onClick={handleClick}>Click me</button>
+</Tooltip>
+
+// Conditional interactive (e.g., when child may or may not be a link)
+<Tooltip content={description} interactive={hasLink}>
+  {hasLink ? <a href={url}>{badge}</a> : badge}
+</Tooltip>
+```
+
+**Props:**
+- `content` - Tooltip text or ReactNode.
+- `placement` - Preferred position (`top`, `bottom`, `left`, `right`). Default: `top`. Automatically flips if near viewport edge.
+- `disabled` - Disable the tooltip.
+- `interactive` - Enable for clickable children. On touch devices, first tap shows tooltip, second tap triggers click.
+
+**Touch Device Behavior:**
+
+On touch devices, hover is not available. The `interactive` prop enables tap-to-preview:
+
+| Prop | First Tap | Second Tap | Tap Outside |
+|------|-----------|------------|-------------|
+| `interactive={false}` | Shows tooltip (if focusable) | N/A | Closes tooltip |
+| `interactive={true}` | Shows tooltip, prevents click | Triggers click action | Closes tooltip |
+
+**When to Use `interactive`:**
+- Buttons that perform actions.
+- Links that navigate to other pages.
+- Any element with an `onClick` handler.
+- Elements with `role="button"`.
+
+**When NOT to Use `interactive`:**
+- Info-only tooltips on non-clickable elements.
+- Tooltips on elements with `cursor-help` styling.
+
 ## Helper Functions
 
 ### format.ts

@@ -84,7 +84,7 @@ function ScriptBadge({ info }: { info: ScriptInfo }) {
 	);
 
 	const content = (
-		<Tooltip content={info.description} placement="bottom">
+		<Tooltip content={info.description} placement="bottom" interactive={hasLink}>
 			{hasLink ? (
 				<a
 					href={info.sourceUrl}

@@ -283,7 +283,7 @@ export function NetworkBlockSelector() {
 									/>
 
 									{/* Go button. */}
-									<Tooltip content="Go to block">
+									<Tooltip content="Go to block" interactive>
 										<button
 											onClick={handleSetSpecific}
 											disabled={heightInput.trim() === ''}

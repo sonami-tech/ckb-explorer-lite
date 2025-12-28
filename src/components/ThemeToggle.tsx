@@ -90,7 +90,7 @@ export function ThemeToggle() {
 
 	return (
 		<div className="flex items-center gap-1">
-			<Tooltip content={isPlaying ? 'Pause animation' : 'Play animation'}>
+			<Tooltip content={isPlaying ? 'Pause animation' : 'Play animation'} interactive>
 				<button
 					onClick={toggle}
 					className={buttonClass}
@@ -99,7 +99,7 @@ export function ThemeToggle() {
 					{isPlaying ? <PauseIcon /> : <PlayIcon />}
 				</button>
 			</Tooltip>
-			<Tooltip content={getThemeLabel(theme)}>
+			<Tooltip content={getThemeLabel(theme)} interactive>
 				<button
 					onClick={() => setTheme(getNextTheme(theme))}
 					className={buttonClass}

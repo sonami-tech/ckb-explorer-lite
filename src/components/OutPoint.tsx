@@ -76,7 +76,7 @@ export function OutPoint({
 			className={`inline-flex items-center gap-1.5 whitespace-nowrap max-w-full ${className}`}
 		>
 			{/* Hash and index container - clickable to copy, with tooltip. */}
-			<Tooltip content={tooltipContent}>
+			<Tooltip content={tooltipContent} interactive>
 				<span
 					role="button"
 					tabIndex={0}
@@ -94,7 +94,7 @@ export function OutPoint({
 
 			{/* Copy button icon for visual affordance. */}
 			{showCopy && (
-				<Tooltip content={copied ? 'Copied!' : 'Copy outpoint'}>
+				<Tooltip content={copied ? 'Copied!' : 'Copy outpoint'} interactive>
 					<span
 						role="button"
 						tabIndex={0}
@@ -117,7 +117,7 @@ export function OutPoint({
 
 			{/* Link icon. */}
 			{linkTo !== 'none' && (
-				<Tooltip content={linkTo === 'cell' ? 'View cell' : 'View source transaction'}>
+				<Tooltip content={linkTo === 'cell' ? 'View cell' : 'View source transaction'} interactive>
 					<button
 						onClick={handleNavigate}
 						className="flex-shrink-0 text-nervos hover:text-nervos-dark transition-colors"
