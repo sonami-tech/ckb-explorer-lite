@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useRpc } from '../contexts/NetworkContext';
+import { useArchive } from '../contexts/ArchiveContext';
 import { formatCkb, formatNumber } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
 import { fromHex } from '../lib/rpc';
@@ -20,6 +21,7 @@ interface CellPageProps {
 
 export function CellPage({ txHash, index }: CellPageProps) {
 	const rpc = useRpc();
+	const { archiveHeight } = useArchive();
 	const [cellData, setCellData] = useState<RpcCellWithLifecycle | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
@@ -82,12 +84,24 @@ export function CellPage({ txHash, index }: CellPageProps) {
 		);
 	}
 
-	// Derive status from lifecycle data.
-	const status = cellData?.consumed_block_number === null ? 'live' : 'dead';
+	// Derive block numbers from lifecycle data.
 	const createdBlock = cellData ? Number(fromHex(cellData.created_block_number)) : null;
 	const consumedBlock = cellData?.consumed_block_number
 		? Number(fromHex(cellData.consumed_block_number))
 		: null;
+
+	// Derive status based on archive height (if set) or current state.
+	const status = (() => {
+		if (!cellData || createdBlock === null) return 'unknown';
+		if (archiveHeight !== undefined) {
+			// Historical view: status depends on selected height.
+			if (archiveHeight < createdBlock) return 'unknown';
+			if (consumedBlock === null || archiveHeight < consumedBlock) return 'live';
+			return 'dead';
+		}
+		// Current view: simple live/dead based on consumed state.
+		return consumedBlock === null ? 'live' : 'dead';
+	})();
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
@@ -101,7 +115,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					<span>Cell</span>
 				</div>
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-					Cell Details
+					Cell Details{archiveHeight !== undefined && ` – Block ${formatNumber(archiveHeight)}`}
 				</h1>
 			</div>
 
@@ -179,8 +193,21 @@ export function CellPage({ txHash, index }: CellPageProps) {
 			)}
 
 			{/* Type Script. */}
-			{cellData?.output.type && (
-				<ScriptSection title="Type Script" script={cellData.output.type} />
+			{cellData && (
+				cellData.output.type ? (
+					<ScriptSection title="Type Script" script={cellData.output.type} />
+				) : (
+					<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+						<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+							<h2 className="font-semibold text-gray-900 dark:text-white">Type Script</h2>
+						</div>
+						<div className="p-4">
+							<span className="text-sm text-gray-500 dark:text-gray-400 italic">
+								This cell has no type script.
+							</span>
+						</div>
+					</div>
+				)
 			)}
 
 			{/* Cell Data. */}

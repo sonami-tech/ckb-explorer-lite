@@ -161,7 +161,7 @@ export function CellDataSection({
 			<div className="p-4">
 				{data === '0x' ? (
 					<span className="text-sm text-gray-500 dark:text-gray-400 italic">
-						Empty data
+						This cell contains no data.
 					</span>
 				) : (
 					<div className={`bg-gray-50 dark:bg-gray-900 p-4 rounded ${decoded.type === 'raw' ? 'overflow-x-auto' : 'overflow-visible'}`}>

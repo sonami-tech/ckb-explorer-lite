@@ -79,6 +79,12 @@ export const CELL_STATUS_OPTIONS: OptionConfig[] = [
 		tooltip: 'Cell has been consumed (spent) in a transaction.',
 		activeClass: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
 	},
+	{
+		value: 'unknown',
+		label: 'Unknown',
+		tooltip: 'Cell does not exist at the selected block height.',
+		activeClass: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+	},
 ];
 
 /** Hash type options for scripts. */
@@ -110,7 +116,7 @@ export const HASH_TYPE_OPTIONS: OptionConfig[] = [
 ];
 
 /** Convenience component for cell status. */
-export function CellStatusIndicator({ status }: { status: 'live' | 'dead' }) {
+export function CellStatusIndicator({ status }: { status: 'live' | 'dead' | 'unknown' }) {
 	return <OptionIndicator options={CELL_STATUS_OPTIONS} activeValue={status} />;
 }
 
