@@ -1,5 +1,6 @@
 import { useTheme, type Theme } from '../contexts/ThemeContext';
 import { useAnimation } from '../contexts/AnimationContext';
+import { Tooltip } from './Tooltip';
 
 // Theme cycles: auto -> light -> dark -> auto.
 const THEME_CYCLE: Theme[] = ['auto', 'light', 'dark'];
@@ -89,22 +90,24 @@ export function ThemeToggle() {
 
 	return (
 		<div className="flex items-center gap-1">
-			<button
-				onClick={toggle}
-				className={buttonClass}
-				title={isPlaying ? 'Pause animation' : 'Play animation'}
-				aria-label={isPlaying ? 'Pause animation' : 'Play animation'}
-			>
-				{isPlaying ? <PauseIcon /> : <PlayIcon />}
-			</button>
-			<button
-				onClick={() => setTheme(getNextTheme(theme))}
-				className={buttonClass}
-				title={getThemeLabel(theme)}
-				aria-label={getThemeLabel(theme)}
-			>
-				{getThemeIcon(theme)}
-			</button>
+			<Tooltip content={isPlaying ? 'Pause animation' : 'Play animation'}>
+				<button
+					onClick={toggle}
+					className={buttonClass}
+					aria-label={isPlaying ? 'Pause animation' : 'Play animation'}
+				>
+					{isPlaying ? <PauseIcon /> : <PlayIcon />}
+				</button>
+			</Tooltip>
+			<Tooltip content={getThemeLabel(theme)}>
+				<button
+					onClick={() => setTheme(getNextTheme(theme))}
+					className={buttonClass}
+					aria-label={getThemeLabel(theme)}
+				>
+					{getThemeIcon(theme)}
+				</button>
+			</Tooltip>
 		</div>
 	);
 }

@@ -13,6 +13,7 @@ import {
 import { lookupTypeScript } from '../lib/knownScripts';
 import { TruncatedData } from './TruncatedData';
 import { OutPoint } from './OutPoint';
+import { Tooltip } from './Tooltip';
 
 type ViewMode = 'auto' | 'raw' | 'sudt' | 'xudt' | 'dao' | 'dep_group';
 
@@ -308,25 +309,27 @@ function TokenAmountDisplay({ amount }: { amount: bigint }) {
 
 			{/* Decimal stepper. */}
 			<div className="flex items-center select-none">
-				<button
-					onClick={decrement}
-					disabled={decimals <= minDecimals}
-					className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-l border border-gray-300 dark:border-gray-600 transition-colors"
-					title="Decrease decimals"
-				>
-					−
-				</button>
+				<Tooltip content="Decrease decimals">
+					<button
+						onClick={decrement}
+						disabled={decimals <= minDecimals}
+						className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-l border border-gray-300 dark:border-gray-600 transition-colors"
+					>
+						−
+					</button>
+				</Tooltip>
 				<span className="px-2 py-0.5 text-xs bg-gray-50 dark:bg-gray-800 border-y border-gray-300 dark:border-gray-600 min-w-[5rem] text-center">
 					{decimals} decimals
 				</span>
-				<button
-					onClick={increment}
-					disabled={decimals >= maxDecimals}
-					className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-r border border-gray-300 dark:border-gray-600 transition-colors"
-					title="Increase decimals"
-				>
-					+
-				</button>
+				<Tooltip content="Increase decimals">
+					<button
+						onClick={increment}
+						disabled={decimals >= maxDecimals}
+						className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-r border border-gray-300 dark:border-gray-600 transition-colors"
+					>
+						+
+					</button>
+				</Tooltip>
 			</div>
 		</div>
 	);

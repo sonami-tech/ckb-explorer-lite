@@ -5,6 +5,7 @@ import { getNetworkEvents, type NetworkEvent } from '../../config';
 import { formatNumber } from '../../lib/format';
 import { EventMarker } from './EventMarker';
 import { EventInfoCard } from './EventInfoCard';
+import { Tooltip } from '../Tooltip';
 
 interface TimeSliderProps {
 	/** Optional CSS class name for container. */
@@ -381,23 +382,24 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 								"
 							/>
 							{/* Submit button. */}
-							<button
-								type="button"
-								onClick={confirmBlockInput}
-								disabled={blockInputValue.trim() === ''}
-								className={`
-									p-1 rounded transition-colors
-									${blockInputValue.trim()
-										? 'text-nervos hover:bg-nervos/10'
-										: 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-									}
-								`}
-								title="Go to block"
-							>
-								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-								</svg>
-							</button>
+							<Tooltip content="Go to block">
+								<button
+									type="button"
+									onClick={confirmBlockInput}
+									disabled={blockInputValue.trim() === ''}
+									className={`
+										p-1 rounded transition-colors
+										${blockInputValue.trim()
+											? 'text-nervos hover:bg-nervos/10'
+											: 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+										}
+									`}
+								>
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+									</svg>
+								</button>
+							</Tooltip>
 						</>
 					) : (
 						// Show block number (clickable to edit).

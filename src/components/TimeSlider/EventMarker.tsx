@@ -1,4 +1,5 @@
 import type { NetworkEvent } from '../../config';
+import { Tooltip } from '../Tooltip';
 
 interface EventMarkerProps {
 	/** The network event to display. */
@@ -43,32 +44,33 @@ export function EventMarker({ event, position, onSelect }: EventMarkerProps) {
 	};
 
 	return (
-		<button
-			type="button"
-			onMouseDown={handleInteraction}
-			onTouchStart={handleInteraction}
-			onClick={handleClick}
-			className="
-				absolute top-1/2 -translate-y-1/2 -translate-x-1/2
-				w-3 h-6 flex items-center justify-center
-				cursor-pointer z-10
-				focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
-				focus-visible:ring-nervos
-				group
-			"
-			style={{ left: `${position}%` }}
-			aria-label={`${event.name}: ${event.description}`}
-			title={event.name}
-		>
-			{/* Visible thin line marker. */}
-			<div
-				className={`
-					w-1 h-5 rounded-full
-					${getEventColor(event.type)}
-					opacity-70 group-hover:opacity-100
-					transition-opacity duration-150
-				`}
-			/>
-		</button>
+		<Tooltip content={event.name}>
+			<button
+				type="button"
+				onMouseDown={handleInteraction}
+				onTouchStart={handleInteraction}
+				onClick={handleClick}
+				className="
+					absolute top-1/2 -translate-y-1/2 -translate-x-1/2
+					w-3 h-6 flex items-center justify-center
+					cursor-pointer z-10
+					focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+					focus-visible:ring-nervos
+					group
+				"
+				style={{ left: `${position}%` }}
+				aria-label={`${event.name}: ${event.description}`}
+			>
+				{/* Visible thin line marker. */}
+				<div
+					className={`
+						w-1 h-5 rounded-full
+						${getEventColor(event.type)}
+						opacity-70 group-hover:opacity-100
+						transition-opacity duration-150
+					`}
+				/>
+			</button>
+		</Tooltip>
 	);
 }

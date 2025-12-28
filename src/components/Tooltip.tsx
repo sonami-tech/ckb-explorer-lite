@@ -7,7 +7,8 @@
  * - Portal rendering to avoid z-index issues
  */
 
-import { useState, useRef, cloneElement, ReactNode, ReactElement } from 'react';
+import { useState, useRef, cloneElement } from 'react';
+import type { ReactNode, ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import {
 	useFloating,
@@ -24,7 +25,8 @@ interface TooltipProps {
 	/** Content to display in the tooltip. */
 	content: ReactNode;
 	/** Trigger element (must accept ref and mouse/focus events). */
-	children: ReactElement;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	children: ReactElement<any>;
 	/** Preferred placement. Will flip if not enough space. Default: 'top'. */
 	placement?: Placement;
 	/** Whether the tooltip is disabled. */

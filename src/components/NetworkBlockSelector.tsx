@@ -4,6 +4,7 @@ import { useArchive } from '../contexts/ArchiveContext';
 import { getNetworkTypeLabel } from '../config';
 import { formatNumber } from '../lib/format';
 import { useClickOutside } from '../hooks/ui';
+import { Tooltip } from './Tooltip';
 
 /**
  * Combined network and block height selector.
@@ -282,22 +283,23 @@ export function NetworkBlockSelector() {
 									/>
 
 									{/* Go button. */}
-									<button
-										onClick={handleSetSpecific}
-										disabled={heightInput.trim() === ''}
-										className={`
-											p-1.5 rounded transition-colors
-											${heightInput.trim()
-												? 'text-nervos hover:bg-nervos/10'
-												: 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-											}
-										`}
-										title="Go to block"
-									>
-										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-										</svg>
-									</button>
+									<Tooltip content="Go to block">
+										<button
+											onClick={handleSetSpecific}
+											disabled={heightInput.trim() === ''}
+											className={`
+												p-1.5 rounded transition-colors
+												${heightInput.trim()
+													? 'text-nervos hover:bg-nervos/10'
+													: 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+												}
+											`}
+										>
+											<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+											</svg>
+										</button>
+									</Tooltip>
 								</div>
 							</div>
 						</>
