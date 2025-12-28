@@ -3,13 +3,13 @@
  * Includes known script detection with badge, tooltip, and documentation link.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNetwork } from '../contexts/NetworkContext';
 import { lookupLockScript, lookupTypeScript, type ScriptInfo } from '../lib/knownScripts';
 import { HashDisplay } from './CopyButton';
 import { HashTypeIndicator } from './OptionIndicator';
 import { TruncatedData } from './TruncatedData';
 import { DetailRow } from './DetailRow';
+import { Tooltip } from './Tooltip';
 
 interface Script {
 	code_hash: string;
@@ -65,63 +65,10 @@ export function ScriptSection({ title, script }: ScriptSectionProps) {
 }
 
 /**
- * Badge showing known script name with tooltip and documentation link.
- * Desktop: hover shows tooltip, click navigates.
- * Touch: first tap shows tooltip, second tap navigates.
+ * Badge showing known script name with tooltip and optional documentation link.
  */
 function ScriptBadge({ info }: { info: ScriptInfo }) {
-	const [isHovered, setIsHovered] = useState(false);
-	const [isPinned, setIsPinned] = useState(false);
-	const badgeRef = useRef<HTMLAnchorElement | HTMLSpanElement>(null);
-	const tooltipRef = useRef<HTMLSpanElement>(null);
-
 	const hasLink = !!info.sourceUrl;
-	const showTooltip = isHovered || isPinned;
-
-	// Detect if device supports hover.
-	const supportsHover = typeof window !== 'undefined' &&
-		window.matchMedia('(hover: hover)').matches;
-
-	// Unpin tooltip when clicking outside.
-	useEffect(() => {
-		if (!isPinned) return;
-
-		const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-			if (
-				badgeRef.current &&
-				!badgeRef.current.contains(e.target as Node) &&
-				tooltipRef.current &&
-				!tooltipRef.current.contains(e.target as Node)
-			) {
-				setIsPinned(false);
-			}
-		};
-
-		document.addEventListener('mousedown', handleClickOutside);
-		document.addEventListener('touchstart', handleClickOutside);
-
-		return () => {
-			document.removeEventListener('mousedown', handleClickOutside);
-			document.removeEventListener('touchstart', handleClickOutside);
-		};
-	}, [isPinned]);
-
-	const handleMouseEnter = useCallback(() => {
-		setIsHovered(true);
-	}, []);
-
-	const handleMouseLeave = useCallback(() => {
-		setIsHovered(false);
-	}, []);
-
-	const handleClick = useCallback((e: React.MouseEvent) => {
-		if (hasLink && !supportsHover && !isPinned) {
-			// Touch device, first tap: show tooltip, prevent navigation.
-			e.preventDefault();
-			setIsPinned(true);
-		}
-		// Desktop or second tap: allow navigation.
-	}, [hasLink, supportsHover, isPinned]);
 
 	const badge = (
 		<span
@@ -136,45 +83,21 @@ function ScriptBadge({ info }: { info: ScriptInfo }) {
 		</span>
 	);
 
-	const tooltip = showTooltip && (
-		<span
-			ref={tooltipRef}
-			className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 px-3 py-2 text-xs font-normal bg-gray-900 dark:bg-gray-700 text-white rounded shadow-lg whitespace-nowrap pointer-events-none"
-			role="tooltip"
-		>
-			{info.description}
-			{/* Tooltip arrow. */}
-			<span className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45" />
-		</span>
+	const content = (
+		<Tooltip content={info.description} placement="bottom">
+			{hasLink ? (
+				<a
+					href={info.sourceUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					{badge}
+				</a>
+			) : (
+				badge
+			)}
+		</Tooltip>
 	);
 
-	if (hasLink) {
-		return (
-			<a
-				ref={badgeRef as React.RefObject<HTMLAnchorElement>}
-				href={info.sourceUrl}
-				target="_blank"
-				rel="noopener noreferrer"
-				className="relative"
-				onMouseEnter={handleMouseEnter}
-				onMouseLeave={handleMouseLeave}
-				onClick={handleClick}
-			>
-				{badge}
-				{tooltip}
-			</a>
-		);
-	}
-
-	return (
-		<span
-			ref={badgeRef as React.RefObject<HTMLSpanElement>}
-			className="relative"
-			onMouseEnter={handleMouseEnter}
-			onMouseLeave={handleMouseLeave}
-		>
-			{badge}
-			{tooltip}
-		</span>
-	);
+	return content;
 }

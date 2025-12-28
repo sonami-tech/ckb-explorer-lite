@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { copyToClipboard } from '../lib/clipboard';
 import { useIsMobile } from '../hooks/ui';
+import { Tooltip } from './Tooltip';
 
 interface CopyButtonProps {
 	text: string;
@@ -17,29 +18,30 @@ export function CopyButton({ text, className = '' }: CopyButtonProps) {
 	}, [text]);
 
 	return (
-		<span
-			role="button"
-			tabIndex={0}
-			onClick={handleCopy}
-			onKeyDown={(e) => {
-				if (e.key === 'Enter' || e.key === ' ') {
-					e.preventDefault();
-					handleCopy();
-				}
-			}}
-			className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer inline-flex ${className}`}
-			title={copied ? 'Copied!' : 'Copy to clipboard'}
-		>
-			{copied ? (
-				<svg className="w-4 h-4 text-nervos" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-				</svg>
-			) : (
-				<svg className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-				</svg>
-			)}
-		</span>
+		<Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
+			<span
+				role="button"
+				tabIndex={0}
+				onClick={handleCopy}
+				onKeyDown={(e) => {
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault();
+						handleCopy();
+					}
+				}}
+				className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer inline-flex ${className}`}
+			>
+				{copied ? (
+					<svg className="w-4 h-4 text-nervos" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+					</svg>
+				) : (
+					<svg className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+					</svg>
+				)}
+			</span>
+		</Tooltip>
 	);
 }
 
@@ -75,7 +77,6 @@ export function HashDisplay({
 	className = '',
 }: HashDisplayProps) {
 	const [copied, setCopied] = useState(false);
-	const [showTooltip, setShowTooltip] = useState(false);
 	const isMobile = useIsMobile(breakpoint);
 
 	// Determine if truncation should be applied.
@@ -92,11 +93,7 @@ export function HashDisplay({
 	const handleCopy = useCallback(async () => {
 		await copyToClipboard(hash);
 		setCopied(true);
-		setShowTooltip(true);
-		setTimeout(() => {
-			setCopied(false);
-			setShowTooltip(false);
-		}, 2000);
+		setTimeout(() => setCopied(false), 2000);
 	}, [hash]);
 
 	const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -106,63 +103,55 @@ export function HashDisplay({
 		}
 	}, [handleCopy]);
 
+	// Dynamic tooltip content: show "Copied!" after click, otherwise full hash.
+	const tooltipContent = copied ? (
+		<span className="flex items-center gap-1">
+			<svg className="w-3 h-3 text-nervos" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+			</svg>
+			Copied!
+		</span>
+	) : (
+		hash
+	);
+
 	return (
 		<span
 			className={`inline-flex items-center gap-1 font-mono text-sm whitespace-nowrap ${className}`}
 		>
 			{/* Hash text with tooltip. */}
-			<span
-				role="button"
-				tabIndex={0}
-				onClick={handleCopy}
-				onKeyDown={handleKeyDown}
-				onMouseEnter={() => !copied && setShowTooltip(true)}
-				onMouseLeave={() => !copied && setShowTooltip(false)}
-				className="relative cursor-pointer hover:text-nervos transition-colors"
-			>
-				{displayHash}
-
-				{/* Tooltip - shows full hash on hover, "Copied!" after click. */}
-				{showTooltip && (
-					<span
-						className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 px-3 py-2 text-xs bg-gray-900 dark:bg-gray-700 text-white rounded shadow-lg whitespace-nowrap pointer-events-none"
-						role="tooltip"
-					>
-						{copied ? (
-							<span className="flex items-center gap-1">
-								<svg className="w-3 h-3 text-nervos" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-								</svg>
-								Copied!
-							</span>
-						) : (
-							hash
-						)}
-						{/* Tooltip arrow. */}
-						<span className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45" />
-					</span>
-				)}
-			</span>
+			<Tooltip content={tooltipContent}>
+				<span
+					role="button"
+					tabIndex={0}
+					onClick={handleCopy}
+					onKeyDown={handleKeyDown}
+					className="cursor-pointer hover:text-nervos transition-colors"
+				>
+					{displayHash}
+				</span>
+			</Tooltip>
 
 			{/* Copy button icon for visual affordance. */}
-			<span
-				role="button"
-				tabIndex={0}
-				onClick={handleCopy}
-				onKeyDown={handleKeyDown}
-				className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer inline-flex"
-				title={copied ? 'Copied!' : 'Copy to clipboard'}
-			>
-				{copied ? (
-					<svg className="w-3.5 h-3.5 text-nervos" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-					</svg>
-				) : (
-					<svg className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-					</svg>
-				)}
-			</span>
+			<Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'}>
+				<span
+					role="button"
+					tabIndex={0}
+					onClick={handleCopy}
+					onKeyDown={handleKeyDown}
+					className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer inline-flex"
+				>
+					{copied ? (
+						<svg className="w-3.5 h-3.5 text-nervos" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+						</svg>
+					) : (
+						<svg className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+						</svg>
+					)}
+				</span>
+			</Tooltip>
 		</span>
 	);
 }
