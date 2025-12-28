@@ -115,7 +115,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					<span>Cell</span>
 				</div>
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-					Cell Details{archiveHeight !== undefined && ` – Block ${formatNumber(archiveHeight)}`}
+					Cell Details{archiveHeight !== undefined && ` @ Block ${formatNumber(archiveHeight)}`}
 				</h1>
 			</div>
 
