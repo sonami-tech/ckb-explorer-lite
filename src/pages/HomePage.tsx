@@ -202,7 +202,7 @@ export function HomePage() {
 			{/* Stats section - 3 grouped cards. */}
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
 				{/* Block stats. */}
-				<StatGroup title="Blocks">
+				<StatGroup title={`Blocks${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
 					<StatItem label={archiveHeight !== undefined ? 'Archive Height' : 'Tip Block'}>
 						{displayTip !== null ? formatNumber(displayTip) : '...'}
 					</StatItem>
@@ -212,7 +212,7 @@ export function HomePage() {
 				</StatGroup>
 
 				{/* Epoch stats. */}
-				<StatGroup title="Epoch">
+				<StatGroup title={`Epoch${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
 					<StatItem label="Progress">
 						{networkStats
 							? <>
@@ -233,7 +233,7 @@ export function HomePage() {
 				</StatGroup>
 
 				{/* Mining stats. */}
-				<StatGroup title="Mining">
+				<StatGroup title={`Mining${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
 					<StatItem label="Hash Rate">
 						{networkStats && avgBlockTime > 0
 							? formatHashRate(networkStats.difficulty, avgBlockTime)
@@ -249,7 +249,7 @@ export function HomePage() {
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				<section>
 					<h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-						{archiveHeight !== undefined ? `Blocks @ Block ${formatNumber(archiveHeight)}` : 'Latest Blocks'}
+						{`Latest Blocks${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}
 					</h2>
 					<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
 						{isLoadingBlocks ? (
@@ -273,7 +273,7 @@ export function HomePage() {
 				{/* Transactions list. */}
 				<section>
 					<h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-						{archiveHeight !== undefined ? `Transactions @ Block ${formatNumber(archiveHeight)}` : 'Latest Transactions'}
+						{`Latest Transactions${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}
 					</h2>
 					<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
 						{isLoadingBlocks ? (
