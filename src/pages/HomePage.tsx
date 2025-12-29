@@ -249,7 +249,7 @@ export function HomePage() {
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				<section>
 					<h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-						{archiveHeight !== undefined ? 'Blocks at Archive Height' : 'Latest Blocks'}
+						{archiveHeight !== undefined ? `Blocks @ Block ${formatNumber(archiveHeight)}` : 'Latest Blocks'}
 					</h2>
 					<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
 						{isLoadingBlocks ? (
@@ -273,7 +273,7 @@ export function HomePage() {
 				{/* Transactions list. */}
 				<section>
 					<h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-						{archiveHeight !== undefined ? 'Transactions at Archive Height' : 'Latest Transactions'}
+						{archiveHeight !== undefined ? `Transactions @ Block ${formatNumber(archiveHeight)}` : 'Latest Transactions'}
 					</h2>
 					<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
 						{isLoadingBlocks ? (

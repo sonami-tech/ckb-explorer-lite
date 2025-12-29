@@ -260,7 +260,8 @@ export function NetworkBlockSelector() {
 									{/* Input field. */}
 									<input
 										ref={inputRef}
-										type="text"
+										type="number"
+										min="0"
 										value={heightInput}
 										onChange={(e) => setHeightInput(e.target.value)}
 										onKeyDown={handleKeyDown}
@@ -273,11 +274,12 @@ export function NetworkBlockSelector() {
 										className={`
 											flex-1 px-2 py-1 text-sm rounded border
 											bg-white dark:bg-gray-900
+											text-gray-900 dark:text-white
 											placeholder:text-gray-400 dark:placeholder:text-gray-500
 											focus:outline-none focus:ring-1 focus:ring-nervos
 											${showSpecificSelected
-												? 'border-nervos text-nervos'
-												: 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
+												? 'border-nervos'
+												: 'border-gray-300 dark:border-gray-600'
 											}
 										`}
 									/>
