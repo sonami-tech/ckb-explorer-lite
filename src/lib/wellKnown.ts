@@ -67,15 +67,14 @@ const RFC_0025 = 'https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0025-si
 const RFC_0026 = 'https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0026-anyone-can-pay/0026-anyone-can-pay.md';
 const RFC_0042 = 'https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0042-omnilock/0042-omnilock.md';
 const RFC_0052 = 'https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0052-extensible-udt/0052-extensible-udt.md';
-const SPORE_DOCS = 'https://docs.spore.pro';
-const SPORE_CONTRACTS = 'https://docs.spore.pro/resources/contracts';
+// Direct links to deployment configuration files.
+const SPORE_VERSIONS = 'https://github.com/sporeprotocol/spore-contract/blob/master/docs/VERSIONS.md';
 const JOYID_DOCS = 'https://docs.joyid.dev/guide/ckb/smart-contract';
-const COTA_DOCS = 'https://www.cotadev.io';
-const COTA_SDK = 'https://github.com/nervina-labs/cota-sdk-js';
-const NOSTR_DOCS = 'https://github.com/cryptape/nostr-binding';
-const ICKB_DOCS = 'https://github.com/ickb/proposal';
-const RGBPP_SDK = 'https://github.com/ckb-cell/rgbpp-sdk';
-const CKBFS_DOCS = 'https://github.com/nervape/ckbfs';
+const COTA_CONSTANTS = 'https://github.com/nervina-labs/cota-sdk-js/blob/develop/src/constants/index.ts';
+const NOSTR_DEPLOYMENT = 'https://github.com/cryptape/nostr-binding/blob/main/docs/nostr-lock-script.md';
+const ICKB_DEPLOYMENT = 'https://github.com/ickb/whitepaper#mainnet-deployment';
+const RGBPP_CONSTANTS = 'https://github.com/ckb-cell/rgbpp-sdk/blob/main/packages/ckb/src/constants/index.ts';
+const CKBFS_README = 'https://github.com/nervape/ckbfs/blob/master/README.md';
 const CKB_SYSTEM_SCRIPTS = 'https://github.com/nervosnetwork/ckb-system-scripts';
 
 // Internal type for the registry (mainnet and testnet only).
@@ -229,8 +228,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			importance: 'On-chain digital object protocol for NFTs with fully on-chain content storage.',
 			category: 'protocol',
 			resources: [
-				{ title: 'Spore Protocol Docs', url: SPORE_DOCS },
-				{ title: 'Spore Contracts', url: SPORE_CONTRACTS },
+				{ title: 'Spore Deployment Versions', url: SPORE_VERSIONS },
 			],
 		},
 		'0xe464b7fb9311c5e2820e61c99afc615d6b98bdefbe318c34868c010cbd0dc938:0': {
@@ -239,8 +237,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			importance: 'Enables grouping Spores into collections with shared metadata and permissions.',
 			category: 'protocol',
 			resources: [
-				{ title: 'Spore Protocol Docs', url: SPORE_DOCS },
-				{ title: 'Spore Contracts', url: SPORE_CONTRACTS },
+				{ title: 'Spore Deployment Versions', url: SPORE_VERSIONS },
 			],
 		},
 		// ============================================
@@ -266,8 +263,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			category: 'dep_group',
 			dataFormat: 'dep_group',
 			resources: [
-				{ title: 'CoTA Documentation', url: COTA_DOCS },
-				{ title: 'CoTA SDK', url: COTA_SDK },
+				{ title: 'CoTA SDK Constants', url: COTA_CONSTANTS },
 			],
 		},
 		// ============================================
@@ -279,7 +275,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			importance: 'Enables CKB asset control using Nostr protocol keys (schnorr signatures).',
 			category: 'protocol',
 			resources: [
-				{ title: 'NostrLock Repository', url: NOSTR_DOCS },
+				{ title: 'NostrLock Deployment', url: NOSTR_DEPLOYMENT },
 			],
 		},
 		// ============================================
@@ -291,7 +287,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			importance: 'Enables Bitcoin-secured CKB assets through isomorphic binding.',
 			category: 'protocol',
 			resources: [
-				{ title: 'RGB++ SDK', url: RGBPP_SDK },
+				{ title: 'RGB++ SDK Constants', url: RGBPP_CONSTANTS },
 			],
 		},
 		'0x3d1c26b966504b09253ad84173bf3baa7b8135c5ff520c32cf70b631c1d08b9b:0': {
@@ -300,7 +296,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			importance: 'Time-based locking mechanism for RGB++ protocol on CKB.',
 			category: 'protocol',
 			resources: [
-				{ title: 'RGB++ SDK', url: RGBPP_SDK },
+				{ title: 'RGB++ SDK Constants', url: RGBPP_CONSTANTS },
 			],
 		},
 		// ============================================
@@ -313,7 +309,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			category: 'dep_group',
 			dataFormat: 'dep_group',
 			resources: [
-				{ title: 'CKBFS Repository', url: CKBFS_DOCS },
+				{ title: 'CKBFS Deployment', url: CKBFS_README },
 			],
 		},
 		// ============================================
@@ -326,7 +322,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			category: 'dep_group',
 			dataFormat: 'dep_group',
 			resources: [
-				{ title: 'iCKB Proposal', url: ICKB_DOCS },
+				{ title: 'iCKB Deployment', url: ICKB_DEPLOYMENT },
 			],
 		},
 	},
@@ -467,8 +463,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			importance: 'On-chain digital object protocol for NFTs with fully on-chain content storage.',
 			category: 'protocol',
 			resources: [
-				{ title: 'Spore Protocol Docs', url: SPORE_DOCS },
-				{ title: 'Spore Contracts', url: SPORE_CONTRACTS },
+				{ title: 'Spore Deployment Versions', url: SPORE_VERSIONS },
 			],
 		},
 		'0x49551a20dfe39231e7db49431d26c9c08ceec96a29024eef3acc936deeb2ca76:0': {
@@ -477,8 +472,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			importance: 'Enables grouping Spores into collections with shared metadata and permissions.',
 			category: 'protocol',
 			resources: [
-				{ title: 'Spore Protocol Docs', url: SPORE_DOCS },
-				{ title: 'Spore Contracts', url: SPORE_CONTRACTS },
+				{ title: 'Spore Deployment Versions', url: SPORE_VERSIONS },
 			],
 		},
 		// ============================================
@@ -503,7 +497,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			importance: 'Enables CKB asset control using Nostr protocol keys (schnorr signatures).',
 			category: 'protocol',
 			resources: [
-				{ title: 'NostrLock Repository', url: NOSTR_DOCS },
+				{ title: 'NostrLock Deployment', url: NOSTR_DEPLOYMENT },
 			],
 		},
 		// ============================================
@@ -516,8 +510,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			category: 'dep_group',
 			dataFormat: 'dep_group',
 			resources: [
-				{ title: 'CoTA Documentation', url: COTA_DOCS },
-				{ title: 'CoTA SDK', url: COTA_SDK },
+				{ title: 'CoTA SDK Constants', url: COTA_CONSTANTS },
 			],
 		},
 		// ============================================
@@ -529,7 +522,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			importance: 'Enables Bitcoin-secured CKB assets through isomorphic binding.',
 			category: 'protocol',
 			resources: [
-				{ title: 'RGB++ SDK', url: RGBPP_SDK },
+				{ title: 'RGB++ SDK Constants', url: RGBPP_CONSTANTS },
 			],
 		},
 		'0x8fb747ff0416a43e135c583b028f98c7b81d3770551b196eb7ba1062dd9acc94:0': {
@@ -538,7 +531,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			importance: 'Time-based locking mechanism for RGB++ protocol on CKB.',
 			category: 'protocol',
 			resources: [
-				{ title: 'RGB++ SDK', url: RGBPP_SDK },
+				{ title: 'RGB++ SDK Constants', url: RGBPP_CONSTANTS },
 			],
 		},
 		// ============================================
@@ -551,7 +544,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			category: 'dep_group',
 			dataFormat: 'dep_group',
 			resources: [
-				{ title: 'CKBFS Repository', url: CKBFS_DOCS },
+				{ title: 'CKBFS Deployment', url: CKBFS_README },
 			],
 		},
 		// ============================================
@@ -564,7 +557,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			category: 'dep_group',
 			dataFormat: 'dep_group',
 			resources: [
-				{ title: 'iCKB Proposal', url: ICKB_DOCS },
+				{ title: 'iCKB Deployment', url: ICKB_DEPLOYMENT },
 			],
 		},
 	},
@@ -606,7 +599,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			name: 'Spore',
 			description: 'On-chain digital object protocol for NFTs and content.',
 			hashType: 'data1',
-			sourceUrl: SPORE_DOCS,
+			sourceUrl: SPORE_VERSIONS,
 			dataFormat: 'spore',
 		},
 	},
@@ -648,7 +641,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			name: 'Spore',
 			description: 'On-chain digital object protocol for NFTs and content.',
 			hashType: 'data1',
-			sourceUrl: SPORE_DOCS,
+			sourceUrl: SPORE_VERSIONS,
 			dataFormat: 'spore',
 		},
 	},
@@ -753,7 +746,7 @@ export const KNOWN_TYPE_SCRIPTS_BY_ARGS: Record<RegistryNetwork, Record<string, 
 			name: 'iCKB',
 			description: 'iCKB NervosDAO liquidity token (xUDT).',
 			hashType: 'data1',
-			sourceUrl: ICKB_DOCS,
+			sourceUrl: ICKB_DEPLOYMENT,
 			dataFormat: 'xudt',
 			baseTypeName: 'xUDT',
 		},
