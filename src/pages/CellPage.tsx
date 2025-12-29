@@ -215,6 +215,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 				<CellDataSection
 					data={cellData.output_data}
 					typeScript={cellData.output.type}
+					outpoint={{ txHash, index }}
 				/>
 			)}
 		</div>

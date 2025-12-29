@@ -40,6 +40,24 @@ const ICKB_DOCS = 'https://github.com/ickb/v1-core';
 type RegistryNetwork = 'mainnet' | 'testnet';
 
 /**
+ * Known cell data formats by outpoint.
+ * Used for cells without type scripts (e.g., genesis dep_group cells).
+ * Key format: `${txHash}:${index}`
+ */
+export const KNOWN_CELL_FORMATS: Record<RegistryNetwork, Record<string, ScriptInfo['dataFormat']>> = {
+	mainnet: {
+		// Genesis dep_group cells (RFC 0024).
+		'0x71a7ba8fc96349fea0ed3a5c47992e3b4084b031a42264a018e0072e8172e46c:0': 'dep_group',
+		'0x71a7ba8fc96349fea0ed3a5c47992e3b4084b031a42264a018e0072e8172e46c:1': 'dep_group',
+	},
+	testnet: {
+		// Testnet genesis dep_group cells.
+		'0xf8de3bb47d055cdf460d93a2a6e1b05f7432f9777c8c474abf4eec1d4aee5d37:0': 'dep_group',
+		'0xf8de3bb47d055cdf460d93a2a6e1b05f7432f9777c8c474abf4eec1d4aee5d37:1': 'dep_group',
+	},
+};
+
+/**
  * Known type script code hashes.
  * Maps code_hash -> ScriptInfo for mainnet and testnet.
  * Devnet uses testnet scripts.
@@ -309,4 +327,18 @@ export function lookupLockScript(
 		return info;
 	}
 	return null;
+}
+
+/**
+ * Look up cell data format by outpoint.
+ * Used for cells without type scripts (e.g., genesis dep_group cells).
+ */
+export function lookupCellFormat(
+	txHash: string,
+	index: number,
+	network: NetworkType,
+): ScriptInfo['dataFormat'] | null {
+	const registryNetwork = toRegistryNetwork(network);
+	const key = `${txHash}:${index}`;
+	return KNOWN_CELL_FORMATS[registryNetwork][key] ?? null;
 }

@@ -4,13 +4,12 @@ import { CELL_DATA_CONFIG } from '../config';
 import { navigate, generateLink } from '../lib/router';
 import { formatNumber } from '../lib/format';
 import {
-	decodeData,
 	decodeByFormat,
 	formatTokenAmount,
 	type DecodedData,
 	type DepGroupData,
 } from '../lib/decode';
-import { lookupTypeScript } from '../lib/knownScripts';
+import { lookupTypeScript, lookupCellFormat } from '../lib/knownScripts';
 import { TruncatedData } from './TruncatedData';
 import { OutPoint } from './OutPoint';
 import { Tooltip } from './Tooltip';
@@ -22,6 +21,8 @@ interface CellDataSectionProps {
 	data: string;
 	/** Type script for auto-detection. */
 	typeScript?: { code_hash: string; hash_type: string; args: string } | null;
+	/** Cell outpoint for format lookup (used when type script is null). */
+	outpoint?: { txHash: string; index: number };
 	/** Additional CSS classes for the container. */
 	className?: string;
 }
@@ -33,6 +34,7 @@ interface CellDataSectionProps {
 export function CellDataSection({
 	data,
 	typeScript,
+	outpoint,
 	className = '',
 }: CellDataSectionProps) {
 	const { currentNetwork } = useNetwork();
@@ -40,12 +42,24 @@ export function CellDataSection({
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 
-	// Detect available modes based on type script.
+	// Detect available modes based on type script or outpoint registry.
 	const detectedFormat = useMemo(() => {
-		if (!typeScript) return null;
-		const scriptInfo = lookupTypeScript(typeScript.code_hash, typeScript.hash_type, networkType, typeScript.args);
-		return scriptInfo?.dataFormat ?? null;
-	}, [typeScript, networkType]);
+		// First try type script lookup.
+		if (typeScript) {
+			const scriptInfo = lookupTypeScript(typeScript.code_hash, typeScript.hash_type, networkType, typeScript.args);
+			if (scriptInfo?.dataFormat) {
+				return scriptInfo.dataFormat;
+			}
+		}
+		// Fall back to outpoint registry (for cells without type scripts).
+		if (outpoint) {
+			const format = lookupCellFormat(outpoint.txHash, outpoint.index, networkType);
+			if (format) {
+				return format;
+			}
+		}
+		return null;
+	}, [typeScript, outpoint, networkType]);
 
 	// Available view modes - always show all options.
 	const availableModes = useMemo(() => {
@@ -87,7 +101,11 @@ export function CellDataSection({
 		}
 
 		if (viewMode === 'auto') {
-			return decodeData(data, typeScript ?? null, networkType);
+			// Use detected format (from type script or outpoint registry).
+			if (detectedFormat) {
+				return decodeByFormat(data, detectedFormat);
+			}
+			return { type: 'raw', hex: data };
 		}
 
 		if (viewMode === 'raw') {
@@ -95,7 +113,7 @@ export function CellDataSection({
 		}
 
 		return decodeByFormat(data, viewMode);
-	}, [data, viewMode, typeScript, networkType]);
+	}, [data, viewMode, detectedFormat]);
 
 	const byteCount = (data.length - 2) / 2;
 	const showDropdown = data !== '0x' && availableModes.length > 1;

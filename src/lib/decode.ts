@@ -173,12 +173,12 @@ export function decodeDao(data: string): DaoData | null {
 
 /**
  * Decode DEP_GROUP cell data.
- * Format: Molecule vector of OutPoints.
- * - First 4 bytes: total byte length (uint32 LE).
+ * Format: Molecule FixVec of OutPoints.
+ * - First 4 bytes: item count (uint32 LE).
  * - Followed by OutPoint items (36 bytes each: 32-byte tx_hash + 4-byte index).
  *
- * Note: Molecule vectors have a 4-byte length header, then items directly.
- * OutPointVec is a fixed-size vector, so no offset table.
+ * Note: Molecule FixVec has item count header, not byte length.
+ * OutPointVec contains fixed-size OutPoint structs (36 bytes each).
  */
 export function decodeDepGroup(data: string): DepGroupData | null {
 	const bytes = hexToBytes(data);
@@ -186,18 +186,14 @@ export function decodeDepGroup(data: string): DepGroupData | null {
 	// Minimum: 4 bytes header.
 	if (bytes.length < 4) return null;
 
-	// Read total byte length.
-	const totalLength = readUint32LE(bytes, 0);
+	// Read item count.
+	const count = readUint32LE(bytes, 0);
 
-	// Validate length matches.
-	if (totalLength !== bytes.length) return null;
-
-	// Calculate number of OutPoints.
+	// Validate data length matches expected size.
 	// Each OutPoint is 36 bytes (32 tx_hash + 4 index).
-	const dataLength = bytes.length - 4;
-	if (dataLength % 36 !== 0) return null;
+	const expectedLength = 4 + count * 36;
+	if (bytes.length !== expectedLength) return null;
 
-	const count = dataLength / 36;
 	const outpoints: DepGroupData['outpoints'] = [];
 
 	for (let i = 0; i < count; i++) {
