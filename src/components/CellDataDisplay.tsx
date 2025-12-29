@@ -274,7 +274,8 @@ function DecodedContent({ decoded }: { decoded: DecodedData }) {
 function formatModeName(mode: ViewMode, detectedFormat: string | null): string {
 	switch (mode) {
 		case 'auto':
-			return detectedFormat ? `Auto (${detectedFormat.toUpperCase()})` : 'Auto';
+			// Use the same formatting as the explicit mode for consistency.
+			return detectedFormat ? `Auto (${formatModeName(detectedFormat as ViewMode, null)})` : 'Auto';
 		case 'raw':
 			return 'Raw Hex';
 		case 'sudt':
