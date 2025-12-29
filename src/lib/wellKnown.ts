@@ -71,8 +71,11 @@ const SPORE_DOCS = 'https://docs.spore.pro';
 const SPORE_CONTRACTS = 'https://docs.spore.pro/resources/contracts';
 const JOYID_DOCS = 'https://docs.joyid.dev/guide/ckb/smart-contract';
 const COTA_DOCS = 'https://www.cotadev.io';
+const COTA_SDK = 'https://github.com/nervina-labs/cota-sdk-js';
 const NOSTR_DOCS = 'https://github.com/cryptape/nostr-binding';
 const ICKB_DOCS = 'https://github.com/ickb/v1-core';
+const RGBPP_SDK = 'https://github.com/ckb-cell/rgbpp-sdk';
+const CKBFS_DOCS = 'https://github.com/nervape/ckbfs';
 const CKB_SYSTEM_SCRIPTS = 'https://github.com/nervosnetwork/ckb-system-scripts';
 
 // Internal type for the registry (mainnet and testnet only).
@@ -207,7 +210,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		// ============================================
 		// Omnilock (RFC 0042)
 		// ============================================
-		'0xdfdb40f5d229536f6d71cc48a59ce8112cf4ebf17b0ccfb4ae99f4b86e0e0fbb:0': {
+		'0xc76edf469816aa22f416503c38d0b533d2a018e253e379f134c3985b3472c842:0': {
 			name: 'Omnilock Binary',
 			description: 'Contains the compiled RISC-V binary code for the Omnilock lock script.',
 			importance: 'Universal lock supporting Ethereum, Bitcoin, Dogecoin addresses, and more. Enables cross-chain identity verification.',
@@ -220,7 +223,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		// ============================================
 		// Spore Protocol
 		// ============================================
-		'0x96b198fb5ddbd1eed57ed667068f1f1e55f532a1f04e3ab3a87c50620438fd95:0': {
+		'0x96b198fb5ddbd1eed57ed667068f1f1e55d07907b4c0dbd38675a69ea1b69824:0': {
 			name: 'Spore Binary',
 			description: 'Contains the compiled RISC-V binary code for the Spore type script.',
 			importance: 'On-chain digital object protocol for NFTs with fully on-chain content storage.',
@@ -243,37 +246,87 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		// ============================================
 		// JoyID
 		// ============================================
-		'0xd00c84f0ec8fd441c38bc3f87a371f547190f2fcff88e642bc5bf54b9e318323:0': {
-			name: 'JoyID Lock Binary',
-			description: 'Contains the compiled RISC-V binary code for the JoyID lock script.',
+		'0xf05188e5f3a6767fc4687faf45ba5f1a6e25d3ada6129dae8722cb282f262493:0': {
+			name: 'JoyID Dep Group',
+			description: 'Dependency group for the JoyID lock script. References the code cell and required dependencies.',
 			importance: 'WebAuthn-based authentication using device biometrics. Enables passwordless wallet access.',
-			category: 'protocol',
+			category: 'dep_group',
+			dataFormat: 'dep_group',
 			resources: [
 				{ title: 'JoyID Documentation', url: JOYID_DOCS },
 			],
 		},
 		// ============================================
-		// COTA
+		// CoTA (Compact Token Aggregator)
 		// ============================================
-		'0xabf09e201c63a9f60706fe0213bf8e53fce0b9a6e6a939cbae8d8b6b8af93c60:0': {
-			name: 'COTA Lock Binary',
-			description: 'Contains the compiled RISC-V binary code for the COTA lock script.',
+		'0xabaa25237554f0d6c586dc010e7e85e6870bcfd9fb8773257ecacfbe1fd738a0:0': {
+			name: 'CoTA Dep Group',
+			description: 'Dependency group for the CoTA type script. References code cells needed for CoTA operations.',
 			importance: 'Compact Token Aggregator protocol for efficient NFT management with minimal cell usage.',
-			category: 'protocol',
+			category: 'dep_group',
+			dataFormat: 'dep_group',
 			resources: [
-				{ title: 'COTA Documentation', url: COTA_DOCS },
+				{ title: 'CoTA Documentation', url: COTA_DOCS },
+				{ title: 'CoTA SDK', url: COTA_SDK },
 			],
 		},
 		// ============================================
 		// NostrLock
 		// ============================================
-		'0x6ae5ee0cb887b2df5a9a18137315b9bdc55be8d52637b1de62c154571cedacf9:0': {
+		'0x1911208b136957d5f7c1708a8835edfe8ae1d02700d5cb2c3a6aacf4d5906306:0': {
 			name: 'NostrLock Binary',
 			description: 'Contains the compiled RISC-V binary code for the NostrLock lock script.',
 			importance: 'Enables CKB asset control using Nostr protocol keys (schnorr signatures).',
 			category: 'protocol',
 			resources: [
 				{ title: 'NostrLock Repository', url: NOSTR_DOCS },
+			],
+		},
+		// ============================================
+		// RGB++ Protocol
+		// ============================================
+		'0xcb4d9f9726e66306bfda6359d39d3bea8b4e5345d0f95f26a3e51626ebe82a63:0': {
+			name: 'RGB++ Lock Binary',
+			description: 'Contains the compiled RISC-V binary code for the RGB++ lock script.',
+			importance: 'Enables Bitcoin-secured CKB assets through isomorphic binding.',
+			category: 'protocol',
+			resources: [
+				{ title: 'RGB++ SDK', url: RGBPP_SDK },
+			],
+		},
+		'0x3d1c26b966504b09253ad84173bf3baa7b8135c5ff520c32cf70b631c1d08b9b:0': {
+			name: 'BTC Time Lock Binary',
+			description: 'Contains the compiled RISC-V binary code for the BTC Time Lock.',
+			importance: 'Time-based locking mechanism for RGB++ protocol on CKB.',
+			category: 'protocol',
+			resources: [
+				{ title: 'RGB++ SDK', url: RGBPP_SDK },
+			],
+		},
+		// ============================================
+		// CKBFS (File Storage)
+		// ============================================
+		'0xfab07962ed7178ed88d450774e2a6ecd50bae856bdb9b692980be8c5147d1bfa:0': {
+			name: 'CKBFS Dep Group',
+			description: 'Dependency group for the CKBFS type script. References code cells needed for file storage operations.',
+			importance: 'Enables on-chain file storage with content-addressable chunks.',
+			category: 'dep_group',
+			dataFormat: 'dep_group',
+			resources: [
+				{ title: 'CKBFS Repository', url: CKBFS_DOCS },
+			],
+		},
+		// ============================================
+		// iCKB Protocol
+		// ============================================
+		'0x621a6f38de3b9f453016780edac3b26bfcbfa3e2ecb47c2da275471a5d3ed165:0': {
+			name: 'iCKB Dep Group',
+			description: 'Dependency group for the iCKB protocol scripts. References logic, limit order, and owned-owner code cells.',
+			importance: 'Liquid staking protocol that tokenizes NervosDAO deposits into transferable iCKB tokens.',
+			category: 'dep_group',
+			dataFormat: 'dep_group',
+			resources: [
+				{ title: 'iCKB Protocol', url: ICKB_DOCS },
 			],
 		},
 	},
@@ -369,7 +422,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		// ============================================
 		// SUDT (RFC 0025)
 		// ============================================
-		'0xe12877ebd2c3c364dc46c5c992bcfaf4fee33fa13eebdf82c591f9c5de473f20:0': {
+		'0xe12877ebd2c3c364dc46c5c992bcfaf4fee33fa13eebdf82c591fc9825aab769:0': {
 			name: 'SUDT Binary',
 			description: 'Contains the compiled RISC-V binary code for the Simple UDT (SUDT) type script.',
 			importance: 'Standard token implementation. The foundation for fungible tokens on CKB.',
@@ -380,25 +433,12 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			rfc: '0025',
 		},
 		// ============================================
-		// xUDT (RFC 0052) - V1 (data1 hash type)
+		// xUDT (RFC 0052)
 		// ============================================
-		'0xbf6fb538763efec2a70a6a3dcb7571fb6cb9f5875c4f6a6edf8a9c88648496a7:0': {
-			name: 'xUDT Binary (V1)',
-			description: 'Contains the compiled RISC-V binary code for the Extensible UDT (xUDT) type script (V1, data1 hash type).',
-			importance: 'Advanced token standard with extension support. First testnet deployment version.',
-			category: 'protocol',
-			resources: [
-				{ title: 'RFC 0052: Extensible UDT', url: RFC_0052 },
-			],
-			rfc: '0052',
-		},
-		// ============================================
-		// xUDT (RFC 0052) - V2 (type hash type, used by CCC SDK)
-		// ============================================
-		'0x1f2615b6b5f6ae80b5a0ca4874e4e5868a501d34efc708dc6c53e67c8c652402:0': {
-			name: 'xUDT Binary (V2)',
-			description: 'Contains the compiled RISC-V binary code for the Extensible UDT (xUDT) type script (V2, type hash type).',
-			importance: 'Advanced token standard with extension support. Current version used by CCC SDK.',
+		'0xbf6fb538763efec2a70a6a3dcb7242787087e1030c4e7d86585bc63a9d337f5f:0': {
+			name: 'xUDT Binary',
+			description: 'Contains the compiled RISC-V binary code for the Extensible UDT (xUDT) type script.',
+			importance: 'Advanced token standard with extension support.',
 			category: 'protocol',
 			resources: [
 				{ title: 'RFC 0052: Extensible UDT', url: RFC_0052 },
@@ -408,7 +448,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		// ============================================
 		// Omnilock (RFC 0042)
 		// ============================================
-		'0x3d4296df1bd2cc2bd3f86f70e079b22f22f7189a450e7a50810de0e00c69f2c7:0': {
+		'0xec18bf0d857c981c3d1f4e17999b9b90c484b303378e94de1a57b0872f5d4602:0': {
 			name: 'Omnilock Binary',
 			description: 'Contains the compiled RISC-V binary code for the Omnilock lock script.',
 			importance: 'Universal lock supporting Ethereum, Bitcoin, Dogecoin addresses, and more. Enables cross-chain identity verification.',
@@ -421,7 +461,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		// ============================================
 		// Spore Protocol
 		// ============================================
-		'0x5e8d2a517d50fd4bb4d01737a7952a1f1d35c8afc77240695bb569cd7d9d5a1f:0': {
+		'0xfd694382e621f175ddf81ce91ce2ecf8bfc027d53d7d31b8438f7d26fc37fd19:0': {
 			name: 'Spore Binary',
 			description: 'Contains the compiled RISC-V binary code for the Spore type script.',
 			importance: 'On-chain digital object protocol for NFTs with fully on-chain content storage.',
@@ -431,7 +471,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 				{ title: 'Spore Contracts', url: SPORE_CONTRACTS },
 			],
 		},
-		'0xcebb174d6e300e26074aca5f483571f8672384d5152377a4fae12cf0c4e10c79:0': {
+		'0x49551a20dfe39231e7db49431d26c9c08ceec96a29024eef3acc936deeb2ca76:0': {
 			name: 'Spore Cluster Binary',
 			description: 'Contains the compiled RISC-V binary code for the Spore Cluster type script.',
 			importance: 'Enables grouping Spores into collections with shared metadata and permissions.',
@@ -439,6 +479,92 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			resources: [
 				{ title: 'Spore Protocol Docs', url: SPORE_DOCS },
 				{ title: 'Spore Contracts', url: SPORE_CONTRACTS },
+			],
+		},
+		// ============================================
+		// JoyID
+		// ============================================
+		'0x4dcf3f3b09efac8995d6cbee87c5345e812d310094651e0c3d9a730f32dc9263:0': {
+			name: 'JoyID Dep Group',
+			description: 'Dependency group for the JoyID lock script. References the code cell and required dependencies.',
+			importance: 'WebAuthn-based authentication using device biometrics. Enables passwordless wallet access.',
+			category: 'dep_group',
+			dataFormat: 'dep_group',
+			resources: [
+				{ title: 'JoyID Documentation', url: JOYID_DOCS },
+			],
+		},
+		// ============================================
+		// NostrLock
+		// ============================================
+		'0xa2a434dcdbe280b9ed75bb7d6c7d68186a842456aba0fc506657dc5ed7c01d68:0': {
+			name: 'NostrLock Binary',
+			description: 'Contains the compiled RISC-V binary code for the NostrLock lock script.',
+			importance: 'Enables CKB asset control using Nostr protocol keys (schnorr signatures).',
+			category: 'protocol',
+			resources: [
+				{ title: 'NostrLock Repository', url: NOSTR_DOCS },
+			],
+		},
+		// ============================================
+		// CoTA (Compact Token Aggregator)
+		// ============================================
+		'0x636a786001f87cb615acfcf408be0f9a1f077001f0bbc75ca54eadfe7e221713:0': {
+			name: 'CoTA Dep Group',
+			description: 'Dependency group for the CoTA type script. References code cells needed for CoTA operations.',
+			importance: 'Compact Token Aggregator protocol for efficient NFT management with minimal cell usage.',
+			category: 'dep_group',
+			dataFormat: 'dep_group',
+			resources: [
+				{ title: 'CoTA Documentation', url: COTA_DOCS },
+				{ title: 'CoTA SDK', url: COTA_SDK },
+			],
+		},
+		// ============================================
+		// RGB++ Protocol
+		// ============================================
+		'0x0d1567da0979f78b297d5311442669fbd1bd853c8be324c5ab6da41e7a1ed6e5:0': {
+			name: 'RGB++ Lock Binary',
+			description: 'Contains the compiled RISC-V binary code for the RGB++ lock script.',
+			importance: 'Enables Bitcoin-secured CKB assets through isomorphic binding.',
+			category: 'protocol',
+			resources: [
+				{ title: 'RGB++ SDK', url: RGBPP_SDK },
+			],
+		},
+		'0x8fb747ff0416a43e135c583b028f98c7b81d3770551b196eb7ba1062dd9acc94:0': {
+			name: 'BTC Time Lock Binary',
+			description: 'Contains the compiled RISC-V binary code for the BTC Time Lock.',
+			importance: 'Time-based locking mechanism for RGB++ protocol on CKB.',
+			category: 'protocol',
+			resources: [
+				{ title: 'RGB++ SDK', url: RGBPP_SDK },
+			],
+		},
+		// ============================================
+		// CKBFS (File Storage)
+		// ============================================
+		'0x469af0d961dcaaeed872968a9388b546717a6ccfa47b3165b3f9c981e9d66aaa:0': {
+			name: 'CKBFS Dep Group',
+			description: 'Dependency group for the CKBFS type script. References code cells needed for file storage operations.',
+			importance: 'Enables on-chain file storage with content-addressable chunks.',
+			category: 'dep_group',
+			dataFormat: 'dep_group',
+			resources: [
+				{ title: 'CKBFS Repository', url: CKBFS_DOCS },
+			],
+		},
+		// ============================================
+		// iCKB Protocol
+		// ============================================
+		'0xf7ece4fb33d8378344cab11fcd6a4c6f382fd4207ac921cf5821f30712dcd311:0': {
+			name: 'iCKB Dep Group',
+			description: 'Dependency group for the iCKB protocol scripts. References logic, limit order, and owned-owner code cells.',
+			importance: 'Liquid staking protocol that tokenizes NervosDAO deposits into transferable iCKB tokens.',
+			category: 'dep_group',
+			dataFormat: 'dep_group',
+			resources: [
+				{ title: 'iCKB Protocol', url: ICKB_DOCS },
 			],
 		},
 	},
