@@ -49,11 +49,15 @@ export const KNOWN_CELL_FORMATS: Record<RegistryNetwork, Record<string, ScriptIn
 		// Genesis dep_group cells (RFC 0024).
 		'0x71a7ba8fc96349fea0ed3a5c47992e3b4084b031a42264a018e0072e8172e46c:0': 'dep_group',
 		'0x71a7ba8fc96349fea0ed3a5c47992e3b4084b031a42264a018e0072e8172e46c:1': 'dep_group',
+		// Anyone-Can-Pay dep_group (RFC 0026).
+		'0x4153a2014952d7cac45f285ce9a7c5c0c0e1b21f2d378b82ac1433cb11c25c4d:0': 'dep_group',
 	},
 	testnet: {
 		// Testnet genesis dep_group cells.
 		'0xf8de3bb47d055cdf460d93a2a6e1b05f7432f9777c8c474abf4eec1d4aee5d37:0': 'dep_group',
 		'0xf8de3bb47d055cdf460d93a2a6e1b05f7432f9777c8c474abf4eec1d4aee5d37:1': 'dep_group',
+		// Anyone-Can-Pay dep_group (RFC 0026).
+		'0xec26b0f85ed839ece5f11c4c4e837ec359f5adc4420410f6453b1f6b60fb96a6:0': 'dep_group',
 	},
 };
 
