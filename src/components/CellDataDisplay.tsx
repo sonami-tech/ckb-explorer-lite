@@ -169,12 +169,12 @@ export function CellDataSection({
 
 						{/* Dropdown menu. */}
 						{isDropdownOpen && (
-							<div className="absolute right-0 mt-1 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
+							<div className="absolute right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
 								{availableModes.map((mode) => (
 									<button
 										key={mode}
 										onClick={() => handleModeSelect(mode)}
-										className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
+										className={`w-full text-left px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${
 											effectiveMode === mode
 												? 'bg-nervos/10 text-nervos font-medium'
 												: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -182,7 +182,7 @@ export function CellDataSection({
 									>
 										{formatModeName(mode, detectedFormat)}
 										{effectiveMode === mode && (
-											<svg className="inline w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<svg className="inline w-4 h-4 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
 											</svg>
 										)}
