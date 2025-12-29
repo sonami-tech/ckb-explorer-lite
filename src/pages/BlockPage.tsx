@@ -158,7 +158,7 @@ export function BlockPage({ id }: BlockPageProps) {
 							<HashDisplay hash={header.parent_hash} responsive />
 							<Tooltip content="Go to parent block" interactive>
 								<button
-									onClick={() => navigate(generateLink(`/block/${header.parent_hash}`, archiveHeight))}
+									onClick={() => navigate(generateLink(`/block/${header.parent_hash}`))}
 									className="text-nervos hover:text-nervos-dark"
 								>
 									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

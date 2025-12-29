@@ -60,7 +60,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 				const blockResult = await rpc.getBlockByHash(hash, archiveHeight);
 				if (fetchId !== fetchIdRef.current) return;
 				if (blockResult) {
-					navigate(generateLink(`/block/${hash}`, archiveHeight));
+					navigate(generateLink(`/block/${hash}`));
 					return;
 				}
 				throw new Error(`Transaction not found: ${hash}`);
@@ -153,7 +153,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 								<HashDisplay hash={tx_status.block_hash} />
 								<Tooltip content="Go to block" interactive>
 									<button
-										onClick={() => navigate(generateLink(`/block/${tx_status.block_hash}`, archiveHeight))}
+										onClick={() => navigate(generateLink(`/block/${tx_status.block_hash}`))}
 										className="text-nervos hover:text-nervos-dark"
 									>
 										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -270,7 +270,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 								<div className="flex items-center gap-2 ml-8">
 									<Tooltip content={address} interactive>
 										<button
-											onClick={() => navigate(generateLink(`/address/${address}`, archiveHeight))}
+											onClick={() => navigate(generateLink(`/address/${address}`))}
 											className="text-nervos hover:text-nervos-dark font-mono text-sm truncate"
 										>
 											<span className="hidden sm:inline">{address}</span>

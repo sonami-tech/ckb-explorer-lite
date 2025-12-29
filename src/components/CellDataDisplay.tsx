@@ -10,11 +10,23 @@ import {
 	type DepGroupData,
 } from '../lib/decode';
 import { lookupTypeScript, lookupCellFormat } from '../lib/knownScripts';
+import { useUrlParam } from '../hooks/useUrlParam';
 import { TruncatedData } from './TruncatedData';
 import { OutPoint } from './OutPoint';
 import { Tooltip } from './Tooltip';
 
 type ViewMode = 'auto' | 'raw' | 'sudt' | 'xudt' | 'dao' | 'dep_group';
+
+/** Valid decode parameter values for URL. */
+const VALID_DECODE_PARAMS: ViewMode[] = ['raw', 'sudt', 'xudt', 'dao', 'dep_group'];
+
+/** Parse decode param from URL, returning null if invalid. */
+function parseDecodeParam(value: string | null): ViewMode | null {
+	if (value && VALID_DECODE_PARAMS.includes(value as ViewMode)) {
+		return value as ViewMode;
+	}
+	return null;
+}
 
 interface CellDataSectionProps {
 	/** The hex data to display. */
@@ -41,6 +53,10 @@ export function CellDataSection({
 	const networkType = currentNetwork?.type ?? 'mainnet';
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 	const dropdownRef = useRef<HTMLDivElement>(null);
+
+	// Read decode param from URL.
+	const [decodeParam, setDecodeParam] = useUrlParam('decode');
+	const urlMode = parseDecodeParam(decodeParam);
 
 	// Detect available modes based on type script or outpoint registry.
 	const detectedFormat = useMemo(() => {
@@ -71,9 +87,11 @@ export function CellDataSection({
 		return modes;
 	}, [detectedFormat]);
 
-	// Default to 'auto' only if auto-decode is enabled and format is detected.
+	// Determine view mode: URL param > auto-detect > raw.
+	// URL param takes precedence if valid.
+	// Otherwise, default to 'auto' if format detected and auto-decode enabled, else 'raw'.
 	const defaultMode = (CELL_DATA_CONFIG.autoDecodeKnownTypes && detectedFormat) ? 'auto' : 'raw';
-	const [viewMode, setViewMode] = useState<ViewMode>(defaultMode);
+	const effectiveMode: ViewMode = urlMode ?? defaultMode;
 
 	// Close dropdown when clicking outside.
 	useEffect(() => {
@@ -90,9 +108,10 @@ export function CellDataSection({
 	}, [isDropdownOpen]);
 
 	const handleModeSelect = useCallback((mode: ViewMode) => {
-		setViewMode(mode);
+		// Update URL param. Use null for default mode to keep URL clean.
+		setDecodeParam(mode === defaultMode ? null : mode);
 		setIsDropdownOpen(false);
-	}, []);
+	}, [setDecodeParam, defaultMode]);
 
 	// Decode data based on current mode.
 	const decoded: DecodedData = useMemo(() => {
@@ -100,7 +119,7 @@ export function CellDataSection({
 			return { type: 'raw', hex: data };
 		}
 
-		if (viewMode === 'auto') {
+		if (effectiveMode === 'auto') {
 			// Use detected format (from type script or outpoint registry).
 			if (detectedFormat) {
 				return decodeByFormat(data, detectedFormat);
@@ -108,12 +127,12 @@ export function CellDataSection({
 			return { type: 'raw', hex: data };
 		}
 
-		if (viewMode === 'raw') {
+		if (effectiveMode === 'raw') {
 			return { type: 'raw', hex: data };
 		}
 
-		return decodeByFormat(data, viewMode);
-	}, [data, viewMode, detectedFormat]);
+		return decodeByFormat(data, effectiveMode);
+	}, [data, effectiveMode, detectedFormat]);
 
 	const byteCount = (data.length - 2) / 2;
 	const showDropdown = data !== '0x' && availableModes.length > 1;
@@ -137,7 +156,7 @@ export function CellDataSection({
 							className="flex items-center gap-1.5 px-2.5 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
 						>
 							<span className="text-gray-500 dark:text-gray-500">Decode:</span>
-							<span className="font-medium">{formatModeName(viewMode, detectedFormat)}</span>
+							<span className="font-medium">{formatModeName(effectiveMode, detectedFormat)}</span>
 							<svg
 								className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
 								fill="none"
@@ -156,13 +175,13 @@ export function CellDataSection({
 										key={mode}
 										onClick={() => handleModeSelect(mode)}
 										className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
-											viewMode === mode
+											effectiveMode === mode
 												? 'bg-nervos/10 text-nervos font-medium'
 												: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
 										}`}
 									>
 										{formatModeName(mode, detectedFormat)}
-										{viewMode === mode && (
+										{effectiveMode === mode && (
 											<svg className="inline w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
 											</svg>

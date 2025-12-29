@@ -61,23 +61,40 @@ export function navigate(path: string): void {
 }
 
 /**
- * Generate a link preserving network and optional height parameters.
+ * Generate a link preserving network and height, with optional additional params.
+ *
+ * @param path - The path to navigate to.
+ * @param params - Optional additional query parameters. Use undefined to omit a param.
+ * @returns The full path with query string.
  */
-export function generateLink(path: string, height?: number): string {
-	const params = new URLSearchParams();
+export function generateLink(
+	path: string,
+	params?: Record<string, string | number | undefined>,
+): string {
+	const urlParams = new URLSearchParams();
 
 	// Preserve network from current URL.
 	const currentParams = new URLSearchParams(window.location.search);
 	const network = currentParams.get('network');
 	if (network) {
-		params.set('network', network);
+		urlParams.set('network', network);
 	}
 
-	// Add height if provided.
-	if (height !== undefined) {
-		params.set('height', height.toString());
+	// Preserve height from current URL.
+	const height = currentParams.get('height');
+	if (height) {
+		urlParams.set('height', height);
 	}
 
-	const queryString = params.toString();
+	// Add any additional params provided.
+	if (params) {
+		for (const [key, value] of Object.entries(params)) {
+			if (value !== undefined) {
+				urlParams.set(key, String(value));
+			}
+		}
+	}
+
+	const queryString = urlParams.toString();
 	return queryString ? `${path}?${queryString}` : path;
 }

@@ -1,12 +1,10 @@
 import { useState, useCallback } from 'react';
 import { navigate, generateLink } from '../lib/router';
 import { detectSearchType } from '../lib/format';
-import { useArchive } from '../contexts/ArchiveContext';
 
 export function SearchBar() {
 	const [query, setQuery] = useState('');
 	const [error, setError] = useState<string | null>(null);
-	const { archiveHeight } = useArchive();
 
 	const handleSubmit = useCallback((e: React.FormEvent) => {
 		e.preventDefault();
@@ -19,23 +17,23 @@ export function SearchBar() {
 
 		switch (searchType) {
 			case 'block-number':
-				navigate(generateLink(`/block/${trimmed}`, archiveHeight));
+				navigate(generateLink(`/block/${trimmed}`));
 				setQuery('');
 				break;
 			case 'hash':
 				// Could be block hash or tx hash - we'll try both in the page.
 				// For now, navigate to tx page and let it handle redirects.
-				navigate(generateLink(`/tx/${trimmed}`, archiveHeight));
+				navigate(generateLink(`/tx/${trimmed}`));
 				setQuery('');
 				break;
 			case 'address':
-				navigate(generateLink(`/address/${trimmed}`, archiveHeight));
+				navigate(generateLink(`/address/${trimmed}`));
 				setQuery('');
 				break;
 			default:
 				setError('Invalid input. Enter a block number, transaction hash, or address.');
 		}
-	}, [query, archiveHeight]);
+	}, [query]);
 
 	return (
 		<form onSubmit={handleSubmit} className="w-full">

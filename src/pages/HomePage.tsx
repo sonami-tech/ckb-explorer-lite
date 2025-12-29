@@ -323,15 +323,13 @@ function StatItem({ label, children }: { label: string; children: React.ReactNod
 }
 
 function BlockListItem({ block }: { block: BlockInfo }) {
-	const { archiveHeight } = useArchive();
-
 	// Truncate miner address for display (8...4 format).
 	const truncatedMiner = block.minerAddress
 		? truncateAddress(block.minerAddress)
 		: '';
 
 	const txLabel = block.transactionCount === 1 ? '1 txn' : `${block.transactionCount} txns`;
-	const href = generateLink(`/block/${block.number}`, archiveHeight);
+	const href = generateLink(`/block/${block.number}`);
 
 	const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
 		// Allow default behavior for modifier keys (new tab) or middle click.
@@ -371,11 +369,9 @@ function BlockListItem({ block }: { block: BlockInfo }) {
 }
 
 function TransactionListItem({ tx }: { tx: TransactionInfo }) {
-	const { archiveHeight } = useArchive();
-
 	const inputLabel = tx.inputCount === 1 ? '1 input' : `${tx.inputCount} inputs`;
 	const outputLabel = tx.outputCount === 1 ? '1 output' : `${tx.outputCount} outputs`;
-	const href = generateLink(`/tx/${tx.hash}`, archiveHeight);
+	const href = generateLink(`/tx/${tx.hash}`);
 
 	const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
 		// Allow default behavior for modifier keys (new tab) or middle click.
