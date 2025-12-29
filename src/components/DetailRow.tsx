@@ -1,5 +1,5 @@
 interface DetailRowProps {
-	label: string;
+	label: React.ReactNode;
 	children: React.ReactNode;
 }
 
@@ -9,8 +9,8 @@ interface DetailRowProps {
  */
 export function DetailRow({ label, children }: DetailRowProps) {
 	return (
-		<div className="flex flex-col md:flex-row md:items-center p-4 gap-2">
-			<span className="w-32 lg:w-40 flex-shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400">
+		<div className="flex flex-col lg:flex-row lg:items-center p-4 gap-2">
+			<span className="w-40 flex-shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400">
 				{label}
 			</span>
 			<div className="flex-1 text-sm text-gray-900 dark:text-white break-all">
