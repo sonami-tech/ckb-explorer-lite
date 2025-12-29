@@ -73,7 +73,7 @@ const JOYID_DOCS = 'https://docs.joyid.dev/guide/ckb/smart-contract';
 const COTA_DOCS = 'https://www.cotadev.io';
 const COTA_SDK = 'https://github.com/nervina-labs/cota-sdk-js';
 const NOSTR_DOCS = 'https://github.com/cryptape/nostr-binding';
-const ICKB_DOCS = 'https://github.com/ickb/v1-core';
+const ICKB_DOCS = 'https://github.com/ickb/proposal';
 const RGBPP_SDK = 'https://github.com/ckb-cell/rgbpp-sdk';
 const CKBFS_DOCS = 'https://github.com/nervape/ckbfs';
 const CKB_SYSTEM_SCRIPTS = 'https://github.com/nervosnetwork/ckb-system-scripts';
@@ -322,11 +322,11 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		'0x621a6f38de3b9f453016780edac3b26bfcbfa3e2ecb47c2da275471a5d3ed165:0': {
 			name: 'iCKB Dep Group',
 			description: 'Dependency group for the iCKB protocol scripts. References logic, limit order, and owned-owner code cells.',
-			importance: 'Liquid staking protocol that tokenizes NervosDAO deposits into transferable iCKB tokens.',
+			importance: 'NervosDAO liquidity protocol that tokenizes DAO deposits into transferable iCKB tokens.',
 			category: 'dep_group',
 			dataFormat: 'dep_group',
 			resources: [
-				{ title: 'iCKB Protocol', url: ICKB_DOCS },
+				{ title: 'iCKB Proposal', url: ICKB_DOCS },
 			],
 		},
 	},
@@ -560,11 +560,11 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		'0xf7ece4fb33d8378344cab11fcd6a4c6f382fd4207ac921cf5821f30712dcd311:0': {
 			name: 'iCKB Dep Group',
 			description: 'Dependency group for the iCKB protocol scripts. References logic, limit order, and owned-owner code cells.',
-			importance: 'Liquid staking protocol that tokenizes NervosDAO deposits into transferable iCKB tokens.',
+			importance: 'NervosDAO liquidity protocol that tokenizes DAO deposits into transferable iCKB tokens.',
 			category: 'dep_group',
 			dataFormat: 'dep_group',
 			resources: [
-				{ title: 'iCKB Protocol', url: ICKB_DOCS },
+				{ title: 'iCKB Proposal', url: ICKB_DOCS },
 			],
 		},
 	},
@@ -743,7 +743,7 @@ function buildArgsKey(codeHash: string, hashType: string, args: string): string 
  */
 export const KNOWN_TYPE_SCRIPTS_BY_ARGS: Record<RegistryNetwork, Record<string, ScriptInfo>> = {
 	mainnet: {
-		// iCKB - liquid staking token wrapping NervosDAO deposits.
+		// iCKB - NervosDAO liquidity token.
 		// Args: iCKB Logic Script Hash + owner mode flag (0x80000000 LE).
 		[buildArgsKey(
 			'0x50bd8d6680b8b9cf98b73f3c08faf8b2a21914311954118ad6609be6e78a1b95',
@@ -751,7 +751,7 @@ export const KNOWN_TYPE_SCRIPTS_BY_ARGS: Record<RegistryNetwork, Record<string, 
 			'0xb73b6ab39d79390c6de90a09c96b290c331baf1798ed6f97aed02590929734e800000080',
 		)]: {
 			name: 'iCKB',
-			description: 'iCKB liquid staking token (xUDT).',
+			description: 'iCKB NervosDAO liquidity token (xUDT).',
 			hashType: 'data1',
 			sourceUrl: ICKB_DOCS,
 			dataFormat: 'xudt',
