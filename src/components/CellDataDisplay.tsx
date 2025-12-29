@@ -9,7 +9,7 @@ import {
 	type DecodedData,
 	type DepGroupData,
 } from '../lib/decode';
-import { lookupTypeScript, lookupCellFormat } from '../lib/knownScripts';
+import { lookupTypeScript, lookupCellFormat } from '../lib/wellKnown';
 import { useUrlParam } from '../hooks/useUrlParam';
 import { TruncatedData } from './TruncatedData';
 import { OutPoint } from './OutPoint';

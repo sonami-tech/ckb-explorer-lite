@@ -1,9 +1,10 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
-import { useRpc } from '../contexts/NetworkContext';
+import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
+import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import { useArchive } from '../contexts/ArchiveContext';
 import { formatCkb, formatNumber } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
 import { fromHex } from '../lib/rpc';
+import { lookupWellKnownCell } from '../lib/wellKnown';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { CellDataSection } from '../components/CellDataDisplay';
@@ -12,6 +13,7 @@ import { OutPoint } from '../components/OutPoint';
 import { CellStatusIndicator } from '../components/OptionIndicator';
 import { ScriptSection } from '../components/ScriptSection';
 import { Tooltip } from '../components/Tooltip';
+import { WellKnownCellInfo } from '../components/WellKnownCellInfo';
 import type { RpcCellWithLifecycle } from '../types/rpc';
 
 interface CellPageProps {
@@ -21,10 +23,19 @@ interface CellPageProps {
 
 export function CellPage({ txHash, index }: CellPageProps) {
 	const rpc = useRpc();
+	const { currentNetwork } = useNetwork();
 	const { archiveHeight } = useArchive();
 	const [cellData, setCellData] = useState<RpcCellWithLifecycle | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
+
+	const networkType = currentNetwork?.type ?? 'mainnet';
+
+	// Look up well-known cell info by outpoint.
+	const wellKnownCellInfo = useMemo(
+		() => lookupWellKnownCell(txHash, index, networkType),
+		[txHash, index, networkType]
+	);
 
 	// Track fetch ID to ignore stale responses during navigation.
 	const fetchIdRef = useRef(0);
@@ -118,6 +129,11 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					Cell Details{archiveHeight !== undefined && ` @ Block ${formatNumber(archiveHeight)}`}
 				</h1>
 			</div>
+
+			{/* Well-known cell info (if applicable). */}
+			{wellKnownCellInfo && (
+				<WellKnownCellInfo info={wellKnownCellInfo} />
+			)}
 
 			{/* Cell details. */}
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">

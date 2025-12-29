@@ -4,8 +4,8 @@
  */
 
 import type { NetworkType } from '../config/networks';
-import type { ScriptInfo } from './knownScripts';
-import { lookupTypeScript } from './knownScripts';
+import type { ScriptInfo } from './wellKnown';
+import { lookupTypeScript } from './wellKnown';
 
 /**
  * Decoded SUDT data.

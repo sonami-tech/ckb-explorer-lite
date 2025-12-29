@@ -4,7 +4,7 @@
  */
 
 import { useNetwork } from '../contexts/NetworkContext';
-import { lookupLockScript, lookupTypeScript, type ScriptInfo } from '../lib/knownScripts';
+import { lookupLockScript, lookupTypeScript, type ScriptInfo } from '../lib/wellKnown';
 import { HashDisplay } from './CopyButton';
 import { HashTypeIndicator } from './OptionIndicator';
 import { TruncatedData } from './TruncatedData';

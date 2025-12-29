@@ -10,6 +10,7 @@ import { BlockPage } from './pages/BlockPage';
 import { TransactionPage } from './pages/TransactionPage';
 import { AddressPage } from './pages/AddressPage';
 import { CellPage } from './pages/CellPage';
+import { WellKnownScriptsPage } from './pages/WellKnownScriptsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 function Router() {
@@ -26,6 +27,8 @@ function Router() {
 			return <AddressPage address={route.address} />;
 		case 'cell':
 			return <CellPage txHash={route.txHash} index={route.index} />;
+		case 'scripts':
+			return <WellKnownScriptsPage />;
 		case 'not-found':
 		default:
 			return <NotFoundPage />;
