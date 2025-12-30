@@ -30,8 +30,14 @@ export function SearchBar() {
 				navigate(generateLink(`/address/${trimmed}`));
 				setQuery('');
 				break;
+			case 'outpoint': {
+				const [txHash, index] = trimmed.split(':');
+				navigate(generateLink(`/cell/${txHash}/${index}`));
+				setQuery('');
+				break;
+			}
 			default:
-				setError('Invalid input. Enter a block number, transaction hash, or address.');
+				setError('Invalid input. Enter a block number, tx hash, address, or cell outpoint.');
 		}
 	}, [query]);
 
@@ -45,7 +51,7 @@ export function SearchBar() {
 						setQuery(e.target.value);
 						setError(null);
 					}}
-					placeholder="Search by block number, tx hash, or address..."
+					placeholder="Search by block, tx hash, address, or cell outpoint..."
 					className={`
 						w-full px-4 py-2.5 pr-12 text-sm rounded-lg
 						bg-white dark:bg-gray-900

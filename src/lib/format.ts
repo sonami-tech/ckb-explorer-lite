@@ -299,13 +299,25 @@ export function isAddress(str: string): boolean {
 }
 
 /**
+ * Check if a string is a valid cell OutPoint (txHash:index).
+ */
+export function isOutPoint(str: string): boolean {
+	return /^0x[0-9a-fA-F]{64}:\d+$/.test(str);
+}
+
+/**
  * Detect the type of search input.
  */
-export function detectSearchType(input: string): 'block-number' | 'hash' | 'address' | 'unknown' {
+export function detectSearchType(input: string): 'block-number' | 'hash' | 'address' | 'outpoint' | 'unknown' {
 	const trimmed = input.trim();
 
 	if (isBlockNumber(trimmed)) {
 		return 'block-number';
+	}
+
+	// Check outpoint before hash since outpoint contains a valid hash prefix.
+	if (isOutPoint(trimmed)) {
+		return 'outpoint';
 	}
 
 	if (isValidHex(trimmed) && trimmed.length === 66) {
