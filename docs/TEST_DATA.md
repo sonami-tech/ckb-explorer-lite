@@ -11,8 +11,8 @@ Specific test data for manual QA on mainnet archive node. Requires archive node 
 | Dep Group (SECP256K1) | `0x71a7ba8fc96349fea0ed3a5c47992e3b4084b031a42264a018e0072e8172e46c:0` | Genesis | None | Always live, dep_group decoding |
 | Dep Group (Multisig) | `0x71a7ba8fc96349fea0ed3a5c47992e3b4084b031a42264a018e0072e8172e46c:1` | Genesis | None | Always live, dep_group decoding |
 | Genesis Data | `0xe2fb199810d49a4d8beec56718ba2593b665db9d52299a0f9e6e75416d73ff5c:0` | Genesis | None | Raw data display without type script |
-| DAO Deposit | `0x82def095dfe9227e373a3e03e71f582537b81576558f6a91b4b3eb65d7273d1b:0` | SECP256K1 | NervosDAO | Live, DAO data decoding (8 bytes) |
-| iCKB Token | `0xee0a59258225f667a711e50effad4134e2e1aa3e49c79ea3a93ed0e0a5248416:0` | Omnilock V2 | xUDT | Live, xUDT data decoding, iCKB badge |
+| DAO Deposit | `0x1fdfec93d515009759b6c0a029775143bdeaa9b9883216fc82589cc53e17c195:0` | SECP256K1 | NervosDAO | Live, DAO data decoding (8 bytes) |
+| iCKB Token | `0x7822556daf897a1815a9e593be3ccb6472e967f11bf296904204ef94c3439415:0` | Omnilock V2 | xUDT | Live, xUDT data decoding (16 bytes) |
 
 ### Dead Cells
 
@@ -20,7 +20,7 @@ Specific test data for manual QA on mainnet archive node. Requires archive node 
 |------|----------|---------|----------|--------|
 | Short-lived | `0x82f18d6dd30acd5aaf74737852cb020a38beaa481d21013344f597a2f5c4e7d9:0` | 18,013,850 | 18,013,852 | Dead status, Omnilock V1 lock |
 | DAO Withdraw | `0x0d62a62747493ea53ab6cbebef2a5efc6625125e9d1cb950ce01676a08ad3b16:0` | 11,174 | 290,749 | Dead status, DAO consumed |
-| iCKB Spent | `0x2cbf107bbf4a3cd7a27b95f682029c8f91e5755ab1c658c606251dacd7e4022c:0` | 14,639,282 | 14,688,536 | Dead status, xUDT consumed |
+| xUDT Spent | `0x14b69894e2896511d09eb95d4774c7c3798178c2210e147384f64b45d41e72a4:1` | 11,979,619 | 11,993,333 | Dead status, xUDT consumed, JoyID lock |
 
 ### Archive Lifecycle Testing
 
@@ -66,7 +66,7 @@ SECP256K1_BLAKE160 addresses for testing AddressPage.
 |------------------|------|--------|
 | `0x71a7ba8fc96349fea0ed3a5c47992e3b4084b031a42264a018e0072e8172e46c` | Genesis cellbase | Single output, system cells |
 | `0x82f18d6dd30acd5aaf74737852cb020a38beaa481d21013344f597a2f5c4e7d9` | Regular transfer | Omnilock V1 output |
-| `0x82def095dfe9227e373a3e03e71f582537b81576558f6a91b4b3eb65d7273d1b` | DAO deposit | NervosDAO type script output |
+| `0x1fdfec93d515009759b6c0a029775143bdeaa9b9883216fc82589cc53e17c195` | DAO deposit | NervosDAO type script output |
 | `0x8ea92e89466c73b25cc01e6957c7bc5439fa9deaacc95ee1fd44e6c64f1451d0` | DAO withdrawal | Phase 2 withdrawal with header_deps |
 
 ### Large Input/Output Transactions (Layout Testing)
@@ -83,8 +83,8 @@ Transactions for testing scrolling lists and pagination in TransactionPage.
 
 | Type | Cell OutPoint | Data Format | Verify |
 |------|---------------|-------------|--------|
-| NervosDAO | `0x82def095dfe9227e373a3e03e71f582537b81576558f6a91b4b3eb65d7273d1b:0` | 8 bytes | Deposit/withdraw phase |
-| xUDT (iCKB) | `0xee0a59258225f667a711e50effad4134e2e1aa3e49c79ea3a93ed0e0a5248416:0` | 16+ bytes | Token amount display |
+| NervosDAO | `0x1fdfec93d515009759b6c0a029775143bdeaa9b9883216fc82589cc53e17c195:0` | 8 bytes | Deposit/withdraw phase |
+| xUDT (iCKB) | `0x7822556daf897a1815a9e593be3ccb6472e967f11bf296904204ef94c3439415:0` | 16 bytes | Token amount display |
 | Dep Group (SECP256K1) | `0x71a7ba8fc96349fea0ed3a5c47992e3b4084b031a42264a018e0072e8172e46c:0` | OutPoint vector | Lists secp256k1_data + sighash_all |
 | Dep Group (Multisig) | `0x71a7ba8fc96349fea0ed3a5c47992e3b4084b031a42264a018e0072e8172e46c:1` | OutPoint vector | Lists secp256k1_data + multisig_all |
 
@@ -92,9 +92,9 @@ Transactions for testing scrolling lists and pagination in TransactionPage.
 
 | Lock Type | Example Cell | Verify |
 |-----------|--------------|--------|
-| SECP256K1/blake160 | `0x82def095dfe9227e373a3e03e71f582537b81576558f6a91b4b3eb65d7273d1b:0` | Default lock badge |
+| SECP256K1/blake160 | `0x1fdfec93d515009759b6c0a029775143bdeaa9b9883216fc82589cc53e17c195:0` | Default lock badge |
 | Omnilock V1 | `0x82f18d6dd30acd5aaf74737852cb020a38beaa481d21013344f597a2f5c4e7d9:0` | Omnilock badge |
-| Omnilock V2 | `0xee0a59258225f667a711e50effad4134e2e1aa3e49c79ea3a93ed0e0a5248416:0` | Omnilock badge |
+| Omnilock V2 | `0x7822556daf897a1815a9e593be3ccb6472e967f11bf296904204ef94c3439415:0` | Omnilock badge |
 
 ## Archive Mode
 
