@@ -60,6 +60,7 @@ export function setRouteChangeCallback(callback: RouteChangeCallback): void {
  */
 export function navigate(path: string): void {
 	router.navigate(path);
+	window.scrollTo(0, 0);
 	// Dispatch event for ArchiveContext to sync state from the new URL.
 	window.dispatchEvent(new Event('spa-navigate'));
 }
