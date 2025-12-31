@@ -16,6 +16,7 @@ import { HashDisplay } from '../components/CopyButton';
 import { DetailRow } from '../components/DetailRow';
 import { OutPoint } from '../components/OutPoint';
 import type { RpcBlock, RpcTransaction } from '../types/rpc';
+import { BRAND } from '../lib/badgeStyles';
 
 interface BlockPageProps {
 	id: string;
@@ -213,7 +214,7 @@ function TransactionRow({
 						#{index}
 					</span>
 					{index === 0 && (
-						<span className="px-2 py-0.5 text-xs font-medium bg-nervos/10 text-nervos rounded">
+						<span className={`px-2 py-0.5 text-xs font-medium ${BRAND} rounded`}>
 							Cellbase
 						</span>
 					)}

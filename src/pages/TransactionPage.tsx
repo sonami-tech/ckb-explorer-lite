@@ -19,6 +19,12 @@ import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
 import { InternalLinkIcon } from '../components/InternalLinkIcon';
 import type { RpcTransaction, RpcTransactionWithStatus } from '../types/rpc';
+import {
+	BRAND,
+	HAS_TYPE,
+	DEP_TYPE,
+	getStatusStyle,
+} from '../lib/badgeStyles';
 
 interface TransactionPageProps {
 	hash: string;
@@ -197,7 +203,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 											<span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-6">
 												#{index}
 											</span>
-											<span className="px-1.5 py-0.5 text-[10px] font-semibold bg-nervos/10 text-nervos rounded">
+											<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${BRAND} rounded`}>
 												Cellbase
 											</span>
 											<span className="text-sm text-gray-500 dark:text-gray-400">
@@ -247,7 +253,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 											#{index}
 										</span>
 										{output.type && (
-											<span className="px-1.5 py-0.5 text-[10px] font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+											<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${HAS_TYPE} rounded`}>
 												Has Type
 											</span>
 										)}
@@ -290,7 +296,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 										txHash={dep.out_point.tx_hash}
 										index={parseInt(dep.out_point.index, 16)}
 									/>
-									<span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
+									<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${DEP_TYPE} rounded`}>
 										{dep.dep_type}
 									</span>
 								</div>
@@ -329,16 +335,8 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-	const statusStyles: Record<string, string> = {
-		committed: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
-		pending: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
-		proposed: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-		rejected: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-		unknown: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-400',
-	};
-
 	return (
-		<span className={`px-2 py-1 rounded text-xs font-medium ${statusStyles[status] || statusStyles.unknown}`}>
+		<span className={`px-2 py-1 rounded text-xs font-medium ${getStatusStyle(status)}`}>
 			{status.charAt(0).toUpperCase() + status.slice(1)}
 		</span>
 	);

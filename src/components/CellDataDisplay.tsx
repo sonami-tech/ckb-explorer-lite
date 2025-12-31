@@ -14,6 +14,7 @@ import { useUrlParam } from '../hooks/useUrlParam';
 import { TruncatedData } from './TruncatedData';
 import { OutPoint } from './OutPoint';
 import { Tooltip } from './Tooltip';
+import { DAO_DEPOSIT, DAO_WITHDRAW } from '../lib/badgeStyles';
 
 type ViewMode = 'auto' | 'raw' | 'sudt' | 'xudt' | 'dao' | 'dep_group';
 
@@ -238,9 +239,7 @@ function DecodedContent({ decoded }: { decoded: DecodedData }) {
 				<div className="flex items-center gap-3">
 					<span
 						className={`px-2 py-1 rounded text-xs font-medium ${
-							decoded.phase === 'deposit'
-								? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-								: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+							decoded.phase === 'deposit' ? DAO_DEPOSIT : DAO_WITHDRAW
 						}`}
 					>
 						{decoded.phase === 'deposit' ? 'Deposit' : 'Withdraw'}

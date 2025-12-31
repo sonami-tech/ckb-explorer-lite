@@ -8,12 +8,23 @@ import { useNetwork } from '../contexts/NetworkContext';
 import { navigate, generateLink } from '../lib/router';
 import { HashDisplay } from '../components/CopyButton';
 import { OutPoint } from '../components/OutPoint';
+import { Tooltip } from '../components/Tooltip';
 import {
 	KNOWN_LOCK_SCRIPTS,
 	KNOWN_TYPE_SCRIPTS,
 	WELL_KNOWN_CELLS,
 	type WellKnownCellCategory,
 } from '../lib/wellKnown';
+import {
+	BRAND,
+	SCRIPT_LOCK,
+	SCRIPT_TYPE,
+	CELL_BINARY,
+	CELL_DEP_GROUP,
+	CELL_PROTOCOL,
+	STATUS_NEUTRAL,
+	getHashTypeStyle,
+} from '../lib/badgeStyles';
 
 type RegistryNetwork = 'mainnet' | 'testnet';
 
@@ -340,9 +351,11 @@ function ResourceCard({ resource }: { resource: ResolvedResource }) {
 							{definition.name}
 						</h2>
 						{definition.rfc && (
-							<span className="px-1.5 py-0.5 text-xs font-medium bg-nervos/10 text-nervos rounded">
-								RFC {definition.rfc}
-							</span>
+							<Tooltip content="Request for Comments — CKB's formal specification process for protocol standards.">
+								<span className={`px-1.5 py-0.5 text-xs font-medium ${BRAND} rounded cursor-help`}>
+									RFC {definition.rfc}
+								</span>
+							</Tooltip>
 						)}
 					</div>
 					{definition.sourceUrl && (
@@ -385,24 +398,55 @@ function ResourceItemRow({ item }: { item: ResourceItem }) {
 }
 
 /**
+ * Get tooltip content for script type badges.
+ */
+function getScriptTypeTooltip(type: 'lock_script' | 'type_script'): string {
+	return type === 'lock_script'
+		? 'Lock scripts control who can spend a cell by validating signatures or other unlock conditions.'
+		: 'Type scripts validate cell data format and enforce state transition rules.';
+}
+
+/**
+ * Get tooltip content for hash type badges.
+ */
+function getHashTypeTooltip(hashType: string): string {
+	switch (hashType) {
+		case 'type':
+			return 'Script identified by the type hash of its code cell, allowing upgrades while preserving identity.';
+		case 'data':
+			return 'Script identified by blake2b hash of the code binary (CKB-VM v0).';
+		case 'data1':
+			return 'Script identified by blake2b hash of the code binary (CKB-VM v1).';
+		case 'data2':
+			return 'Script identified by blake2b hash of the code binary (CKB-VM v2).';
+		default:
+			return `Hash type: ${hashType}`;
+	}
+}
+
+
+/**
  * Row for a script item (lock or type).
  */
 function ScriptItemRow({ item }: { item: ResourceItem }) {
 	const typeLabel = item.type === 'lock_script' ? 'Lock Script' : 'Type Script';
-	const typeBgColor = item.type === 'lock_script'
-		? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-		: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400';
+	// Indigo for lock scripts (security/access), teal for type scripts (validation).
+	const typeBgColor = item.type === 'lock_script' ? SCRIPT_LOCK : SCRIPT_TYPE;
 
 	return (
 		<div className="p-4">
 			<div className="flex items-center gap-2 mb-1 flex-wrap">
 				<h4 className="font-medium text-gray-900 dark:text-white">{item.name}</h4>
-				<span className={`px-1.5 py-0.5 text-xs font-medium rounded ${typeBgColor}`}>
-					{typeLabel}
-				</span>
-				<span className="px-1.5 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
-					{item.hashType}
-				</span>
+				<Tooltip content={getScriptTypeTooltip(item.type as 'lock_script' | 'type_script')}>
+					<span className={`px-1.5 py-0.5 text-xs font-medium rounded cursor-help ${typeBgColor}`}>
+						{typeLabel}
+					</span>
+				</Tooltip>
+				<Tooltip content={getHashTypeTooltip(item.hashType!)}>
+					<span className={`px-1.5 py-0.5 text-xs font-mono rounded cursor-help ${getHashTypeStyle(item.hashType!)}`}>
+						{item.hashType}
+					</span>
+				</Tooltip>
 			</div>
 			<p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
 				{item.description}
@@ -418,15 +462,17 @@ function ScriptItemRow({ item }: { item: ResourceItem }) {
  * Row for a cell item.
  */
 function CellItemRow({ item }: { item: ResourceItem }) {
-	const categoryStyles = getCategoryStyles(item.category!);
+	const categoryInfo = getCategoryInfo(item.category!);
 
 	return (
 		<div className="p-4">
 			<div className="flex items-center gap-2 mb-1 flex-wrap">
 				<h4 className="font-medium text-gray-900 dark:text-white">{item.name}</h4>
-				<span className={`px-1.5 py-0.5 text-xs font-medium rounded ${categoryStyles.className}`}>
-					{categoryStyles.label}
-				</span>
+				<Tooltip content={categoryInfo.tooltip}>
+					<span className={`px-1.5 py-0.5 text-xs font-medium rounded cursor-help ${categoryInfo.className}`}>
+						{categoryInfo.label}
+					</span>
+				</Tooltip>
 			</div>
 			<p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
 				{item.description}
@@ -437,29 +483,33 @@ function CellItemRow({ item }: { item: ResourceItem }) {
 }
 
 /**
- * Get category styles for badges.
+ * Get category info for badges including tooltip.
  */
-function getCategoryStyles(category: WellKnownCellCategory): { label: string; className: string } {
+function getCategoryInfo(category: WellKnownCellCategory): { label: string; className: string; tooltip: string } {
 	switch (category) {
 		case 'system':
 			return {
 				label: 'Binary',
-				className: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+				className: CELL_BINARY,
+				tooltip: 'Contains compiled RISC-V binary code that executes on CKB-VM.',
 			};
 		case 'dep_group':
 			return {
 				label: 'Dep Group',
-				className: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
+				className: CELL_DEP_GROUP,
+				tooltip: 'References multiple cells to include as transaction dependencies.',
 			};
 		case 'protocol':
 			return {
 				label: 'Protocol',
-				className: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+				className: CELL_PROTOCOL,
+				tooltip: 'Standard protocol implementation deployed on-chain.',
 			};
 		default:
 			return {
 				label: 'Unknown',
-				className: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-400',
+				className: STATUS_NEUTRAL,
+				tooltip: 'Unknown cell category.',
 			};
 	}
 }

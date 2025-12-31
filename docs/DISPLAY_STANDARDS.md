@@ -121,9 +121,28 @@ Components with responsive display (full on desktop/tablet, truncated on mobile)
 
 ### Badges
 
-- **Status badges**: Colored based on state (committed=green, pending=yellow, etc.)
-- **Type badges**: "Has Type" for outputs with type scripts.
-- **dep_type badges**: "code" or "dep_group" for cell dependencies.
+Badge colors are centralized in `src/lib/badgeStyles.ts` for consistency across the site. This file exports constants for all semantic badge categories and helper functions for dynamic color selection.
+
+**Badge categories:**
+- **Status badges**: Convey state (success, error, warning, info).
+- **Hash type badges**: Distinguish script identification methods (type vs data).
+- **Script type badges**: Lock scripts (indigo) vs type scripts (teal).
+- **Cell category badges**: Binary, Dep Group, Protocol.
+- **Brand badges**: RFC labels, known scripts, cellbase markers.
+- **DAO phase badges**: Deposit (green) vs withdraw (yellow).
+
+**Usage:**
+```tsx
+import { STATUS_SUCCESS, getHashTypeStyle } from '../lib/badgeStyles';
+
+// Static badge
+<span className={`px-2 py-1 rounded ${STATUS_SUCCESS}`}>Live</span>
+
+// Dynamic badge
+<span className={`px-2 py-1 rounded ${getHashTypeStyle(hashType)}`}>{hashType}</span>
+```
+
+See `src/lib/badgeStyles.ts` for the complete list of constants and helper functions.
 
 ## Components
 

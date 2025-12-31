@@ -20,6 +20,7 @@ import { ErrorDisplay, ConnectionError } from '../components/ErrorDisplay';
 import { RelativeTime } from '../components/RelativeTime';
 import type { RpcBlock } from '../types/rpc';
 import { POLL_INTERVAL_MS, HOME_ITEMS_TO_SHOW } from '../config';
+import { BRAND } from '../lib/badgeStyles';
 
 interface BlockInfo {
 	number: bigint;
@@ -394,7 +395,7 @@ function TransactionListItem({ tx }: { tx: TransactionInfo }) {
 						{truncateHex(tx.hash, 8, 8)}
 					</span>
 					{tx.isCellbase && (
-						<span className="px-1.5 py-0.5 text-[10px] font-semibold bg-nervos/10 text-nervos rounded">
+						<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${BRAND} rounded`}>
 							Cellbase
 						</span>
 					)}

@@ -4,6 +4,13 @@
  */
 
 import type { WellKnownCellInfo as WellKnownCellInfoType, WellKnownCellCategory } from '../lib/wellKnown';
+import {
+	BRAND,
+	CELL_BINARY,
+	CELL_DEP_GROUP,
+	CELL_PROTOCOL,
+	STATUS_NEUTRAL,
+} from '../lib/badgeStyles';
 
 interface WellKnownCellInfoProps {
 	/** The well-known cell information to display. */
@@ -20,22 +27,22 @@ function getCategoryStyles(category: WellKnownCellCategory): { label: string; cl
 		case 'system':
 			return {
 				label: 'System',
-				className: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+				className: CELL_BINARY,
 			};
 		case 'dep_group':
 			return {
 				label: 'Dep Group',
-				className: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
+				className: CELL_DEP_GROUP,
 			};
 		case 'protocol':
 			return {
 				label: 'Protocol',
-				className: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+				className: CELL_PROTOCOL,
 			};
 		default:
 			return {
 				label: 'Unknown',
-				className: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-400',
+				className: STATUS_NEUTRAL,
 			};
 	}
 }
@@ -59,7 +66,7 @@ export function WellKnownCellInfo({ info, className = '' }: WellKnownCellInfoPro
 							{categoryStyles.label}
 						</span>
 						{info.rfc && (
-							<span className="px-2 py-0.5 rounded text-xs font-medium bg-nervos/10 text-nervos">
+							<span className={`px-2 py-0.5 rounded text-xs font-medium ${BRAND}`}>
 								RFC {info.rfc}
 							</span>
 						)}

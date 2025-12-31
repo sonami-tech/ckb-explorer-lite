@@ -10,6 +10,7 @@ import { HashTypeIndicator } from './OptionIndicator';
 import { TruncatedData } from './TruncatedData';
 import { DetailRow } from './DetailRow';
 import { Tooltip } from './Tooltip';
+import { BRAND } from '../lib/badgeStyles';
 
 interface Script {
 	code_hash: string;
@@ -72,7 +73,7 @@ function ScriptBadge({ info }: { info: ScriptInfo }) {
 
 	const badge = (
 		<span
-			className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-sm font-medium bg-nervos/10 text-nervos ${hasLink ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'}`}
+			className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-sm font-medium ${BRAND} ${hasLink ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'}`}
 		>
 			{info.name}
 			{hasLink && (

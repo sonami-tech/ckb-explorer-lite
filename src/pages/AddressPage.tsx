@@ -14,6 +14,12 @@ import { HashDisplay } from '../components/CopyButton';
 import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
 import type { RpcCell, RpcScript, IndexerSearchKey } from '../types/rpc';
+import {
+	LEGACY_FORMAT,
+	NETWORK,
+	HAS_TYPE,
+	HASH_DATA,
+} from '../lib/badgeStyles';
 
 interface AddressPageProps {
 	address: string;
@@ -179,11 +185,11 @@ export function AddressPage({ address }: AddressPageProps) {
 						Address{archiveHeight !== undefined && ` @ Block ${formatNumber(archiveHeight)}`}
 					</h1>
 					{isDeprecated && (
-						<span className="px-2 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded">
+						<span className={`px-2 py-0.5 text-xs font-medium ${LEGACY_FORMAT} rounded`}>
 							Legacy Format
 						</span>
 					)}
-					<span className="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
+					<span className={`px-2 py-0.5 text-xs font-medium ${NETWORK} rounded`}>
 						{getNetworkFromPrefix(networkPrefix)}
 					</span>
 				</div>
@@ -300,12 +306,12 @@ function CellListItem({
 			<div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
 				<span>Block {formatNumber(BigInt(cell.block_number))}</span>
 				{cell.output.type && (
-					<span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+					<span className={`px-1.5 py-0.5 ${HAS_TYPE} rounded`}>
 						Has Type
 					</span>
 				)}
 				{cell.output_data && cell.output_data !== '0x' && (
-					<span className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
+					<span className={`px-1.5 py-0.5 ${HASH_DATA} rounded`}>
 						Has Data
 					</span>
 				)}
