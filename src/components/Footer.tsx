@@ -55,7 +55,7 @@ export function Footer() {
 		<footer className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
 			<div className="max-w-7xl mx-auto px-4 py-8">
 				{/* Footer grid. */}
-				<div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+				<div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-8">
 					{/* Explorer section. */}
 					<div>
 						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
@@ -75,30 +75,6 @@ export function Footer() {
 						</ul>
 					</div>
 
-					{/* Resources section. */}
-					<div>
-						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
-							Resources
-						</h3>
-						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-							<li>
-								<ExternalLink href="https://docs.nervos.org">
-									CKB Documentation
-								</ExternalLink>
-							</li>
-							<li>
-								<ExternalLink href="https://github.com/nervosnetwork/rfcs">
-									RFC Proposals
-								</ExternalLink>
-							</li>
-							<li>
-								<ExternalLink href="https://github.com/ckb-devrel/ccc">
-									CCC SDK
-								</ExternalLink>
-							</li>
-						</ul>
-					</div>
-
 					{/* Community section. */}
 					<div>
 						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
@@ -106,42 +82,110 @@ export function Footer() {
 						</h3>
 						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
 							<li>
-								<ExternalLink href="https://discord.gg/nervos">
-									Discord
+								<ExternalLink href="https://nervosnation.com">
+									NervosNation.com
 								</ExternalLink>
 							</li>
 							<li>
-								<ExternalLink href="https://twitter.com/nervabornetwork">
-									Twitter
+								<ExternalLink href="https://t.me/NervosNation">
+									Nervos Nation Telegram
+								</ExternalLink>
+							</li>
+							<li>
+								<ExternalLink href="https://www.youtube.com/@NervosNation">
+									Nervos Nation YouTube
 								</ExternalLink>
 							</li>
 							<li>
 								<ExternalLink href="https://talk.nervos.org">
-									Forum
+									Nervos Talk Forum
 								</ExternalLink>
 							</li>
 						</ul>
 					</div>
 
-					{/* Open Source section. */}
+					{/* Tools section. */}
 					<div>
 						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
-							Open Source
+							Tools
 						</h3>
 						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
 							<li>
-								<ExternalLink href="https://github.com/nervosnetwork/ckb">
-									CKB Node
+								<ExternalLink href="https://nervoshalving.com">
+									Nervos Halving
 								</ExternalLink>
 							</li>
 							<li>
-								<ExternalLink href="https://github.com/nervosnetwork/ckb-system-scripts">
-									System Scripts
+								<ExternalLink href="https://ckb.tools">
+									CKB.tools
 								</ExternalLink>
 							</li>
 							<li>
-								<ExternalLink href="https://explorer.nervos.org">
-									CKB Explorer
+								<ExternalLink href="https://github.com/jordanmack/nervos-ckb-node-dashboard">
+									Node Dashboard
+								</ExternalLink>
+							</li>
+						</ul>
+					</div>
+
+					{/* Sonami section. */}
+					<div>
+						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+							Sōnami
+						</h3>
+						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+							<li>
+								<ExternalLink href="https://sonami.cc">
+									Sonami.cc
+								</ExternalLink>
+							</li>
+							<li>
+								<ExternalLink href="https://blog.sonami.cc">
+									Blog
+								</ExternalLink>
+							</li>
+							<li>
+								<ExternalLink href="https://x.com/SonamiTech">
+									Twitter
+								</ExternalLink>
+							</li>
+							<li>
+								<ExternalLink href="https://github.com/sonami-tech">
+									GitHub
+								</ExternalLink>
+							</li>
+						</ul>
+					</div>
+
+					{/* Nervos Official section. */}
+					<div>
+						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+							Nervos Official
+						</h3>
+						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+							<li>
+								<ExternalLink href="https://docs.nervos.org">
+									Developer Docs
+								</ExternalLink>
+							</li>
+							<li>
+								<ExternalLink href="https://nervos.org">
+									Nervos.org
+								</ExternalLink>
+							</li>
+							<li>
+								<ExternalLink href="https://www.youtube.com/nervosnetwork">
+									YouTube
+								</ExternalLink>
+							</li>
+							<li>
+								<ExternalLink href="https://x.com/NervosNetwork">
+									Twitter
+								</ExternalLink>
+							</li>
+							<li>
+								<ExternalLink href="https://discord.gg/FKh8Zzvwqa">
+									Discord
 								</ExternalLink>
 							</li>
 						</ul>
@@ -155,7 +199,16 @@ export function Footer() {
 							CKB Explorer Lite
 						</p>
 						<p>
-							Powered by{' '}
+							Built by{' '}
+							<a
+								href="https://sonami.cc"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-nervos hover:underline"
+							>
+								Sōnami
+							</a>
+							{' · Powered by '}
 							<a
 								href="https://nervos.org"
 								target="_blank"
