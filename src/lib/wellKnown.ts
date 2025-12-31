@@ -72,6 +72,7 @@ const SPORE_VERSIONS = 'https://github.com/sporeprotocol/spore-contract/blob/mas
 const JOYID_DOCS = 'https://docs.joyid.dev/guide/ckb/smart-contract';
 const COTA_CONSTANTS = 'https://github.com/nervina-labs/cota-sdk-js/blob/develop/src/constants/index.ts';
 const NOSTR_DEPLOYMENT = 'https://github.com/cryptape/nostr-binding/blob/main/docs/nostr-lock-script.md';
+const PW_LOCK_DOCS = 'https://github.com/jordanmack/pw-core/blob/dev/src/constants.ts';
 const ICKB_DEPLOYMENT = 'https://github.com/ickb/whitepaper#mainnet-deployment';
 const RGBPP_CONSTANTS = 'https://github.com/ckb-cell/rgbpp-sdk/blob/main/packages/ckb/src/constants/index.ts';
 const CKBFS_README = 'https://github.com/nervape/ckbfs/blob/master/README.md';
@@ -623,6 +624,27 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
 		},
+		// Spore Cluster - collection grouping for Spore NFTs.
+		'0x7366a61534fa7c7e6225ecc0d828ea3b5366adec2b58206f2ee84995fe030075': {
+			name: 'Spore Cluster',
+			description: 'Enables grouping Spores into collections with shared metadata and permissions.',
+			hashType: 'data1',
+			sourceUrl: SPORE_VERSIONS,
+		},
+		// CKBFS - On-chain file storage protocol.
+		'0x31e6376287d223b8c0410d562fb422f04d1d617b2947596a14c3d2efb7218d3a': {
+			name: 'CKBFS',
+			description: 'On-chain file storage with content-addressable chunks.',
+			hashType: 'data1',
+			sourceUrl: CKBFS_README,
+		},
+		// CoTA - Compact Token Aggregator for efficient NFT management.
+		'0x1122a4fb54697cf2e6e3a96c9d80fd398a936559b90954c6e88eb7ba0cf652df': {
+			name: 'CoTA',
+			description: 'Compact Token Aggregator protocol for efficient NFT management with minimal cell usage.',
+			hashType: 'type',
+			sourceUrl: COTA_CONSTANTS,
+		},
 	},
 	testnet: {
 		// SUDT (Simple UDT) - RFC 0025.
@@ -685,6 +707,27 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for ownership verification.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+		},
+		// Spore Cluster - collection grouping for Spore NFTs.
+		'0x0bbe768b519d8ea7b96d58f1182eb7e6ef96c541fbd9526975077ee09f049058': {
+			name: 'Spore Cluster',
+			description: 'Enables grouping Spores into collections with shared metadata and permissions.',
+			hashType: 'data1',
+			sourceUrl: SPORE_VERSIONS,
+		},
+		// CKBFS - On-chain file storage protocol (same code hash as mainnet).
+		'0x31e6376287d223b8c0410d562fb422f04d1d617b2947596a14c3d2efb7218d3a': {
+			name: 'CKBFS',
+			description: 'On-chain file storage with content-addressable chunks.',
+			hashType: 'data1',
+			sourceUrl: CKBFS_README,
+		},
+		// CoTA - Compact Token Aggregator for efficient NFT management.
+		'0x89cd8003a0eaf8e65e0c31525b7d1d5c1becefd2ea75bb4cff87810ae37764d8': {
+			name: 'CoTA',
+			description: 'Compact Token Aggregator protocol for efficient NFT management with minimal cell usage.',
+			hashType: 'type',
+			sourceUrl: COTA_CONSTANTS,
 		},
 	},
 };
@@ -749,6 +792,41 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
 		},
+		// PW Lock - Ethereum-style authentication (deprecated, use Omnilock instead).
+		'0xbf43c3602455798c1a61a596e0d95278864c552fafe231c063b3fabf97a8febc': {
+			name: 'PW Lock',
+			description: 'Ethereum-style authentication with built-in anyone-can-pay support. Deprecated; use Omnilock for new deployments.',
+			hashType: 'type',
+			sourceUrl: PW_LOCK_DOCS,
+		},
+		// JoyID Lock - WebAuthn/passkey authentication.
+		'0xd00c84f0ec8fd441c38bc3f87a371f547190f2fcff88e642bc5bf54b9e318323': {
+			name: 'JoyID',
+			description: 'Passwordless authentication using WebAuthn and device biometrics.',
+			hashType: 'type',
+			sourceUrl: JOYID_DOCS,
+		},
+		// Nostr Lock - Nostr protocol schnorr signature authentication.
+		'0x641a89ad2f77721b803cd50d01351c1f308444072d5fa20088567196c0574c68': {
+			name: 'Nostr Lock',
+			description: 'Nostr protocol authentication using schnorr signatures with optional proof-of-work.',
+			hashType: 'type',
+			sourceUrl: NOSTR_DEPLOYMENT,
+		},
+		// RGB++ Lock - Bitcoin-secured CKB assets through isomorphic binding.
+		'0xbc6c568a1a0d0a09f6844dc9d74ddb4343c32143ff25f727c59edf4fb72d6936': {
+			name: 'RGB++ Lock',
+			description: 'Bitcoin-secured CKB assets through isomorphic binding with Bitcoin UTXOs.',
+			hashType: 'type',
+			sourceUrl: RGBPP_CONSTANTS,
+		},
+		// BTC Time Lock - Time-based lock for RGB++ protocol.
+		'0x70d64497a075bd651e98ac030455ea200637ee325a12ad08aff03f1a117e5a62': {
+			name: 'BTC Time Lock',
+			description: 'Time-based locking mechanism for RGB++ protocol leap operations.',
+			hashType: 'type',
+			sourceUrl: RGBPP_CONSTANTS,
+		},
 	},
 	testnet: {
 		// SECP256K1/blake160 - RFC 0024 (same as mainnet).
@@ -804,6 +882,41 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
 		},
+		// PW Lock - Ethereum-style authentication (deprecated, use Omnilock instead).
+		'0x58c5f491aba6d61678b7cf7edf4910b1f5e00ec0cde2f42e0abb4fd9aff25a63': {
+			name: 'PW Lock',
+			description: 'Ethereum-style authentication with built-in anyone-can-pay support. Deprecated; use Omnilock for new deployments.',
+			hashType: 'type',
+			sourceUrl: PW_LOCK_DOCS,
+		},
+		// JoyID Lock - WebAuthn/passkey authentication.
+		'0xd23761b364210735c19c60561d213fb3beae2fd6172743719eff6920e020baac': {
+			name: 'JoyID',
+			description: 'Passwordless authentication using WebAuthn and device biometrics.',
+			hashType: 'type',
+			sourceUrl: JOYID_DOCS,
+		},
+		// Nostr Lock - Nostr protocol schnorr signature authentication.
+		'0x6ae5ee0cb887b2df5a9a18137315b9bdc55be8d52637b2de0624092d5f0c91d5': {
+			name: 'Nostr Lock',
+			description: 'Nostr protocol authentication using schnorr signatures with optional proof-of-work.',
+			hashType: 'type',
+			sourceUrl: NOSTR_DEPLOYMENT,
+		},
+		// RGB++ Lock - Bitcoin-secured CKB assets through isomorphic binding.
+		'0x61ca7a4796a4eb19ca4f0d065cb9b10ddcf002f10f7cbb810c706cb6bb5c3248': {
+			name: 'RGB++ Lock',
+			description: 'Bitcoin-secured CKB assets through isomorphic binding with Bitcoin UTXOs.',
+			hashType: 'type',
+			sourceUrl: RGBPP_CONSTANTS,
+		},
+		// BTC Time Lock - Time-based lock for RGB++ protocol.
+		'0x00cdf8fab0f8ac638758ebf5ea5e4052b1d71e8a77b9f43139718621f6849326': {
+			name: 'BTC Time Lock',
+			description: 'Time-based locking mechanism for RGB++ protocol leap operations.',
+			hashType: 'type',
+			sourceUrl: RGBPP_CONSTANTS,
+		},
 	},
 };
 
@@ -836,7 +949,19 @@ export const KNOWN_TYPE_SCRIPTS_BY_ARGS: Record<RegistryNetwork, Record<string, 
 		},
 	},
 	testnet: {
-		// Add testnet-specific tokens here.
+		// iCKB - NervosDAO liquidity token (same args as mainnet).
+		[buildArgsKey(
+			'0x50bd8d6680b8b9cf98b73f3c08faf8b2a21914311954118ad6609be6e78a1b95',
+			'data1',
+			'0xb73b6ab39d79390c6de90a09c96b290c331baf1798ed6f97aed02590929734e800000080',
+		)]: {
+			name: 'iCKB',
+			description: 'iCKB NervosDAO liquidity token (xUDT).',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
+			dataFormat: 'xudt',
+			baseTypeName: 'xUDT',
+		},
 	},
 };
 
