@@ -201,8 +201,8 @@ const RESOURCES: ResourceDefinition[] = [
 		description: 'NervosDAO liquidity protocol that tokenizes DAO deposits into transferable tokens.',
 		sourceUrl: ICKB_DOCS,
 		cellPatterns: ['ickb'],
-		lockScriptNames: [],
-		typeScriptNames: ['iCKB'],
+		lockScriptNames: ['iCKB Logic', 'iCKB Limit Order', 'iCKB Owned-Owner'],
+		typeScriptNames: ['iCKB Logic', 'iCKB Limit Order', 'iCKB Owned-Owner', 'iCKB'],
 	},
 ];
 

@@ -602,6 +602,27 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			sourceUrl: SPORE_VERSIONS,
 			dataFormat: 'spore',
 		},
+		// iCKB Logic - used for iCKB token minting and burning logic.
+		'0x2a8100ab5990fa055ab1b50891702e1e895c7bd1df6322cd725c1a6115873bd3': {
+			name: 'iCKB Logic',
+			description: 'iCKB protocol script for token minting and burning logic.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
+		},
+		// iCKB Limit Order - used for iCKB limit order matching.
+		'0x49dfb6afee5cc8ac4225aeea8cb8928b150caf3cd92fea33750683c74b13254a': {
+			name: 'iCKB Limit Order',
+			description: 'iCKB protocol script for limit order matching.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
+		},
+		// iCKB Owned-Owner - used for ownership verification in iCKB operations.
+		'0xacc79e07d107831feef4c70c9e683dac5644d5993b9cb106dca6e74baa381bd0': {
+			name: 'iCKB Owned-Owner',
+			description: 'iCKB protocol script for ownership verification.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
+		},
 	},
 	testnet: {
 		// SUDT (Simple UDT) - RFC 0025.
@@ -643,6 +664,27 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			hashType: 'data1',
 			sourceUrl: SPORE_VERSIONS,
 			dataFormat: 'spore',
+		},
+		// iCKB Logic - used for iCKB token minting and burning logic (same as mainnet).
+		'0x2a8100ab5990fa055ab1b50891702e1e895c7bd1df6322cd725c1a6115873bd3': {
+			name: 'iCKB Logic',
+			description: 'iCKB protocol script for token minting and burning logic.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
+		},
+		// iCKB Limit Order - used for iCKB limit order matching (same as mainnet).
+		'0x49dfb6afee5cc8ac4225aeea8cb8928b150caf3cd92fea33750683c74b13254a': {
+			name: 'iCKB Limit Order',
+			description: 'iCKB protocol script for limit order matching.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
+		},
+		// iCKB Owned-Owner - used for ownership verification in iCKB operations (same as mainnet).
+		'0xacc79e07d107831feef4c70c9e683dac5644d5993b9cb106dca6e74baa381bd0': {
+			name: 'iCKB Owned-Owner',
+			description: 'iCKB protocol script for ownership verification.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
 		},
 	},
 };
@@ -686,6 +728,27 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			sourceUrl: RFC_0026,
 			argsFormat: 'acp',
 		},
+		// iCKB Logic - used for iCKB token minting and burning logic.
+		'0x2a8100ab5990fa055ab1b50891702e1e895c7bd1df6322cd725c1a6115873bd3': {
+			name: 'iCKB Logic',
+			description: 'iCKB protocol script for token minting and burning logic.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
+		},
+		// iCKB Limit Order - used for iCKB limit order matching.
+		'0x49dfb6afee5cc8ac4225aeea8cb8928b150caf3cd92fea33750683c74b13254a': {
+			name: 'iCKB Limit Order',
+			description: 'iCKB protocol script for limit order matching.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
+		},
+		// iCKB Owned-Owner - used for ownership verification in iCKB operations.
+		'0xacc79e07d107831feef4c70c9e683dac5644d5993b9cb106dca6e74baa381bd0': {
+			name: 'iCKB Owned-Owner',
+			description: 'iCKB protocol script for ownership verification.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
+		},
 	},
 	testnet: {
 		// SECP256K1/blake160 - RFC 0024 (same as mainnet).
@@ -719,6 +782,27 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			hashType: 'type',
 			sourceUrl: RFC_0026,
 			argsFormat: 'acp',
+		},
+		// iCKB Logic - used for iCKB token minting and burning logic (same as mainnet).
+		'0x2a8100ab5990fa055ab1b50891702e1e895c7bd1df6322cd725c1a6115873bd3': {
+			name: 'iCKB Logic',
+			description: 'iCKB protocol script for token minting and burning logic.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
+		},
+		// iCKB Limit Order - used for iCKB limit order matching (same as mainnet).
+		'0x49dfb6afee5cc8ac4225aeea8cb8928b150caf3cd92fea33750683c74b13254a': {
+			name: 'iCKB Limit Order',
+			description: 'iCKB protocol script for limit order matching.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
+		},
+		// iCKB Owned-Owner - used for ownership verification in iCKB operations (same as mainnet).
+		'0xacc79e07d107831feef4c70c9e683dac5644d5993b9cb106dca6e74baa381bd0': {
+			name: 'iCKB Owned-Owner',
+			description: 'iCKB protocol script for ownership verification.',
+			hashType: 'data1',
+			sourceUrl: ICKB_DEPLOYMENT,
 		},
 	},
 };
