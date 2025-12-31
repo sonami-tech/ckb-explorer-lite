@@ -348,7 +348,7 @@ function BlockListItem({ block }: { block: BlockInfo }) {
 		>
 			<div className="flex items-center justify-between mb-1.5">
 				<span className="text-base font-semibold text-nervos">
-					#{formatNumber(block.number)}
+					{formatNumber(block.number)}
 				</span>
 				<span className="text-xs text-gray-400 dark:text-gray-500">
 					<RelativeTime timestamp={block.timestamp} />
@@ -405,7 +405,7 @@ function TransactionListItem({ tx }: { tx: TransactionInfo }) {
 			</div>
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-					<span>Block #{formatNumber(tx.blockNumber)}</span>
+					<span>Block {formatNumber(tx.blockNumber)}</span>
 					{/* Hide input/output count for Cellbase - it's always 1/1 and semantically misleading. */}
 					{!tx.isCellbase && (
 						<>

@@ -9,7 +9,7 @@ export type RouteState =
 	| { view: 'transaction'; hash: string }
 	| { view: 'address'; address: string }
 	| { view: 'cell'; txHash: string; index: number }
-	| { view: 'scripts' }
+	| { view: 'resources' }
 	| { view: 'not-found' };
 
 export type RouteChangeCallback = (state: RouteState) => void;
@@ -40,8 +40,8 @@ router
 		const index = parseInt(match?.data?.index ?? '0', 10);
 		routeChangeCallback?.({ view: 'cell', txHash, index });
 	})
-	.on('/scripts', () => {
-		routeChangeCallback?.({ view: 'scripts' });
+	.on('/resources', () => {
+		routeChangeCallback?.({ view: 'resources' });
 	})
 	.notFound(() => {
 		routeChangeCallback?.({ view: 'not-found' });

@@ -84,7 +84,7 @@ export function NetworkBlockSelector() {
 	const networkLabel = currentNetwork.name;
 	const blockLabel = isTrackingLatest
 		? 'Latest'
-		: `#${formatNumber(BigInt(archiveHeight!))}`;
+		: formatNumber(BigInt(archiveHeight!));
 
 	return (
 		<div className="relative" ref={dropdownRef}>
@@ -223,7 +223,7 @@ export function NetworkBlockSelector() {
 									</span>
 									{tipBlockNumber !== null && (
 										<span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-											#{formatNumber(tipBlockNumber)}
+											{formatNumber(tipBlockNumber)}
 										</span>
 									)}
 								</button>

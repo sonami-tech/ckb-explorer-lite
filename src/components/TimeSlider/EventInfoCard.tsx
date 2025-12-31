@@ -77,7 +77,7 @@ export function EventInfoCard({ event, onDismiss }: EventInfoCardProps) {
 
 				{/* Block and date info. */}
 				<div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-					Block #{formatNumber(BigInt(event.block))} &bull; {formatEventDate(event.date)}
+					Block {formatNumber(BigInt(event.block))} &bull; {formatEventDate(event.date)}
 				</div>
 
 				{/* Description. */}

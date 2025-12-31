@@ -4,83 +4,41 @@ import { useIsMobile } from '../hooks/ui';
 import { Tooltip } from './Tooltip';
 import { navigate } from '../lib/router';
 
-interface CopyButtonProps {
-	text: string;
-	className?: string;
-}
-
-export function CopyButton({ text, className = '' }: CopyButtonProps) {
-	const [copied, setCopied] = useState(false);
-
-	const handleCopy = useCallback(async () => {
-		await copyToClipboard(text);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
-	}, [text]);
-
-	return (
-		<Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'} interactive>
-			<span
-				role="button"
-				tabIndex={0}
-				onClick={handleCopy}
-				onKeyDown={(e) => {
-					if (e.key === 'Enter' || e.key === ' ') {
-						e.preventDefault();
-						handleCopy();
-					}
-				}}
-				className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer inline-flex ${className}`}
-			>
-				{copied ? (
-					<svg className="w-4 h-4 text-nervos" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-					</svg>
-				) : (
-					<svg className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-					</svg>
-				)}
-			</span>
-		</Tooltip>
-	);
-}
-
 /**
- * Hash display with consistent truncation, tooltip, copy, and optional navigation.
- * - Default truncation: 8+8 format (0x12345678...12345678)
+ * Address display with consistent truncation, tooltip, copy, and optional navigation.
+ * - Default truncation: 8+4 format (ckb1qzda...xwsq)
  * - Never wraps (whitespace-nowrap)
- * - Hover shows full hash in tooltip
+ * - Hover shows full address in tooltip
  * - Text click navigates if linkTo is set, otherwise does nothing
  * - Copy icon copies to clipboard
  */
-interface HashDisplayProps {
-	hash: string;
+interface AddressDisplayProps {
+	address: string;
 	/** URL to navigate to when text is clicked. If not set, text click does nothing. */
 	linkTo?: string;
-	/** Set to false to show full hash without truncation. */
+	/** Set to false to show full address without truncation. */
 	truncate?: boolean;
 	/** Responsive mode: full on desktop/tablet, truncated on mobile only. Overrides truncate. */
 	responsive?: boolean;
 	/** Breakpoint for mobile in pixels. Default 640 (sm). Only used when responsive=true. */
 	breakpoint?: number;
-	/** Characters to show after 0x prefix. Default: 8. */
+	/** Characters to show at start. Default: 8. */
 	prefixLen?: number;
-	/** Characters to show at end. Default: 8. */
+	/** Characters to show at end. Default: 4. */
 	suffixLen?: number;
 	className?: string;
 }
 
-export function HashDisplay({
-	hash,
+export function AddressDisplay({
+	address,
 	linkTo,
 	truncate = true,
 	responsive = false,
 	breakpoint = 640,
 	prefixLen = 8,
-	suffixLen = 8,
+	suffixLen = 4,
 	className = '',
-}: HashDisplayProps) {
+}: AddressDisplayProps) {
 	const [copied, setCopied] = useState(false);
 	const isMobile = useIsMobile(breakpoint);
 
@@ -88,18 +46,18 @@ export function HashDisplay({
 	// Responsive mode: truncate only on mobile. Otherwise use truncate prop.
 	const shouldTruncate = responsive ? isMobile : truncate;
 
-	// Truncate if enabled and hash is long enough to need it.
-	// Format: 0x + prefixLen chars + ... + suffixLen chars.
-	const needsTruncation = shouldTruncate && hash.length > 2 + prefixLen + suffixLen + 3;
-	const displayHash = needsTruncation
-		? `${hash.slice(0, 2 + prefixLen)}...${hash.slice(-suffixLen)}`
-		: hash;
+	// Truncate if enabled and address is long enough to need it.
+	// Format: prefixLen chars + ... + suffixLen chars.
+	const needsTruncation = shouldTruncate && address.length > prefixLen + suffixLen + 3;
+	const displayAddress = needsTruncation
+		? `${address.slice(0, prefixLen)}...${address.slice(-suffixLen)}`
+		: address;
 
 	const handleCopy = useCallback(async () => {
-		await copyToClipboard(hash);
+		await copyToClipboard(address);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
-	}, [hash]);
+	}, [address]);
 
 	const handleCopyKeyDown = useCallback((e: React.KeyboardEvent) => {
 		if (e.key === 'Enter' || e.key === ' ') {
@@ -127,8 +85,8 @@ export function HashDisplay({
 		}
 	}, [linkTo]);
 
-	// Tooltip content: show full hash always.
-	const tooltipContent = hash;
+	// Tooltip content: show full address always.
+	const tooltipContent = address;
 
 	// Text styling: nervos color if linkable, default color otherwise.
 	const textClassName = linkTo
@@ -139,7 +97,7 @@ export function HashDisplay({
 		<span
 			className={`inline-flex items-center gap-1 font-mono text-sm whitespace-nowrap ${className}`}
 		>
-			{/* Hash text: link if linkTo is set, otherwise plain text. */}
+			{/* Address text: link if linkTo is set, otherwise plain text. */}
 			<Tooltip content={tooltipContent}>
 				{linkTo ? (
 					<a
@@ -148,10 +106,10 @@ export function HashDisplay({
 						onKeyDown={handleTextKeyDown}
 						className={textClassName}
 					>
-						{displayHash}
+						{displayAddress}
 					</a>
 				) : (
-					<span>{displayHash}</span>
+					<span>{displayAddress}</span>
 				)}
 			</Tooltip>
 

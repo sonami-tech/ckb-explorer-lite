@@ -27,7 +27,7 @@ function Router() {
 			return <AddressPage address={route.address} />;
 		case 'cell':
 			return <CellPage txHash={route.txHash} index={route.index} />;
-		case 'scripts':
+		case 'resources':
 			return <WellKnownScriptsPage />;
 		case 'not-found':
 		default:

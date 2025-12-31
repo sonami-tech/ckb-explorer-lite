@@ -365,7 +365,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 					{isEditingBlock ? (
 						// Show block input field with submit button.
 						<>
-							<span className="text-sm text-gray-500 dark:text-gray-400">Block #</span>
+							<span className="text-sm text-gray-500 dark:text-gray-400">Block</span>
 							<input
 								ref={inputRef}
 								type="text"
@@ -416,7 +416,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 									cursor-text transition-colors
 								"
 							>
-								Block #{formatNumber(BigInt(displayBlock))}
+								Block {formatNumber(BigInt(displayBlock))}
 							</button>
 							{/* Show date only when not dragging. */}
 							{!isDragging && (

@@ -5,7 +5,6 @@ import {
 	formatCkb,
 	formatAbsoluteTime,
 	formatRelativeTime,
-	truncateAddress,
 	isValidHex,
 } from '../lib/format';
 import { encodeAddress } from '../lib/address';
@@ -17,7 +16,8 @@ import { HashDisplay } from '../components/CopyButton';
 import { TruncatedData } from '../components/TruncatedData';
 import { OutPoint } from '../components/OutPoint';
 import { DetailRow } from '../components/DetailRow';
-import { Tooltip } from '../components/Tooltip';
+import { AddressDisplay } from '../components/AddressDisplay';
+import { InternalLinkIcon } from '../components/InternalLinkIcon';
 import type { RpcTransaction, RpcTransactionWithStatus } from '../types/rpc';
 
 interface TransactionPageProps {
@@ -150,20 +150,10 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					{tx_status.block_hash && (
 						<DetailRow label="Block">
 							<div className="flex items-center gap-2">
-								<HashDisplay hash={tx_status.block_hash} />
-								<Tooltip content="Go to block" interactive>
-									<button
-										onClick={() => navigate(generateLink(`/block/${tx_status.block_hash}`))}
-										className="text-nervos hover:text-nervos-dark"
-									>
-										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-										</svg>
-									</button>
-								</Tooltip>
+								<HashDisplay hash={tx_status.block_hash} linkTo={generateLink(`/block/${tx_status.block_hash}`)} />
 								{tx_status.block_number && (
 									<span className="text-gray-500 dark:text-gray-400">
-										(#{formatNumber(BigInt(tx_status.block_number))})
+										({formatNumber(BigInt(tx_status.block_number))})
 									</span>
 								)}
 							</div>
@@ -268,25 +258,15 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 								</div>
 								{/* Address row with navigation. */}
 								<div className="flex items-center gap-2 ml-8">
-									<Tooltip content={address} interactive>
-										<button
-											onClick={() => navigate(generateLink(`/address/${address}`))}
-											className="text-nervos hover:text-nervos-dark font-mono text-sm truncate"
-										>
-											<span className="hidden sm:inline">{address}</span>
-											<span className="sm:hidden">{truncateAddress(address)}</span>
-										</button>
-									</Tooltip>
-									<Tooltip content="View cell details" interactive>
-										<button
-											onClick={() => navigate(generateLink(`/cell/${hash}/${index}`))}
-											className="text-nervos hover:text-nervos-dark transition-colors flex-shrink-0"
-										>
-											<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-											</svg>
-										</button>
-									</Tooltip>
+									<AddressDisplay
+										address={address}
+										linkTo={generateLink(`/address/${address}`)}
+										responsive
+									/>
+									<InternalLinkIcon
+										linkTo={generateLink(`/cell/${hash}/${index}`)}
+										tooltip="View cell"
+									/>
 								</div>
 							</div>
 						);

@@ -12,7 +12,7 @@ import { DetailRow } from '../components/DetailRow';
 import { OutPoint } from '../components/OutPoint';
 import { CellStatusIndicator } from '../components/OptionIndicator';
 import { ScriptSection } from '../components/ScriptSection';
-import { Tooltip } from '../components/Tooltip';
+import { BlockNumberDisplay } from '../components/BlockNumberDisplay';
 import { WellKnownCellInfo } from '../components/WellKnownCellInfo';
 import type { RpcCellWithLifecycle } from '../types/rpc';
 
@@ -142,7 +142,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
 					<DetailRow label="OutPoint">
-						<OutPoint txHash={txHash} index={index} linkTo="transaction" showCopy />
+						<OutPoint txHash={txHash} index={index} linkTo="transaction" />
 					</DetailRow>
 					<DetailRow label="Status">
 						<CellStatusIndicator status={status} />
@@ -156,46 +156,12 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					)}
 					{createdBlock !== null && (
 						<DetailRow label="Created at Block">
-							<div className="flex items-center gap-2">
-								<button
-									onClick={() => navigate(generateLink(`/block/${createdBlock}`))}
-									className="font-mono text-nervos hover:text-nervos-dark"
-								>
-									{formatNumber(createdBlock)}
-								</button>
-								<Tooltip content="View block" interactive>
-									<button
-										onClick={() => navigate(generateLink(`/block/${createdBlock}`))}
-										className="text-nervos hover:text-nervos-dark"
-									>
-										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-										</svg>
-									</button>
-								</Tooltip>
-							</div>
+							<BlockNumberDisplay blockNumber={createdBlock} linkTo={generateLink(`/block/${createdBlock}`)} />
 						</DetailRow>
 					)}
 					<DetailRow label="Consumed at Block">
 						{consumedBlock !== null ? (
-							<div className="flex items-center gap-2">
-								<button
-									onClick={() => navigate(generateLink(`/block/${consumedBlock}`))}
-									className="font-mono text-nervos hover:text-nervos-dark"
-								>
-									{formatNumber(consumedBlock)}
-								</button>
-								<Tooltip content="View block" interactive>
-									<button
-										onClick={() => navigate(generateLink(`/block/${consumedBlock}`))}
-										className="text-nervos hover:text-nervos-dark"
-									>
-										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-										</svg>
-									</button>
-								</Tooltip>
-							</div>
+							<BlockNumberDisplay blockNumber={consumedBlock} linkTo={generateLink(`/block/${consumedBlock}`)} />
 						) : (
 							<span className="text-gray-400 dark:text-gray-500">—</span>
 						)}

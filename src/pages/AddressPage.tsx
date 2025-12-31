@@ -10,8 +10,9 @@ import { navigate, generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
-import { HashDisplay, CopyButton } from '../components/CopyButton';
+import { HashDisplay } from '../components/CopyButton';
 import { DetailRow } from '../components/DetailRow';
+import { AddressDisplay } from '../components/AddressDisplay';
 import type { RpcCell, RpcScript, IndexerSearchKey } from '../types/rpc';
 
 interface AddressPageProps {
@@ -195,10 +196,7 @@ export function AddressPage({ address }: AddressPageProps) {
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
 					<DetailRow label="Address">
-						<div className="flex items-center gap-2">
-							<span className="font-mono text-sm break-all">{address}</span>
-							<CopyButton text={address} />
-						</div>
+						<AddressDisplay address={address} truncate={false} />
 					</DetailRow>
 					<DetailRow label="Balance">
 						<span className="text-lg font-semibold text-nervos">
@@ -300,7 +298,7 @@ function CellListItem({
 				</span>
 			</div>
 			<div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-				<span>Block #{formatNumber(BigInt(cell.block_number))}</span>
+				<span>Block {formatNumber(BigInt(cell.block_number))}</span>
 				{cell.output.type && (
 					<span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
 						Has Type

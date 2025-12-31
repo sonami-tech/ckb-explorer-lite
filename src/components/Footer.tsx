@@ -68,8 +68,8 @@ export function Footer() {
 								</InternalLink>
 							</li>
 							<li>
-								<InternalLink href={generateLink('/scripts')}>
-									Well-Known Scripts
+								<InternalLink href={generateLink('/resources')}>
+									Well-Known Resources
 								</InternalLink>
 							</li>
 						</ul>
