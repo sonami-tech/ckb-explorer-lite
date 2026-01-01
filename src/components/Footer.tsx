@@ -75,6 +75,30 @@ export function Footer() {
 						</ul>
 					</div>
 
+					{/* Tools section. */}
+					<div>
+						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+							Tools
+						</h3>
+						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+							<li>
+								<ExternalLink href="https://nervoshalving.com">
+									Nervos Halving
+								</ExternalLink>
+							</li>
+							<li>
+								<ExternalLink href="https://ckb.tools">
+									CKB.tools
+								</ExternalLink>
+							</li>
+							<li>
+								<ExternalLink href="https://github.com/jordanmack/nervos-ckb-node-dashboard">
+									Node Dashboard
+								</ExternalLink>
+							</li>
+						</ul>
+					</div>
+
 					{/* Community section. */}
 					<div>
 						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
@@ -99,30 +123,6 @@ export function Footer() {
 							<li>
 								<ExternalLink href="https://talk.nervos.org">
 									Nervos Talk Forum
-								</ExternalLink>
-							</li>
-						</ul>
-					</div>
-
-					{/* Tools section. */}
-					<div>
-						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
-							Tools
-						</h3>
-						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-							<li>
-								<ExternalLink href="https://nervoshalving.com">
-									Nervos Halving
-								</ExternalLink>
-							</li>
-							<li>
-								<ExternalLink href="https://ckb.tools">
-									CKB.tools
-								</ExternalLink>
-							</li>
-							<li>
-								<ExternalLink href="https://github.com/jordanmack/nervos-ckb-node-dashboard">
-									Node Dashboard
 								</ExternalLink>
 							</li>
 						</ul>
