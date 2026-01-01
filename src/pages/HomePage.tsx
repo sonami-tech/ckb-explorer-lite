@@ -14,6 +14,7 @@ import {
 import { encodeAddress } from '../lib/address';
 import { TimeSlider } from '../components/TimeSlider';
 import { navigate, generateLink } from '../lib/router';
+import { useIsMobile } from '../hooks/ui';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonBlockItem, SkeletonTransactionItem } from '../components/Skeleton';
 import { ErrorDisplay, ConnectionError } from '../components/ErrorDisplay';
@@ -369,9 +370,15 @@ function BlockListItem({ block }: { block: BlockInfo }) {
 	);
 }
 
+// Diamond emoji for cellbase (mining reward) on mobile.
+function CellbaseIcon() {
+	return <span>💎</span>;
+}
+
 function TransactionListItem({ tx }: { tx: TransactionInfo }) {
-	const inputLabel = tx.inputCount === 1 ? '1 input' : `${tx.inputCount} inputs`;
-	const outputLabel = tx.outputCount === 1 ? '1 output' : `${tx.outputCount} outputs`;
+	const isMobile = useIsMobile();
+	const inputLabel = isMobile ? `${tx.inputCount} in` : tx.inputCount === 1 ? '1 input' : `${tx.inputCount} inputs`;
+	const outputLabel = isMobile ? `${tx.outputCount} out` : tx.outputCount === 1 ? '1 output' : `${tx.outputCount} outputs`;
 	const href = generateLink(`/tx/${tx.hash}`);
 
 	const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -395,8 +402,8 @@ function TransactionListItem({ tx }: { tx: TransactionInfo }) {
 						{truncateHex(tx.hash, 8, 8)}
 					</span>
 					{tx.isCellbase && (
-						<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${BRAND} rounded`}>
-							Cellbase
+						<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${BRAND} rounded inline-flex items-center`}>
+							{isMobile ? <CellbaseIcon /> : 'Cellbase'}
 						</span>
 					)}
 				</div>
