@@ -402,9 +402,13 @@ function TransactionListItem({ tx }: { tx: TransactionInfo }) {
 						{truncateHex(tx.hash, 8, 8)}
 					</span>
 					{tx.isCellbase && (
-						<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${BRAND} rounded inline-flex items-center`}>
-							{isMobile ? <CellbaseIcon /> : 'Cellbase'}
-						</span>
+						isMobile ? (
+							<CellbaseIcon />
+						) : (
+							<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${BRAND} rounded`}>
+								Cellbase
+							</span>
+						)
 					)}
 				</div>
 				<span className="text-xs text-gray-400 dark:text-gray-500">

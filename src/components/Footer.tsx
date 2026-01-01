@@ -55,7 +55,7 @@ export function Footer() {
 		<footer className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
 			<div className="max-w-7xl mx-auto px-4 py-8">
 				{/* Footer grid. */}
-				<div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-8">
+				<div className="grid grid-cols-[auto_auto] md:flex md:flex-wrap md:justify-between gap-8 mb-8">
 					{/* Explorer section. */}
 					<div>
 						<h3 className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
