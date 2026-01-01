@@ -58,10 +58,10 @@ export function Footer() {
 				<div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-8">
 					{/* Explorer section. */}
 					<div>
-						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+						<h3 className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
 							Explorer
 						</h3>
-						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+						<ul className="space-y-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
 							<li>
 								<InternalLink href={generateLink('/')}>
 									Home
@@ -77,10 +77,10 @@ export function Footer() {
 
 					{/* Tools section. */}
 					<div>
-						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+						<h3 className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
 							Tools
 						</h3>
-						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+						<ul className="space-y-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
 							<li>
 								<ExternalLink href="https://nervoshalving.com">
 									Nervos Halving
@@ -101,10 +101,10 @@ export function Footer() {
 
 					{/* Community section. */}
 					<div>
-						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+						<h3 className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
 							Community
 						</h3>
-						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+						<ul className="space-y-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
 							<li>
 								<ExternalLink href="https://nervosnation.com">
 									NervosNation.com
@@ -130,10 +130,10 @@ export function Footer() {
 
 					{/* Sonami section. */}
 					<div>
-						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+						<h3 className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
 							Sōnami
 						</h3>
-						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+						<ul className="space-y-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
 							<li>
 								<ExternalLink href="https://sonami.cc">
 									Sonami.cc
@@ -159,10 +159,10 @@ export function Footer() {
 
 					{/* Nervos Official section. */}
 					<div>
-						<h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+						<h3 className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
 							Nervos Official
 						</h3>
-						<ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+						<ul className="space-y-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
 							<li>
 								<ExternalLink href="https://docs.nervos.org">
 									Developer Docs
