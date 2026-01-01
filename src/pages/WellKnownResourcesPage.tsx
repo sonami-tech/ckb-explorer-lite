@@ -227,7 +227,7 @@ interface ResolvedResource {
 	items: ResourceItem[];
 }
 
-export function WellKnownScriptsPage() {
+export function WellKnownResourcesPage() {
 	const { currentNetwork } = useNetwork();
 	const networkType = currentNetwork?.type ?? 'mainnet';
 	const registryNetwork = toRegistryNetwork(networkType);
@@ -344,7 +344,7 @@ function ResourceCard({ resource }: { resource: ResolvedResource }) {
 	return (
 		<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
 			{/* Resource header. */}
-			<div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+			<div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700/50">
 				<div className="flex items-center justify-between gap-2">
 					<div className="flex items-center gap-2 flex-wrap">
 						<h2 className="text-lg font-semibold text-gray-900 dark:text-white">
