@@ -22,7 +22,9 @@ bun run build             # Production build.
 | Add timeline event | `src/config/events.ts` |
 | Modify RPC client | `src/lib/rpc.ts` |
 | Change cache behavior | `src/lib/rpcCache.ts`, `src/config/defaults.ts` |
-| Display components | `src/components/CopyButton.tsx` (HashDisplay, OutPoint, TruncatedData) |
+| Display components | `src/components/CopyButton.tsx` (HashDisplay, SizeBadge, DownloadButton) |
+| Hex data display | `src/components/HexData.tsx` (decodable, expandable, modal) |
+| Witness display | `src/components/WitnessSection.tsx` |
 
 ## Patterns
 
