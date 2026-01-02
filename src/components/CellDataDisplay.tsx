@@ -2,25 +2,27 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNetwork } from '../contexts/NetworkContext';
 import { CELL_DATA_CONFIG } from '../config';
 import { navigate, generateLink } from '../lib/router';
-import { formatNumber } from '../lib/format';
+import { formatNumber, formatBytes } from '../lib/format';
 import {
 	decodeByFormat,
 	formatTokenAmount,
 	type DecodedData,
 	type DepGroupData,
 	type DecodeFormat,
+	type TextData,
 } from '../lib/decode';
 import { lookupTypeScript, lookupCellFormat } from '../lib/wellKnown';
 import { useUrlParam } from '../hooks/useUrlParam';
-import { HexData } from './HexData';
+import { useTruncation } from '../hooks/ui';
+import { CopyButton, DownloadButton, ModalButton, SizeBadge } from './CopyButton';
+import { DataModal } from './DataModal';
 import { OutPoint } from './OutPoint';
-import { Tooltip } from './Tooltip';
 import { DAO_DEPOSIT, DAO_WITHDRAW } from '../lib/badgeStyles';
 
-type ViewMode = 'auto' | 'raw' | 'sudt' | 'xudt' | 'dao' | 'dep_group' | 'uint32' | 'uint64' | 'int64' | 'uint128';
+type ViewMode = 'auto' | 'raw' | 'udt' | 'dao' | 'dep_group' | 'uint32' | 'uint64' | 'int64' | 'uint128' | 'ascii' | 'utf8';
 
 /** Valid decode parameter values for URL. */
-const VALID_DECODE_PARAMS: ViewMode[] = ['raw', 'sudt', 'xudt', 'dao', 'dep_group', 'uint32', 'uint64', 'int64', 'uint128'];
+const VALID_DECODE_PARAMS: ViewMode[] = ['raw', 'udt', 'dao', 'dep_group', 'uint32', 'uint64', 'int64', 'uint128', 'ascii', 'utf8'];
 
 /** Parse decode param from URL, returning null if invalid. */
 function parseDecodeParam(value: string | null): ViewMode | null {
@@ -54,6 +56,7 @@ export function CellDataSection({
 	const { currentNetwork } = useNetwork();
 	const networkType = currentNetwork?.type ?? 'mainnet';
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+	const [isModalOpen, setIsModalOpen] = useState(false);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 
 	// Read decode param from URL.
@@ -80,15 +83,17 @@ export function CellDataSection({
 	}, [typeScript, outpoint, networkType]);
 
 	// Available view modes - always show all options.
-	// Order: auto (if detected), raw, protocol formats, then integer formats.
+	// Order: auto (if detected), raw, protocol formats, integer formats, text formats.
 	const availableModes = useMemo(() => {
 		const modes: ViewMode[] = [];
 		if (detectedFormat && detectedFormat !== 'spore') {
 			modes.push('auto');
 		}
-		modes.push('raw', 'sudt', 'xudt', 'dao', 'dep_group');
-		// Integer formats come last.
+		modes.push('raw', 'udt', 'dao', 'dep_group');
+		// Integer formats.
 		modes.push('uint32', 'uint64', 'int64', 'uint128');
+		// Text formats come last.
+		modes.push('ascii', 'utf8');
 		return modes;
 	}, [detectedFormat]);
 
@@ -144,17 +149,27 @@ export function CellDataSection({
 
 	return (
 		<div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 ${className}`}>
-			{/* Header with byte count and decode dropdown. */}
+			{/* Header with byte count, action buttons, and decode dropdown. */}
 			<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
 				<div className="flex items-center gap-2">
 					<h2 className="font-semibold text-gray-900 dark:text-white">Cell Data</h2>
-					<span className="text-sm text-gray-500 dark:text-gray-400">
-						({byteCount} bytes)
+					<span className="text-size-meta">
+						({formatBytes(byteCount)})
 					</span>
 				</div>
 
-				{/* Decode dropdown. */}
-				{showDropdown && (
+				<div className="flex items-center gap-2">
+					{/* Action buttons for full cell data. */}
+					{data !== '0x' && (
+						<div className="flex items-center gap-1">
+							<CopyButton text={data} />
+							<DownloadButton data={data} filename="cell-data" />
+							<ModalButton onClick={() => setIsModalOpen(true)} />
+						</div>
+					)}
+
+					{/* Decode dropdown. */}
+					{showDropdown && (
 					<div className="relative" ref={dropdownRef}>
 						<button
 							onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -197,6 +212,7 @@ export function CellDataSection({
 						)}
 					</div>
 				)}
+				</div>
 			</div>
 
 			{/* Content. */}
@@ -211,6 +227,19 @@ export function CellDataSection({
 					</div>
 				)}
 			</div>
+
+			{/* Modal for full data view. */}
+			<DataModal
+				isOpen={isModalOpen}
+				onClose={() => setIsModalOpen(false)}
+				title="Cell Data"
+				byteCount={byteCount}
+				data={data}
+			>
+				<code className="font-mono text-sm break-all block whitespace-pre-wrap">
+					{data}
+				</code>
+			</DataModal>
 		</div>
 	);
 }
@@ -220,32 +249,12 @@ export function CellDataSection({
  */
 function DecodedContent({ decoded }: { decoded: DecodedData }) {
 	switch (decoded.type) {
-		case 'sudt':
+		case 'udt':
 			return (
 				<div className="space-y-3">
 					<TokenAmountDisplay amount={decoded.amount} />
 					{decoded.extraData !== '0x' && (
-						<div>
-							<span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
-								Extra data:
-							</span>
-							<HexData data={decoded.extraData} context="inline" />
-						</div>
-					)}
-				</div>
-			);
-
-		case 'xudt':
-			return (
-				<div className="space-y-3">
-					<TokenAmountDisplay amount={decoded.amount} />
-					{decoded.extensionData !== '0x' && (
-						<div>
-							<span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
-								Extension data:
-							</span>
-							<HexData data={decoded.extensionData} context="inline" />
-						</div>
+						<SubDataSection label="Extra data" data={decoded.extraData} />
 					)}
 				</div>
 			);
@@ -280,12 +289,20 @@ function DecodedContent({ decoded }: { decoded: DecodedData }) {
 		case 'integer':
 			return <IntegerDisplay value={decoded.value} format={decoded.format} extraData={decoded.extraData} />;
 
+		case 'text':
+			return <TextDisplay text={decoded.text} encoding={decoded.encoding} hasBinaryChars={decoded.hasBinaryChars} />;
+
 		case 'error':
 			return <ErrorDisplay message={decoded.message} hex={decoded.hex} />;
 
 		case 'raw':
 		default:
-			return <HexData data={decoded.hex} context="section" showSize={false} />;
+			// Simple code display - buttons are in the main header.
+			return (
+				<code className="font-mono text-sm break-all block">
+					{decoded.hex}
+				</code>
+			);
 	}
 }
 
@@ -299,10 +316,11 @@ function formatModeName(mode: ViewMode, detectedFormat: string | null): string {
 			return detectedFormat ? `Auto (${formatModeName(detectedFormat as ViewMode, null)})` : 'Auto';
 		case 'raw':
 			return 'Raw Hex';
+		case 'udt':
 		case 'sudt':
-			return 'SUDT';
 		case 'xudt':
-			return 'xUDT';
+			// All UDT formats display the same name.
+			return 'UDT (Token Amount)';
 		case 'dao':
 			return 'DAO';
 		case 'dep_group':
@@ -315,6 +333,10 @@ function formatModeName(mode: ViewMode, detectedFormat: string | null): string {
 			return 'int64 (signed)';
 		case 'uint128':
 			return 'uint128 (16 bytes)';
+		case 'ascii':
+			return 'ASCII Text';
+		case 'utf8':
+			return 'UTF-8 Text';
 		default:
 			return mode;
 	}
@@ -352,58 +374,74 @@ function DepGroupDisplay({ outpoints }: { outpoints: DepGroupData['outpoints'] }
 }
 
 /**
- * Token amount display with decimal stepper.
- * Defaults to 0 decimals. User can adjust decimal places (0-16).
+ * Token amount display with copy button.
+ * Uses two-line format: label with size and copy button, then value below.
  */
 function TokenAmountDisplay({ amount }: { amount: bigint }) {
-	const [decimals, setDecimals] = useState(0);
-	const minDecimals = 0;
-	const maxDecimals = 16;
-
-	const decrement = () => setDecimals((d) => Math.max(minDecimals, d - 1));
-	const increment = () => setDecimals((d) => Math.min(maxDecimals, d + 1));
-
-	const displayAmount = formatTokenAmount(amount, decimals);
+	// Format with thousand separators for display.
+	const displayAmount = formatTokenAmount(amount, 0);
+	// Raw value for copying (no formatting).
+	const rawValue = amount.toString();
 
 	return (
-		<div className="flex items-center gap-3 flex-wrap">
-			<div className="flex items-center gap-2">
-				<span className="text-sm text-gray-500 dark:text-gray-400">Amount:</span>
-				<span className="font-mono text-lg font-semibold">
-					{displayAmount}
+		<div className="space-y-1">
+			<div className="flex items-center justify-between">
+				<span className="text-sm text-gray-500 dark:text-gray-400">
+					Amount <SizeBadge bytes={16} parens={false} />:
 				</span>
+				<CopyButton text={rawValue} />
 			</div>
+			<span className="font-mono text-lg font-semibold block">
+				{displayAmount}
+			</span>
+		</div>
+	);
+}
 
-			{/* Decimal stepper. */}
-			<div className="flex items-center select-none">
-				<Tooltip content="Decrease decimals" interactive>
-					<button
-						onClick={decrement}
-						disabled={decimals <= minDecimals}
-						className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-l border border-gray-300 dark:border-gray-600 transition-colors"
-					>
-						−
-					</button>
-				</Tooltip>
-				<span className="px-2 py-0.5 text-xs bg-gray-50 dark:bg-gray-800 border-y border-gray-300 dark:border-gray-600 min-w-[5rem] text-center">
-					{decimals} decimals
+/**
+ * Sub-data section with label row (label + size + buttons) and content row (hex).
+ * Used for Extra data, Extension data, Raw data in errors.
+ */
+function SubDataSection({ label, data }: { label: string; data: string }) {
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const { displayData, byteCount } = useTruncation(data);
+
+	return (
+		<div className="space-y-1">
+			{/* Label row with size and buttons. */}
+			<div className="flex items-center justify-between">
+				<span className="text-sm text-gray-500 dark:text-gray-400">
+					{label} <SizeBadge bytes={byteCount} parens={false} />:
 				</span>
-				<Tooltip content="Increase decimals" interactive>
-					<button
-						onClick={increment}
-						disabled={decimals >= maxDecimals}
-						className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-r border border-gray-300 dark:border-gray-600 transition-colors"
-					>
-						+
-					</button>
-				</Tooltip>
+				<div className="flex items-center gap-1">
+					<CopyButton text={data} />
+					<DownloadButton data={data} filename={label.toLowerCase().replace(/\s+/g, '-')} />
+					<ModalButton onClick={() => setIsModalOpen(true)} />
+				</div>
 			</div>
+			{/* Content row. */}
+			<code className="font-mono text-sm break-all block">
+				{displayData}
+			</code>
+			{/* Modal for full data view. */}
+			<DataModal
+				isOpen={isModalOpen}
+				onClose={() => setIsModalOpen(false)}
+				title={label}
+				byteCount={byteCount}
+				data={data}
+			>
+				<code className="font-mono text-sm break-all block whitespace-pre-wrap">
+					{data}
+				</code>
+			</DataModal>
 		</div>
 	);
 }
 
 /**
  * Integer value display with extra data support.
+ * Uses two-line format: label with size and copy button, then value below.
  */
 function IntegerDisplay({
 	value,
@@ -416,28 +454,28 @@ function IntegerDisplay({
 }) {
 	// Format the value with thousand separators.
 	const displayValue = value.toLocaleString();
+	// Raw value for copying.
+	const rawValue = value.toString();
 
 	// Get byte size for format.
 	const byteSize = format === 'uint32' ? 4 : format === 'uint128' ? 16 : 8;
 
 	return (
 		<div className="space-y-3">
-			<div className="flex items-center gap-2 flex-wrap">
-				<span className="text-sm text-gray-500 dark:text-gray-400">Value:</span>
-				<span className="font-mono text-lg font-semibold">
+			{/* Value section with label row and value below. */}
+			<div className="space-y-1">
+				<div className="flex items-center justify-between">
+					<span className="text-sm text-gray-500 dark:text-gray-400">
+						Value <SizeBadge bytes={byteSize} parens={false} />:
+					</span>
+					<CopyButton text={rawValue} />
+				</div>
+				<span className="font-mono text-lg font-semibold block">
 					{displayValue}
-				</span>
-				<span className="text-xs text-gray-400 dark:text-gray-500">
-					({byteSize} bytes)
 				</span>
 			</div>
 			{extraData !== '0x' && (
-				<div>
-					<span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
-						Extra data:
-					</span>
-					<HexData data={extraData} context="inline" />
-				</div>
+				<SubDataSection label="Extra data" data={extraData} />
 			)}
 		</div>
 	);
@@ -455,11 +493,45 @@ function ErrorDisplay({ message, hex }: { message: string; hex: string }) {
 				</svg>
 				<span className="text-sm font-medium">{message}</span>
 			</div>
-			<div>
-				<span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
-					Raw data:
+			<SubDataSection label="Raw data" data={hex} />
+		</div>
+	);
+}
+
+/**
+ * Text display for ASCII/UTF-8 decoded content.
+ * Shows warning if binary characters were encountered.
+ * Uses dangerouslySetInnerHTML since text is already HTML-escaped by the decoder.
+ */
+function TextDisplay({
+	text,
+	encoding,
+	hasBinaryChars,
+}: {
+	text: TextData['text'];
+	encoding: TextData['encoding'];
+	hasBinaryChars: TextData['hasBinaryChars'];
+}) {
+	return (
+		<div className="space-y-2">
+			{hasBinaryChars && (
+				<div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+					<svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+					</svg>
+					<span className="text-sm">
+						Contains non-printable characters (shown as [XX] placeholders).
+					</span>
+				</div>
+			)}
+			<div className="space-y-1">
+				<span className="text-sm text-gray-500 dark:text-gray-400">
+					{encoding === 'ascii' ? 'ASCII' : 'UTF-8'} text:
 				</span>
-				<HexData data={hex} context="section" showSize={false} />
+				<pre
+					className="font-mono text-sm whitespace-pre-wrap break-all"
+					dangerouslySetInnerHTML={{ __html: text }}
+				/>
 			</div>
 		</div>
 	);

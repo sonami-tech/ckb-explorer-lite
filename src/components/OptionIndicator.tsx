@@ -74,7 +74,7 @@ function OptionPill({ option, isActive }: OptionPillProps) {
 // Pre-configured indicators for common use cases.
 
 /** Cell status options. */
-export const CELL_STATUS_OPTIONS: OptionConfig[] = [
+const CELL_STATUS_OPTIONS: OptionConfig[] = [
 	{
 		value: 'live',
 		label: 'Live',
@@ -96,7 +96,7 @@ export const CELL_STATUS_OPTIONS: OptionConfig[] = [
 ];
 
 /** Hash type options for scripts. */
-export const HASH_TYPE_OPTIONS: OptionConfig[] = [
+const HASH_TYPE_OPTIONS: OptionConfig[] = [
 	{
 		value: 'type',
 		label: 'type',

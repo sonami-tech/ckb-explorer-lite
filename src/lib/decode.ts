@@ -8,25 +8,15 @@ import type { ScriptInfo } from './wellKnown';
 import { lookupTypeScript } from './wellKnown';
 
 /**
- * Decoded SUDT data.
+ * Decoded UDT data (covers both SUDT and xUDT formats).
+ * Both formats use identical binary structure: 16-byte uint128 LE amount + optional extra data.
  */
-export interface SudtData {
-	type: 'sudt';
+export interface UdtData {
+	type: 'udt';
 	/** Token amount as bigint. */
 	amount: bigint;
 	/** Extra data beyond the 16-byte amount (hex string). */
 	extraData: string;
-}
-
-/**
- * Decoded xUDT data.
- */
-export interface XudtData {
-	type: 'xudt';
-	/** Token amount as bigint. */
-	amount: bigint;
-	/** Extension data (hex string). */
-	extensionData: string;
 }
 
 /**
@@ -86,9 +76,22 @@ export interface IntegerData {
 }
 
 /**
+ * Decoded text data (ASCII or UTF-8).
+ */
+export interface TextData {
+	type: 'text';
+	/** Text encoding used. */
+	encoding: 'ascii' | 'utf8';
+	/** Decoded and sanitized text (safe for display). */
+	text: string;
+	/** Whether the data contained non-displayable characters. */
+	hasBinaryChars: boolean;
+}
+
+/**
  * Union of all decoded data types.
  */
-export type DecodedData = SudtData | XudtData | DaoData | DepGroupData | IntegerData | ErrorData | RawData;
+export type DecodedData = UdtData | DaoData | DepGroupData | IntegerData | TextData | ErrorData | RawData;
 
 /**
  * Convert hex string to byte array.
@@ -137,10 +140,10 @@ function readUint32LE(bytes: Uint8Array, offset: number = 0): number {
 }
 
 /**
- * Decode SUDT cell data.
+ * Decode UDT cell data (covers both SUDT and xUDT).
  * Format: 16 bytes uint128 LE = token amount, optional extra data.
  */
-export function decodeSudt(data: string): SudtData | null {
+export function decodeUdt(data: string): UdtData | null {
 	const bytes = hexToBytes(data);
 	if (bytes.length < 16) return null;
 
@@ -150,29 +153,9 @@ export function decodeSudt(data: string): SudtData | null {
 		: '0x';
 
 	return {
-		type: 'sudt',
+		type: 'udt',
 		amount,
 		extraData,
-	};
-}
-
-/**
- * Decode xUDT cell data.
- * Format: 16 bytes uint128 LE amount + optional extension data.
- */
-export function decodeXudt(data: string): XudtData | null {
-	const bytes = hexToBytes(data);
-	if (bytes.length < 16) return null;
-
-	const amount = readUint128LE(bytes);
-	const extensionData = bytes.length > 16
-		? '0x' + Array.from(bytes.slice(16)).map(b => b.toString(16).padStart(2, '0')).join('')
-		: '0x';
-
-	return {
-		type: 'xudt',
-		amount,
-		extensionData,
 	};
 }
 
@@ -345,6 +328,100 @@ export function decodeUint128(data: string): IntegerData | null {
 	};
 }
 
+// ============================================
+// Text Decoders
+// ============================================
+
+/**
+ * Escape HTML special characters for safe display.
+ */
+function escapeHtml(text: string): string {
+	return text
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+/**
+ * Check if byte is a printable ASCII character (0x20-0x7E) or safe whitespace.
+ * Safe whitespace: tab (0x09), newline (0x0A), carriage return (0x0D).
+ */
+function isPrintableAscii(byte: number): boolean {
+	return (byte >= 0x20 && byte <= 0x7E) || byte === 0x09 || byte === 0x0A || byte === 0x0D;
+}
+
+/**
+ * Decode data as ASCII text.
+ * Non-printable characters are replaced with placeholder [XX].
+ */
+export function decodeAscii(data: string): TextData {
+	const bytes = hexToBytes(data);
+	let result = '';
+	let hasBinaryChars = false;
+
+	for (let i = 0; i < bytes.length; i++) {
+		const byte = bytes[i];
+		if (isPrintableAscii(byte)) {
+			result += String.fromCharCode(byte);
+		} else {
+			result += `[${byte.toString(16).padStart(2, '0').toUpperCase()}]`;
+			hasBinaryChars = true;
+		}
+	}
+
+	return {
+		type: 'text',
+		encoding: 'ascii',
+		text: escapeHtml(result),
+		hasBinaryChars,
+	};
+}
+
+/**
+ * Decode data as UTF-8 text.
+ * Invalid sequences are replaced with placeholder [XX].
+ */
+export function decodeUtf8(data: string): TextData {
+	const bytes = hexToBytes(data);
+	let hasBinaryChars = false;
+
+	// Use TextDecoder for proper UTF-8 handling.
+	const decoder = new TextDecoder('utf-8', { fatal: false });
+	const text = decoder.decode(bytes);
+
+	// Replace control characters (except safe whitespace) with placeholders.
+	// Control chars: 0x00-0x08, 0x0B-0x0C, 0x0E-0x1F, 0x7F.
+	let result = '';
+	for (let i = 0; i < text.length; i++) {
+		const code = text.charCodeAt(i);
+		// Check for replacement character (indicates decode error).
+		if (code === 0xFFFD) {
+			result += '[??]';
+			hasBinaryChars = true;
+		} else if (
+			(code >= 0x00 && code <= 0x08) ||
+			code === 0x0B ||
+			code === 0x0C ||
+			(code >= 0x0E && code <= 0x1F) ||
+			code === 0x7F
+		) {
+			result += `[${code.toString(16).padStart(2, '0').toUpperCase()}]`;
+			hasBinaryChars = true;
+		} else {
+			result += text[i];
+		}
+	}
+
+	return {
+		type: 'text',
+		encoding: 'utf8',
+		text: escapeHtml(result),
+		hasBinaryChars,
+	};
+}
+
 /**
  * Auto-detect and decode cell data based on type script.
  */
@@ -373,8 +450,11 @@ export function decodeData(
 /** Integer format type for decodeByFormat. */
 export type IntegerFormat = 'uint32' | 'uint64' | 'int64' | 'uint128';
 
+/** Text format type for decodeByFormat. */
+export type TextFormat = 'ascii' | 'utf8';
+
 /** All supported decode formats. */
-export type DecodeFormat = ScriptInfo['dataFormat'] | 'dep_group' | IntegerFormat;
+export type DecodeFormat = ScriptInfo['dataFormat'] | 'dep_group' | IntegerFormat | TextFormat;
 
 /**
  * Get byte count from hex string.
@@ -398,23 +478,15 @@ export function decodeByFormat(
 	const byteCount = getByteCount(data);
 
 	switch (format) {
-		case 'sudt': {
-			const decoded = decodeSudt(data);
-			if (!decoded) {
-				return {
-					type: 'error',
-					message: `SUDT requires at least 16 bytes (${byteCount} provided)`,
-					hex: data,
-				};
-			}
-			return decoded;
-		}
+		case 'udt':
+		case 'sudt':
 		case 'xudt': {
-			const decoded = decodeXudt(data);
+			// All UDT formats (sudt, xudt) use the same decoder.
+			const decoded = decodeUdt(data);
 			if (!decoded) {
 				return {
 					type: 'error',
-					message: `xUDT requires at least 16 bytes (${byteCount} provided)`,
+					message: `UDT requires at least 16 bytes (${byteCount} provided)`,
 					hex: data,
 				};
 			}
@@ -486,6 +558,10 @@ export function decodeByFormat(
 			}
 			return decoded;
 		}
+		case 'ascii':
+			return decodeAscii(data);
+		case 'utf8':
+			return decodeUtf8(data);
 		case 'spore':
 			// Spore decoding is complex (Molecule structure).
 			// For now, return raw.
@@ -493,14 +569,6 @@ export function decodeByFormat(
 		default:
 			return { type: 'raw', hex: data };
 	}
-}
-
-/**
- * Format token amount as raw value with locale formatting.
- * @param amount - Raw token amount.
- */
-export function formatRawAmount(amount: bigint): string {
-	return amount.toLocaleString();
 }
 
 /**

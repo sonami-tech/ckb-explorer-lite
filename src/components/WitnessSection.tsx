@@ -28,22 +28,17 @@ export function WitnessSection({ witnesses }: WitnessSectionProps) {
 
 	return (
 		<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-			<details>
-				<summary className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center justify-between">
-					<span className="font-semibold text-gray-900 dark:text-white">
-						Witnesses ({witnesses.length})
-					</span>
-					<span className="text-sm text-gray-500 dark:text-gray-400">
-						{formatBytes(totalBytes)} total
-					</span>
-				</summary>
+			<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+				<h2 className="font-semibold text-gray-900 dark:text-white">
+					Witnesses ({witnesses.length}) <span className="text-size-meta font-normal">· {formatBytes(totalBytes)}</span>
+				</h2>
+			</div>
 
-				<div className="border-t border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
-					{witnesses.map((witness, index) => (
-						<WitnessItem key={index} index={index} data={witness} />
-					))}
-				</div>
-			</details>
+			<div className="divide-y divide-gray-200 dark:divide-gray-700">
+				{witnesses.map((witness, index) => (
+					<WitnessItem key={index} index={index} data={witness} />
+				))}
+			</div>
 		</div>
 	);
 }
@@ -69,7 +64,7 @@ function WitnessItem({ index, data }: WitnessItemProps) {
 				<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
 					#{index}
 				</span>
-				<span className="text-xs text-gray-400 dark:text-gray-500">
+				<span className="text-size-meta">
 					{formatBytes(byteCount)}
 				</span>
 			</div>
@@ -204,8 +199,8 @@ function WitnessArgsField({ label, value }: { label: string; value: string | nul
 			) : signatureData ? (
 				// Show decoded signature for lock field.
 				<div className="bg-gray-100 dark:bg-gray-800 rounded p-2">
-					<div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-						SECP256K1 Signature ({(value.length - 2) / 2} bytes)
+					<div className="text-size-meta mb-1">
+						SECP256K1 Signature ({formatBytes((value.length - 2) / 2)})
 					</div>
 					<SignatureView data={signatureData} />
 				</div>
@@ -219,8 +214,8 @@ function WitnessArgsField({ label, value }: { label: string; value: string | nul
 						<CopyButton text={value} />
 					</div>
 					{value.length > 128 && (
-						<div className="text-xs text-gray-400 mt-1">
-							({(value.length - 2) / 2} bytes)
+						<div className="text-size-meta mt-1">
+							({formatBytes((value.length - 2) / 2)})
 						</div>
 					)}
 				</div>

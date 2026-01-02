@@ -1,5 +1,10 @@
-import { useEffect, useCallback, type ReactNode } from 'react';
+import { useEffect, useCallback, useState, type ReactNode } from 'react';
 import { CopyButton, DownloadButton } from './CopyButton';
+import { decodeAscii, decodeUtf8 } from '../lib/decode';
+import { formatBytes } from '../lib/format';
+
+/** View mode for data display in modal. */
+type ModalViewMode = 'hex' | 'ascii' | 'utf8';
 
 interface DataModalProps {
 	/** Whether the modal is open. */
@@ -12,7 +17,7 @@ interface DataModalProps {
 	byteCount: number;
 	/** Raw hex data for copy/download. */
 	data: string;
-	/** Content to render in the modal body. */
+	/** Content to render in the modal body (shown in hex mode). */
 	children: ReactNode;
 }
 
@@ -23,6 +28,7 @@ interface DataModalProps {
  * - Click outside to close
  * - Copy and download buttons in header
  * - Scrollable content area
+ * - Toggle between Hex, ASCII, and UTF-8 views
  */
 export function DataModal({
 	isOpen,
@@ -32,6 +38,8 @@ export function DataModal({
 	data,
 	children,
 }: DataModalProps) {
+	const [viewMode, setViewMode] = useState<ModalViewMode>('hex');
+
 	// Handle escape key to close.
 	const handleKeyDown = useCallback((e: KeyboardEvent) => {
 		if (e.key === 'Escape') {
@@ -76,9 +84,10 @@ export function DataModal({
 						<h2 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
 							{title}
 						</h2>
-						<span className="text-sm text-gray-500 dark:text-gray-400">
-							({formatBytesCompact(byteCount)})
+						<span className="text-size-meta">
+							({formatBytes(byteCount)})
 						</span>
+						<ViewModeSelector current={viewMode} onChange={setViewMode} />
 					</div>
 
 					<div className="flex items-center gap-2">
@@ -99,7 +108,9 @@ export function DataModal({
 				{/* Content area - scrollable. */}
 				<div className="flex-1 overflow-auto p-4">
 					<div className="bg-gray-50 dark:bg-gray-900 rounded p-4">
-						{children}
+						<ModalContent viewMode={viewMode} data={data}>
+							{children}
+						</ModalContent>
 					</div>
 				</div>
 			</div>
@@ -108,11 +119,69 @@ export function DataModal({
 }
 
 /**
- * Compact byte formatting for modal header.
+ * View mode selector for switching between Hex, ASCII, and UTF-8.
  */
-function formatBytesCompact(bytes: number): string {
-	if (bytes === 0) return '0 B';
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function ViewModeSelector({
+	current,
+	onChange,
+}: {
+	current: ModalViewMode;
+	onChange: (mode: ModalViewMode) => void;
+}) {
+	const modes: { value: ModalViewMode; label: string }[] = [
+		{ value: 'hex', label: 'Hex' },
+		{ value: 'ascii', label: 'ASCII' },
+		{ value: 'utf8', label: 'UTF-8' },
+	];
+
+	return (
+		<div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded p-0.5">
+			{modes.map((mode) => (
+				<button
+					key={mode.value}
+					onClick={() => onChange(mode.value)}
+					className={`
+						px-2 py-0.5 text-xs font-medium rounded transition-colors
+						${current === mode.value
+							? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+						}
+					`}
+				>
+					{mode.label}
+				</button>
+			))}
+		</div>
+	);
+}
+
+/**
+ * Modal content renderer based on view mode.
+ */
+function ModalContent({
+	viewMode,
+	data,
+	children,
+}: {
+	viewMode: ModalViewMode;
+	data: string;
+	children: ReactNode;
+}) {
+	if (viewMode === 'hex') {
+		return <>{children}</>;
+	}
+
+	// Decode to text format.
+	const decoded = viewMode === 'ascii' ? decodeAscii(data) : decodeUtf8(data);
+
+	return (
+		<div className="font-mono text-sm whitespace-pre-wrap break-all">
+			{decoded.hasBinaryChars && (
+				<div className="mb-2 text-xs text-amber-600 dark:text-amber-400">
+					Contains non-printable characters shown as [XX].
+				</div>
+			)}
+			<span dangerouslySetInnerHTML={{ __html: decoded.text }} />
+		</div>
+	);
 }

@@ -5,6 +5,7 @@
 
 import { useNetwork } from '../contexts/NetworkContext';
 import { lookupLockScript, lookupTypeScript, type ScriptInfo } from '../lib/wellKnown';
+import { formatBytes } from '../lib/format';
 import { HashDisplay } from './CopyButton';
 import { HashTypeIndicator } from './OptionIndicator';
 import { HexData } from './HexData';
@@ -53,11 +54,30 @@ export function ScriptSection({ title, script }: ScriptSectionProps) {
 				<DetailRow label="Hash Type">
 					<HashTypeIndicator hashType={script.hash_type} />
 				</DetailRow>
-				<DetailRow label="Args">
-					<HexData data={script.args} context="inline" />
+				<DetailRow label={<ArgsLabel args={script.args} />}>
+					<HexData data={script.args} context="inline" showSize={false} />
 				</DetailRow>
 			</div>
 		</div>
+	);
+}
+
+/**
+ * Args label with size indicator in lighter style.
+ * Shows "Args" for empty, "Args (20 B)" for non-empty.
+ */
+function ArgsLabel({ args }: { args: string }) {
+	if (args === '0x') {
+		return <>Args</>;
+	}
+	const byteCount = (args.length - 2) / 2;
+	return (
+		<>
+			Args{' '}
+			<span className="text-size-meta font-normal">
+				({formatBytes(byteCount)})
+			</span>
+		</>
 	);
 }
 

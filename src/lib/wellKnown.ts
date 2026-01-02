@@ -30,7 +30,7 @@ export interface ScriptInfo {
 	/** URL to documentation (RFC or official docs). */
 	sourceUrl?: string;
 	/** Data format in cell data (for type scripts). */
-	dataFormat?: 'sudt' | 'xudt' | 'dao' | 'spore' | 'dep_group';
+	dataFormat?: 'udt' | 'sudt' | 'xudt' | 'dao' | 'spore' | 'dep_group';
 	/** Args format (for lock scripts). */
 	argsFormat?: 'pubkey_hash' | 'omnilock' | 'acp' | 'multisig';
 	/** Base type name for args-specific scripts (e.g., "xUDT" for iCKB). */

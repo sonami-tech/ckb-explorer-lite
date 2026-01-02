@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import { useTruncation, type BreakpointTier } from '../hooks/ui';
 import { HEX_DATA_CONFIG } from '../config';
+import { formatBytes } from '../lib/format';
 import { CopyButton, DownloadButton, ModalButton, ChevronButton, SizeBadge } from './CopyButton';
 import { DataModal } from './DataModal';
 
@@ -127,7 +128,7 @@ export function HexData({
 		if (viewMode === 'concise') {
 			if (needsWarning && !warnConfirmed) {
 				const confirmed = window.confirm(
-					`This data is ${formatBytesForWarn(byteCount)}. Expanding may slow your browser. Continue?`
+					`This data is ${formatBytes(byteCount)}. Expanding may slow your browser. Continue?`
 				);
 				if (!confirmed) return;
 				setWarnConfirmed(true);
@@ -444,15 +445,6 @@ function formatLabel(format: string, detected: string): string {
 	}
 
 	return label;
-}
-
-/**
- * Format bytes for warning message.
- */
-function formatBytesForWarn(bytes: number): string {
-	if (bytes < 1024) return `${bytes} bytes`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 // Re-export types for external use.

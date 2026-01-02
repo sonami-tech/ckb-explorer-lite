@@ -182,20 +182,34 @@ export function HashDisplay({
 
 /**
  * Size badge showing formatted byte count.
+ * Shows tooltip with exact byte count when abbreviated (>= 1024 bytes).
  */
 interface SizeBadgeProps {
 	/** Size in bytes. */
 	bytes: number;
 	/** Additional CSS classes. */
 	className?: string;
+	/** Show parentheses around the size. Default: true. */
+	parens?: boolean;
 }
 
-export function SizeBadge({ bytes, className = '' }: SizeBadgeProps) {
-	return (
-		<span className={`text-xs text-gray-400 dark:text-gray-500 ${className}`}>
-			({formatBytes(bytes)})
+export function SizeBadge({ bytes, className = '', parens = true }: SizeBadgeProps) {
+	const formatted = formatBytes(bytes);
+	const exactText = `${bytes.toLocaleString()} bytes`;
+	// Show tooltip only when abbreviated (KB, MB, etc.).
+	const isAbbreviated = bytes >= 1024;
+
+	const content = (
+		<span className={`text-size-meta ${className}`}>
+			{parens ? `(${formatted})` : formatted}
 		</span>
 	);
+
+	if (isAbbreviated) {
+		return <Tooltip content={exactText}>{content}</Tooltip>;
+	}
+
+	return content;
 }
 
 /**

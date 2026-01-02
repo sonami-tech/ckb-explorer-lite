@@ -305,23 +305,132 @@ interface DecoderRegistry {
 ```
 See `WitnessSection.tsx` for an example registry implementation.
 
-### CellDataDisplay
+### Size Display
+
+Byte sizes use `formatBytes()` for consistent formatting across the site.
+
+**Formatting Rules:**
+- Units: B, KB, MB, GB, TB (1024-based).
+- Decimals: 0 for bytes (<1024), 1 for KB and above.
+- Always use `formatBytes()` from `src/lib/format.ts` - never raw `{n} bytes`.
+
+**Styling Standard:**
+- Use the `text-size-meta` utility class (defined in `src/index.css`).
+- When inside `font-semibold` parent, add `font-normal`.
+
+The `text-size-meta` class applies:
+- `font-size: smaller` - reduces size relative to parent context.
+- `text-gray-500 dark:text-gray-400` - secondary/muted color.
+
+#### Size in Section Headers
+
+| Context | Pattern | Example |
+|---------|---------|---------|
+| Single item | `Label (size)` | `Cell Data (300 B)` |
+| Collection | `Label (count) · size` | `Witnesses (3) · 1.5 KB` |
+
+```tsx
+// Single item (Cell Data)
+<h2 className="font-semibold text-gray-900 dark:text-white">Cell Data</h2>
+<span className="text-size-meta">
+  ({formatBytes(byteCount)})
+</span>
+
+// Collection (Witnesses)
+<h2 className="font-semibold text-gray-900 dark:text-white">
+  Witnesses ({count}) <span className="text-size-meta font-normal">· {formatBytes(totalBytes)}</span>
+</h2>
+```
+
+#### Size in Detail Row Labels
+
+Size appears in lighter, smaller text within the label:
+
+```tsx
+// Args label with size
+<DetailRow label={
+  <>
+    Args <span className="text-size-meta font-normal">({formatBytes(byteCount)})</span>
+  </>
+}>
+```
+
+#### SizeBadge Component
+
+Use `SizeBadge` for standalone size display with automatic tooltip for large values.
+
+```tsx
+// Default with parentheses: (300 B)
+<SizeBadge bytes={300} />
+
+// Without parentheses: 300 B
+<SizeBadge bytes={300} parens={false} />
+
+// Large size shows tooltip with exact bytes
+<SizeBadge bytes={15360} />  // Displays "(15.0 KB)", hover shows "15,360 bytes"
+```
+
+**Props:**
+- `bytes` - Size in bytes.
+- `parens` - Wrap in parentheses (default: true).
+- `className` - Additional CSS classes.
+
+**Styling:** Uses `text-size-meta` utility class.
+
+**Tooltip Behavior:**
+- Sizes under 1024 bytes show exact value, no tooltip.
+- Sizes 1024+ show abbreviated format (KB, MB) with tooltip for exact byte count.
+
+**When to Use:**
+- `SizeBadge` - Inline with data, sub-labels, when tooltip is helpful.
+- `formatBytes()` - Section headers, custom layouts where you control styling.
+
+### SubDataSection
+
+Two-line section pattern for secondary data within a decoded view. Provides consistent layout for extra data, extension data, and error raw data.
+
+**Layout:**
+- **Line 1**: Label with size badge and action buttons (copy, download, modal).
+- **Line 2**: Content (hex data, truncated responsively).
+
+**Usage:**
+```tsx
+// Used internally by decoded views
+{extraData !== '0x' && (
+  <SubDataSection label="Extra data" data={extraData} />
+)}
+```
+
+**Features:**
+- Label row: `{label} {size}:` with copy/download/modal buttons on right.
+- Content row: Responsively truncated hex data.
+- Modal: Full-screen view for complete data.
+
+### CellDataSection
 
 Auto-detects and decodes cell data based on type script.
 
 ```tsx
 // Auto-detect format
-<CellDataDisplay data={cellData} typeScript={typeScript} />
+<CellDataSection data={cellData} typeScript={typeScript} />
 
-// Force specific decode mode
-<CellDataDisplay data={cellData} forceMode="dep_group" hideToggle />
+// With outpoint for format lookup (when no type script)
+<CellDataSection data={cellData} outpoint={outpoint} />
 ```
 
 **Supported decode formats:**
-- **SUDT**: 16-byte uint128 LE token amount.
-- **xUDT**: SUDT amount + extension data.
+- **UDT (Token Amount)**: 16-byte uint128 LE token amount + optional extra data. Covers both SUDT and xUDT formats.
 - **DAO**: 8-byte deposit/withdraw indicator.
 - **DEP_GROUP**: Molecule vector of OutPoints (rendered as clickable links).
+- **Integer formats**: uint32, uint64, int64, uint128 (little-endian).
+- **ASCII Text**: Decode as ASCII with placeholder for non-printable chars.
+- **UTF-8 Text**: Decode as UTF-8 with placeholder for invalid/control chars.
+
+**Text Decoder Safety:**
+- HTML characters (`<`, `>`, `&`, `"`, `'`) are escaped.
+- Non-printable/control characters show as `[XX]` placeholders.
+- Invalid UTF-8 sequences show as `[??]` placeholders.
+- Warning banner shown when binary characters are present.
 
 ### Tooltip
 
@@ -368,13 +477,22 @@ Auto-detects and decodes cell data based on type script.
 ### decode.ts
 
 **Cell data decoding:**
-- `decodeSudt(data)` - Decode SUDT cell data to amount.
-- `decodeXudt(data)` - Decode xUDT cell data to amount + extension.
+- `decodeUdt(data)` - Decode UDT (SUDT/xUDT) cell data to amount + extra data.
 - `decodeDao(data)` - Decode NervosDAO cell data to deposit/withdraw phase.
 - `decodeDepGroup(data)` - Decode DEP_GROUP to list of OutPoints.
 - `decodeData(data, typeScript, network)` - Auto-detect and decode.
 - `decodeByFormat(data, format)` - Decode by explicit format name.
 - `formatTokenAmount(amount, decimals=8)` - Format token amount with decimals.
+
+**Integer decoding:**
+- `decodeUint32(data)` - Decode 4-byte little-endian unsigned integer.
+- `decodeUint64(data)` - Decode 8-byte little-endian unsigned integer.
+- `decodeInt64(data)` - Decode 8-byte little-endian signed integer.
+- `decodeUint128(data)` - Decode 16-byte little-endian unsigned integer.
+
+**Text decoding:**
+- `decodeAscii(data)` - Decode as ASCII text with safety escaping.
+- `decodeUtf8(data)` - Decode as UTF-8 text with safety escaping.
 
 **Witness decoding:**
 - `decodeWitnessArgs(data)` - Decode Molecule WitnessArgs table.

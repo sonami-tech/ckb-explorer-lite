@@ -8,7 +8,7 @@
  * - Touch-friendly interactive mode for clickable elements
  */
 
-import { useState, useRef, useEffect, cloneElement } from 'react';
+import { useState, useRef, useEffect, cloneElement, useCallback } from 'react';
 import type { ReactNode, ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -66,7 +66,9 @@ export function Tooltip({
 	interactive = false,
 }: TooltipProps) {
 	const [isOpen, setIsOpen] = useState(false);
-	const arrowRef = useRef<HTMLSpanElement>(null);
+	// Use state instead of ref for arrow element to avoid lint warnings about
+	// accessing refs during render when passing to floating-ui middleware.
+	const [arrowElement, setArrowElement] = useState<HTMLSpanElement | null>(null);
 	const referenceRef = useRef<HTMLElement>(null);
 
 	const { refs, floatingStyles, middlewareData, placement: actualPlacement } = useFloating({
@@ -86,7 +88,7 @@ export function Tooltip({
 				},
 				padding: 8,
 			}),
-			arrow({ element: arrowRef }),
+			arrow({ element: arrowElement }),
 		],
 	});
 
@@ -110,6 +112,13 @@ export function Tooltip({
 		};
 	}, [interactive, isOpen]);
 
+	// Combine floating-ui ref with our click-outside detection ref.
+	// Must be before early return to satisfy hooks rules.
+	const setRefs = useCallback((el: HTMLElement | null) => {
+		refs.setReference(el);
+		(referenceRef as React.MutableRefObject<HTMLElement | null>).current = el;
+	}, [refs]);
+
 	// Don't render tooltip if disabled or no content.
 	if (disabled || !content) {
 		return children;
@@ -125,12 +134,6 @@ export function Tooltip({
 		}
 		// Normal click (mouse or second tap): forward to original handler.
 		children.props.onClick?.(e);
-	};
-
-	// Combine floating-ui ref with our click-outside detection ref.
-	const setRefs = (el: HTMLElement | null) => {
-		refs.setReference(el);
-		(referenceRef as React.MutableRefObject<HTMLElement | null>).current = el;
 	};
 
 	// Calculate arrow position based on actual placement after flip/shift.
@@ -151,6 +154,7 @@ export function Tooltip({
 
 	return (
 		<>
+			{/* eslint-disable-next-line react-hooks/refs -- floating-ui's refs.setReference is a callback setter, not a ref value access */}
 			{cloneElement(children, {
 				ref: setRefs,
 				onMouseEnter: (e: React.MouseEvent) => {
@@ -185,7 +189,7 @@ export function Tooltip({
 					{content}
 					{/* Arrow element. */}
 					<span
-						ref={arrowRef}
+						ref={setArrowElement}
 						style={{
 							position: 'absolute',
 							left: arrowX != null ? `${arrowX}px` : '',

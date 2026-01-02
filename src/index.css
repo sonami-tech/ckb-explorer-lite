@@ -43,6 +43,12 @@
 		min-height: 100vh;
 		min-height: 100dvh;
 	}
+
+	/* Size metadata styling for byte counts and secondary size info. */
+	.text-size-meta {
+		font-size: smaller;
+		@apply text-gray-500 dark:text-gray-400;
+	}
 }
 
 /* Timeline pulse animation - moves left to right, fully traversing and exiting the track. */
