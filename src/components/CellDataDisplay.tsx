@@ -8,18 +8,19 @@ import {
 	formatTokenAmount,
 	type DecodedData,
 	type DepGroupData,
+	type DecodeFormat,
 } from '../lib/decode';
 import { lookupTypeScript, lookupCellFormat } from '../lib/wellKnown';
 import { useUrlParam } from '../hooks/useUrlParam';
-import { TruncatedData } from './TruncatedData';
+import { HexData } from './HexData';
 import { OutPoint } from './OutPoint';
 import { Tooltip } from './Tooltip';
 import { DAO_DEPOSIT, DAO_WITHDRAW } from '../lib/badgeStyles';
 
-type ViewMode = 'auto' | 'raw' | 'sudt' | 'xudt' | 'dao' | 'dep_group';
+type ViewMode = 'auto' | 'raw' | 'sudt' | 'xudt' | 'dao' | 'dep_group' | 'uint32' | 'uint64' | 'int64' | 'uint128';
 
 /** Valid decode parameter values for URL. */
-const VALID_DECODE_PARAMS: ViewMode[] = ['raw', 'sudt', 'xudt', 'dao', 'dep_group'];
+const VALID_DECODE_PARAMS: ViewMode[] = ['raw', 'sudt', 'xudt', 'dao', 'dep_group', 'uint32', 'uint64', 'int64', 'uint128'];
 
 /** Parse decode param from URL, returning null if invalid. */
 function parseDecodeParam(value: string | null): ViewMode | null {
@@ -79,12 +80,15 @@ export function CellDataSection({
 	}, [typeScript, outpoint, networkType]);
 
 	// Available view modes - always show all options.
+	// Order: auto (if detected), raw, protocol formats, then integer formats.
 	const availableModes = useMemo(() => {
 		const modes: ViewMode[] = [];
 		if (detectedFormat && detectedFormat !== 'spore') {
 			modes.push('auto');
 		}
 		modes.push('raw', 'sudt', 'xudt', 'dao', 'dep_group');
+		// Integer formats come last.
+		modes.push('uint32', 'uint64', 'int64', 'uint128');
 		return modes;
 	}, [detectedFormat]);
 
@@ -132,7 +136,7 @@ export function CellDataSection({
 			return { type: 'raw', hex: data };
 		}
 
-		return decodeByFormat(data, effectiveMode);
+		return decodeByFormat(data, effectiveMode as DecodeFormat);
 	}, [data, effectiveMode, detectedFormat]);
 
 	const byteCount = (data.length - 2) / 2;
@@ -217,7 +221,19 @@ export function CellDataSection({
 function DecodedContent({ decoded }: { decoded: DecodedData }) {
 	switch (decoded.type) {
 		case 'sudt':
-			return <TokenAmountDisplay amount={decoded.amount} />;
+			return (
+				<div className="space-y-3">
+					<TokenAmountDisplay amount={decoded.amount} />
+					{decoded.extraData !== '0x' && (
+						<div>
+							<span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
+								Extra data:
+							</span>
+							<HexData data={decoded.extraData} context="inline" />
+						</div>
+					)}
+				</div>
+			);
 
 		case 'xudt':
 			return (
@@ -228,7 +244,7 @@ function DecodedContent({ decoded }: { decoded: DecodedData }) {
 							<span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
 								Extension data:
 							</span>
-							<TruncatedData data={decoded.extensionData} />
+							<HexData data={decoded.extensionData} context="inline" />
 						</div>
 					)}
 				</div>
@@ -261,9 +277,15 @@ function DecodedContent({ decoded }: { decoded: DecodedData }) {
 		case 'dep_group':
 			return <DepGroupDisplay outpoints={decoded.outpoints} />;
 
+		case 'integer':
+			return <IntegerDisplay value={decoded.value} format={decoded.format} extraData={decoded.extraData} />;
+
+		case 'error':
+			return <ErrorDisplay message={decoded.message} hex={decoded.hex} />;
+
 		case 'raw':
 		default:
-			return <TruncatedData data={decoded.hex} />;
+			return <HexData data={decoded.hex} context="section" showSize={false} />;
 	}
 }
 
@@ -285,6 +307,14 @@ function formatModeName(mode: ViewMode, detectedFormat: string | null): string {
 			return 'DAO';
 		case 'dep_group':
 			return 'Dep Group';
+		case 'uint32':
+			return 'uint32 (4 bytes)';
+		case 'uint64':
+			return 'uint64 (8 bytes)';
+		case 'int64':
+			return 'int64 (signed)';
+		case 'uint128':
+			return 'uint128 (16 bytes)';
 		default:
 			return mode;
 	}
@@ -367,6 +397,69 @@ function TokenAmountDisplay({ amount }: { amount: bigint }) {
 						+
 					</button>
 				</Tooltip>
+			</div>
+		</div>
+	);
+}
+
+/**
+ * Integer value display with extra data support.
+ */
+function IntegerDisplay({
+	value,
+	format,
+	extraData,
+}: {
+	value: bigint;
+	format: 'uint32' | 'uint64' | 'int64' | 'uint128';
+	extraData: string;
+}) {
+	// Format the value with thousand separators.
+	const displayValue = value.toLocaleString();
+
+	// Get byte size for format.
+	const byteSize = format === 'uint32' ? 4 : format === 'uint128' ? 16 : 8;
+
+	return (
+		<div className="space-y-3">
+			<div className="flex items-center gap-2 flex-wrap">
+				<span className="text-sm text-gray-500 dark:text-gray-400">Value:</span>
+				<span className="font-mono text-lg font-semibold">
+					{displayValue}
+				</span>
+				<span className="text-xs text-gray-400 dark:text-gray-500">
+					({byteSize} bytes)
+				</span>
+			</div>
+			{extraData !== '0x' && (
+				<div>
+					<span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
+						Extra data:
+					</span>
+					<HexData data={extraData} context="inline" />
+				</div>
+			)}
+		</div>
+	);
+}
+
+/**
+ * Error display for decode failures.
+ */
+function ErrorDisplay({ message, hex }: { message: string; hex: string }) {
+	return (
+		<div className="space-y-3">
+			<div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+				<svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+				</svg>
+				<span className="text-sm font-medium">{message}</span>
+			</div>
+			<div>
+				<span className="text-sm text-gray-500 dark:text-gray-400 block mb-1">
+					Raw data:
+				</span>
+				<HexData data={hex} context="section" showSize={false} />
 			</div>
 		</div>
 	);
