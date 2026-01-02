@@ -14,7 +14,7 @@ import {
 import { lookupTypeScript, lookupCellFormat } from '../lib/wellKnown';
 import { useUrlParam } from '../hooks/useUrlParam';
 import { useTruncation } from '../hooks/ui';
-import { CopyButton, DownloadButton, ModalButton, SizeBadge } from './CopyButton';
+import { CopyButton, DownloadButton, ModalButton, ChevronButton, SizeBadge } from './CopyButton';
 import { DataModal } from './DataModal';
 import { OutPoint } from './OutPoint';
 import { DAO_DEPOSIT, DAO_WITHDRAW } from '../lib/badgeStyles';
@@ -223,7 +223,10 @@ export function CellDataSection({
 					</span>
 				) : (
 					<div className={`bg-gray-50 dark:bg-gray-900 p-4 rounded ${decoded.type === 'raw' ? 'overflow-x-auto' : 'overflow-visible'}`}>
-						<DecodedContent decoded={decoded} />
+						<DecodedContent
+							decoded={decoded}
+							onOpenModal={() => setIsModalOpen(true)}
+						/>
 					</div>
 				)}
 			</div>
@@ -247,7 +250,13 @@ export function CellDataSection({
 /**
  * Render decoded content based on type.
  */
-function DecodedContent({ decoded }: { decoded: DecodedData }) {
+function DecodedContent({
+	decoded,
+	onOpenModal,
+}: {
+	decoded: DecodedData;
+	onOpenModal: () => void;
+}) {
 	switch (decoded.type) {
 		case 'udt':
 			return (
@@ -290,20 +299,48 @@ function DecodedContent({ decoded }: { decoded: DecodedData }) {
 			return <IntegerDisplay value={decoded.value} format={decoded.format} extraData={decoded.extraData} />;
 
 		case 'text':
-			return <TextDisplay text={decoded.text} encoding={decoded.encoding} hasBinaryChars={decoded.hasBinaryChars} />;
+			return <TextDisplay text={decoded.text} encoding={decoded.encoding} hasBinaryChars={decoded.hasBinaryChars} onOpenModal={onOpenModal} />;
 
 		case 'error':
 			return <ErrorDisplay message={decoded.message} hex={decoded.hex} />;
 
 		case 'raw':
 		default:
-			// Simple code display - buttons are in the main header.
+			// Raw hex display with truncation; chevron opens modal.
 			return (
-				<code className="font-mono text-sm break-all block">
-					{decoded.hex}
-				</code>
+				<RawHexDisplay
+					data={decoded.hex}
+					onOpenModal={onOpenModal}
+				/>
 			);
 	}
+}
+
+/**
+ * Raw hex display with truncation.
+ * Shows truncated hex by default, with chevron to open modal for full view.
+ */
+function RawHexDisplay({
+	data,
+	onOpenModal,
+}: {
+	data: string;
+	onOpenModal: () => void;
+}) {
+	const { displayData, isTruncated } = useTruncation(data);
+
+	return (
+		<div>
+			<code className="font-mono text-sm break-all block">
+				{displayData}
+			</code>
+			{isTruncated && (
+				<div className="mt-2 flex justify-center">
+					<ChevronButton isExpanded={false} onClick={onOpenModal} />
+				</div>
+			)}
+		</div>
+	);
 }
 
 /**
@@ -501,17 +538,25 @@ function ErrorDisplay({ message, hex }: { message: string; hex: string }) {
 /**
  * Text display for ASCII/UTF-8 decoded content.
  * Shows warning if binary characters were encountered.
+ * Truncates long text with chevron to open modal for full view.
  * Uses dangerouslySetInnerHTML since text is already HTML-escaped by the decoder.
  */
 function TextDisplay({
 	text,
 	encoding,
 	hasBinaryChars,
+	onOpenModal,
 }: {
 	text: TextData['text'];
 	encoding: TextData['encoding'];
 	hasBinaryChars: TextData['hasBinaryChars'];
+	onOpenModal: () => void;
 }) {
+	// Truncate long text (threshold matches hex truncation ~2000 chars).
+	const TEXT_TRUNCATE_LIMIT = 2000;
+	const isTruncated = text.length > TEXT_TRUNCATE_LIMIT;
+	const displayText = isTruncated ? text.slice(0, TEXT_TRUNCATE_LIMIT) + '…' : text;
+
 	return (
 		<div className="space-y-2">
 			{hasBinaryChars && (
@@ -530,9 +575,14 @@ function TextDisplay({
 				</span>
 				<pre
 					className="font-mono text-sm whitespace-pre-wrap break-all"
-					dangerouslySetInnerHTML={{ __html: text }}
+					dangerouslySetInnerHTML={{ __html: displayText }}
 				/>
 			</div>
+			{isTruncated && (
+				<div className="mt-2 flex justify-center">
+					<ChevronButton isExpanded={false} onClick={onOpenModal} />
+				</div>
+			)}
 		</div>
 	);
 }
