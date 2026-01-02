@@ -105,9 +105,9 @@ export function DataModal({
 					</div>
 				</div>
 
-				{/* Content area - scrollable. */}
-				<div className="flex-1 overflow-auto p-4">
-					<div className="bg-gray-50 dark:bg-gray-900 rounded p-4">
+				{/* Content area - scrollable vertically only. */}
+				<div className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-w-0">
+					<div className="bg-gray-50 dark:bg-gray-900 rounded p-4 min-w-0">
 						<ModalContent viewMode={viewMode} data={data}>
 							{children}
 						</ModalContent>
@@ -175,7 +175,7 @@ function ModalContent({
 	const decoded = viewMode === 'ascii' ? decodeAscii(data) : decodeUtf8(data);
 
 	return (
-		<div className="font-mono text-sm whitespace-pre-wrap break-all">
+		<div className="font-mono text-sm whitespace-pre-wrap break-all min-w-0 max-w-full" style={{ overflowWrap: 'anywhere', wordBreak: 'break-all' }}>
 			{decoded.hasBinaryChars && (
 				<div className="mb-2 text-xs text-amber-600 dark:text-amber-400">
 					Contains non-printable characters shown as [XX].

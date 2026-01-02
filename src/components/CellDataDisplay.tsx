@@ -239,7 +239,7 @@ export function CellDataSection({
 				byteCount={byteCount}
 				data={data}
 			>
-				<code className="font-mono text-sm break-all block whitespace-pre-wrap">
+				<code className="font-mono text-sm break-all block whitespace-pre-wrap min-w-0 max-w-full" style={{ overflowWrap: 'anywhere', wordBreak: 'break-all' }}>
 					{data}
 				</code>
 			</DataModal>
@@ -468,7 +468,7 @@ function SubDataSection({ label, data }: { label: string; data: string }) {
 				byteCount={byteCount}
 				data={data}
 			>
-				<code className="font-mono text-sm break-all block whitespace-pre-wrap">
+				<code className="font-mono text-sm break-all block whitespace-pre-wrap min-w-0 max-w-full" style={{ overflowWrap: 'anywhere', wordBreak: 'break-all' }}>
 					{data}
 				</code>
 			</DataModal>
