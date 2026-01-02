@@ -77,11 +77,30 @@ This provides a consistent, predictable user experience:
 
 ### Variable-Length Data (Args, Cell Data, Witnesses)
 
-| Context | Desktop | Mobile | Component |
-|---------|---------|--------|-----------|
-| All contexts | First 128 chars | First 64 chars | `TruncatedData` |
+| Resolution | Width | Hex Chars | Bytes |
+|------------|-------|-----------|-------|
+| Mobile | < 640px | 130 | 64 |
+| Tablet | 640-1023px | 258 | 128 |
+| Desktop | ≥ 1024px | 1026 | 512 |
 
-**Format**: First N chars + `...` if truncated. Word break (`<wbr>`) inserted at 50% for natural wrapping.
+Limits are in hex string characters (including `0x` prefix), not raw bytes. Defined in `src/hooks/ui.ts` (`DEFAULT_CHAR_LIMITS`).
+
+**Size Thresholds** (defined in `src/config/defaults.ts` under `HEX_DATA_CONFIG`):
+
+| Threshold | Size | Behavior |
+|-----------|------|----------|
+| Download button | > 10 KB | Shows download button. |
+| Modal suggested | > 50 KB | Suggests full-screen modal view. |
+| Warning on expand | > 100 KB | Shows warning before expanding. |
+| Max expanded height | 384px | Scrollable container limit. |
+
+**Features:**
+- 3-tier responsive truncation (mobile < 640px, tablet 640-1023px, desktop ≥ 1024px).
+- Expandable view with scroll for long data.
+- Full-screen modal for very large data.
+- Size badge showing byte count.
+- Download button for large data.
+- Pluggable decoder registry for format-specific rendering.
 
 ## Responsive Behavior
 
@@ -92,9 +111,9 @@ Components with responsive display (full on desktop/tablet, truncated on mobile)
 | `HashDisplay` | `responsive={true}` | `false` |
 | `AddressDisplay` | `responsive={true}` | `false` |
 | `OutPoint` | CSS-based truncation | N/A |
-| `TruncatedData` | Always responsive | N/A |
+| `HexData` | 3-tier breakpoints | Always responsive |
 
-**Breakpoint**: 640px (Tailwind `sm`)
+**Breakpoints**: Mobile < 640px, Tablet 640-1023px, Desktop ≥ 1024px
 
 ## Visual Indicators
 
@@ -232,29 +251,59 @@ Displays transaction outpoints (tx_hash:index) with navigation and copy.
 - Text click navigates to cell or transaction page.
 - Copy icon copies full outpoint (`txHash:index`).
 
-### TruncatedData
+### HexData
 
-Displays variable-length hex data with responsive truncation.
+Displays variable-length hex data with 3-tier responsive truncation, expandable view, modal option, and pluggable decoder support.
 
 ```tsx
-// Default truncation (128 desktop, 64 mobile)
-<TruncatedData data={hexData} />
+// Inline context (args, small data)
+<HexData data={hexData} context="inline" />
 
-// Custom limits
-<TruncatedData data={hexData} desktopLimit={256} mobileLimit={128} />
+// Section context (cell data, witnesses)
+<HexData data={hexData} context="section" />
 
-// With copy button (default: true)
-<TruncatedData data={hexData} showCopy />
+// With custom decoder registry
+<HexData data={hexData} registry={witnessRegistry} context="section" />
 
-// Without copy button
-<TruncatedData data={hexData} showCopy={false} />
+// With label
+<HexData data={hexData} label="Extension Data" context="inline" />
+
+// Without size badge
+<HexData data={hexData} showSize={false} context="section" />
+
+// Disable modal
+<HexData data={hexData} allowModal={false} context="section" />
 ```
 
 **Props:**
 - `data` - Hex string to display.
-- `desktopLimit` - Max chars on desktop (default: 128).
-- `mobileLimit` - Max chars on mobile (default: 64).
-- `showCopy` - Show copy button (default: true).
+- `context` - Display context: `'inline'` (smaller limits) or `'section'` (larger limits).
+- `registry` - Optional decoder registry for format-specific rendering.
+- `label` - Optional label shown above content.
+- `showSize` - Show size badge (default: true).
+- `allowModal` - Allow full-screen modal view (default: true).
+- `charLimits` - Custom character limits per breakpoint.
+
+**View Modes:**
+- **Concise**: Truncated with ellipsis, default view.
+- **Expanded**: Full content in scrollable container (max height 384px).
+- **Modal**: Full-screen view for very large data.
+
+**Thresholds (configurable in `src/config/defaults.ts`):**
+- Download button shown at 10 KB.
+- Modal suggested at 50 KB.
+- Warning shown at 100 KB before expanding.
+
+**Decoder Registry:**
+The `registry` prop accepts a `DecoderRegistry` object for custom format decoding:
+```tsx
+interface DecoderRegistry {
+  defaultFormat: string;
+  auto?: (data: string) => DecodedResult | null;
+  decoders: Record<string, (data: string) => DecodedResult | null>;
+}
+```
+See `WitnessSection.tsx` for an example registry implementation.
 
 ### CellDataDisplay
 
@@ -314,15 +363,24 @@ Auto-detects and decodes cell data based on type script.
 - `truncateAddress(address, prefixLen=8, suffixLen=4)` - Truncate CKB addresses.
 - `truncateData(data, limit=128)` - Truncate variable-length data.
 - `formatNumber(n)` - Format number with thousand separators.
+- `formatBytes(bytes, decimals=1)` - Format byte count (e.g., "1.5 KB", "2.3 MB").
 
 ### decode.ts
 
+**Cell data decoding:**
 - `decodeSudt(data)` - Decode SUDT cell data to amount.
 - `decodeXudt(data)` - Decode xUDT cell data to amount + extension.
 - `decodeDao(data)` - Decode NervosDAO cell data to deposit/withdraw phase.
 - `decodeDepGroup(data)` - Decode DEP_GROUP to list of OutPoints.
 - `decodeData(data, typeScript, network)` - Auto-detect and decode.
+- `decodeByFormat(data, format)` - Decode by explicit format name.
 - `formatTokenAmount(amount, decimals=8)` - Format token amount with decimals.
+
+**Witness decoding:**
+- `decodeWitnessArgs(data)` - Decode Molecule WitnessArgs table.
+- `decodeSignature(data)` - Decode 65-byte SECP256K1 recoverable signature.
+- `isWitnessArgs(data)` - Check if data looks like valid WitnessArgs.
+- `isSignature(data)` - Check if data is exactly 65 bytes (signature size).
 
 ### knownScripts.ts
 

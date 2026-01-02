@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import { useTruncation, type BreakpointTier } from '../hooks/ui';
 import { HEX_DATA_CONFIG } from '../config';
-import { CopyButton, DownloadButton, ExpandButton, SizeBadge } from './CopyButton';
+import { CopyButton, DownloadButton, ModalButton, ChevronButton, SizeBadge } from './CopyButton';
 import { DataModal } from './DataModal';
 
 /** View modes for data display. */
@@ -89,10 +89,8 @@ export function HexData({
 	// Calculate truncation.
 	const { displayData, isTruncated, byteCount } = useTruncation(data, charLimits);
 
-	// Size thresholds.
-	const showDownload = byteCount > HEX_DATA_CONFIG.downloadThreshold;
+	// Warning threshold for large data.
 	const needsWarning = byteCount > HEX_DATA_CONFIG.warnThreshold;
-	const suggestModal = byteCount > HEX_DATA_CONFIG.modalThreshold;
 
 	// Decode data based on current format.
 	const decoded = useMemo((): DecodedResult => {
@@ -174,8 +172,7 @@ export function HexData({
 				format={format}
 				formatOptions={formatOptions}
 				showSize={showSize}
-				showDownload={showDownload}
-				allowModal={allowModal && suggestModal}
+				allowModal={allowModal}
 				onExpand={handleExpand}
 				onOpenModal={handleOpenModal}
 				onCloseModal={handleCloseModal}
@@ -198,8 +195,7 @@ export function HexData({
 			formatOptions={formatOptions}
 			label={label}
 			showSize={showSize}
-			showDownload={showDownload}
-			allowModal={allowModal && suggestModal}
+			allowModal={allowModal}
 			onExpand={handleExpand}
 			onOpenModal={handleOpenModal}
 			onCloseModal={handleCloseModal}
@@ -220,7 +216,6 @@ interface HexDataVariantProps {
 	format: string;
 	formatOptions: string[];
 	showSize: boolean;
-	showDownload: boolean;
 	allowModal: boolean;
 	onExpand: () => void;
 	onOpenModal: () => void;
@@ -242,7 +237,6 @@ function InlineHexData({
 	format,
 	formatOptions,
 	showSize,
-	showDownload,
 	allowModal,
 	onExpand,
 	onOpenModal,
@@ -280,20 +274,13 @@ function InlineHexData({
 					)}
 
 					<CopyButton text={data} />
-					{showDownload && <DownloadButton data={data} />}
-					{allowModal && <ExpandButton onClick={onOpenModal} />}
+					<DownloadButton data={data} />
+					{isTruncated && !decoded.content && (
+						<ChevronButton isExpanded={isExpanded} onClick={onExpand} />
+					)}
+					{allowModal && <ModalButton onClick={onOpenModal} />}
 				</div>
 			</div>
-
-			{/* Expand/collapse button. */}
-			{isTruncated && !decoded.content && (
-				<button
-					onClick={onExpand}
-					className="text-nervos hover:text-nervos-dark text-sm mt-1"
-				>
-					{isExpanded ? 'Collapse' : 'Expand'}
-				</button>
-			)}
 
 			{/* Modal. */}
 			<DataModal
@@ -323,7 +310,6 @@ function SectionHexData({
 	formatOptions,
 	label,
 	showSize,
-	showDownload,
 	allowModal,
 	onExpand,
 	onOpenModal,
@@ -335,33 +321,34 @@ function SectionHexData({
 
 	return (
 		<div className={`bg-gray-50 dark:bg-gray-900 rounded ${className}`}>
-			{/* Header (if label or controls needed). */}
-			{(label || formatOptions.length > 1 || showDownload || allowModal) && (
-				<div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
-					<div className="flex items-center gap-2">
-						{label && (
-							<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-								{label}
-							</span>
-						)}
-						{showSize && <SizeBadge bytes={byteCount} />}
-					</div>
-
-					<div className="flex items-center gap-2">
-						{formatOptions.length > 1 && (
-							<FormatDropdown
-								current={format}
-								options={formatOptions}
-								detected={decoded.format}
-								onChange={onFormatChange}
-							/>
-						)}
-						<CopyButton text={data} />
-						{showDownload && <DownloadButton data={data} />}
-						{allowModal && <ExpandButton onClick={onOpenModal} />}
-					</div>
+			{/* Header. */}
+			<div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
+				<div className="flex items-center gap-2">
+					{label && (
+						<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+							{label}
+						</span>
+					)}
+					{showSize && <SizeBadge bytes={byteCount} />}
 				</div>
-			)}
+
+				<div className="flex items-center gap-2">
+					{formatOptions.length > 1 && (
+						<FormatDropdown
+							current={format}
+							options={formatOptions}
+							detected={decoded.format}
+							onChange={onFormatChange}
+						/>
+					)}
+					<CopyButton text={data} />
+					<DownloadButton data={data} />
+					{isTruncated && !decoded.content && (
+						<ChevronButton isExpanded={isExpanded} onClick={onExpand} />
+					)}
+					{allowModal && <ModalButton onClick={onOpenModal} />}
+				</div>
+			</div>
 
 			{/* Content. */}
 			<div
@@ -377,16 +364,6 @@ function SectionHexData({
 					<code className="font-mono text-sm break-all block">
 						{isExpanded ? data : displayData}
 					</code>
-				)}
-
-				{/* Expand/collapse button. */}
-				{isTruncated && !decoded.content && (
-					<button
-						onClick={onExpand}
-						className="text-nervos hover:text-nervos-dark text-sm mt-2 block"
-					>
-						{isExpanded ? 'Collapse' : 'Expand'}
-					</button>
 				)}
 			</div>
 
