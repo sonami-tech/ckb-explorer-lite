@@ -13,11 +13,11 @@ import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
-import { TruncatedData } from '../components/TruncatedData';
 import { OutPoint } from '../components/OutPoint';
 import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
 import { InternalLinkIcon } from '../components/InternalLinkIcon';
+import { WitnessSection } from '../components/WitnessSection';
 import type { RpcTransaction, RpcTransactionWithStatus } from '../types/rpc';
 import {
 	BRAND,
@@ -307,29 +307,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 			)}
 
 			{/* Witnesses. */}
-			{transaction.witnesses.length > 0 && (
-				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-					<details>
-						<summary className="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
-							<span className="font-semibold text-gray-900 dark:text-white">
-								Witnesses ({transaction.witnesses.length})
-							</span>
-						</summary>
-						<div className="border-t border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
-							{transaction.witnesses.map((witness, index) => (
-								<div key={index} className="p-4">
-									<span className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-1">
-										#{index}
-									</span>
-									<div className="bg-gray-50 dark:bg-gray-900 p-2 rounded overflow-x-auto">
-										<TruncatedData data={witness} />
-									</div>
-								</div>
-							))}
-						</div>
-					</details>
-				</div>
-			)}
+			<WitnessSection witnesses={transaction.witnesses} />
 		</div>
 	);
 }

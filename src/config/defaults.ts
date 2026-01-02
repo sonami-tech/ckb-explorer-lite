@@ -51,3 +51,17 @@ export const CELL_DATA_CONFIG = {
 	/** Automatically decode cell data for known type scripts (SUDT, xUDT, DAO). */
 	autoDecodeKnownTypes: true,
 } as const;
+
+/**
+ * HexData display configuration for large data handling.
+ */
+export const HEX_DATA_CONFIG = {
+	/** Bytes threshold to show download button. */
+	downloadThreshold: 10 * 1024,  // 10 KB
+	/** Bytes threshold to show warning before expanding. */
+	warnThreshold: 100 * 1024,     // 100 KB
+	/** Bytes threshold to suggest modal view. */
+	modalThreshold: 50 * 1024,     // 50 KB
+	/** Max height in pixels for expanded in-place view. */
+	maxExpandedHeight: 384,        // ~24rem
+} as const;

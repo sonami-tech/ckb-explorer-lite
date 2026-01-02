@@ -7,7 +7,7 @@ import { useNetwork } from '../contexts/NetworkContext';
 import { lookupLockScript, lookupTypeScript, type ScriptInfo } from '../lib/wellKnown';
 import { HashDisplay } from './CopyButton';
 import { HashTypeIndicator } from './OptionIndicator';
-import { TruncatedData } from './TruncatedData';
+import { HexData } from './HexData';
 import { DetailRow } from './DetailRow';
 import { Tooltip } from './Tooltip';
 import { BRAND } from '../lib/badgeStyles';
@@ -54,11 +54,7 @@ export function ScriptSection({ title, script }: ScriptSectionProps) {
 					<HashTypeIndicator hashType={script.hash_type} />
 				</DetailRow>
 				<DetailRow label="Args">
-					{script.args === '0x' ? (
-						<span className="text-gray-500 dark:text-gray-400 italic">Empty</span>
-					) : (
-						<TruncatedData data={script.args} />
-					)}
+					<HexData data={script.args} context="inline" />
 				</DetailRow>
 			</div>
 		</div>
