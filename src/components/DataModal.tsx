@@ -175,7 +175,7 @@ function ModalContent({
 	const decoded = viewMode === 'ascii' ? decodeAscii(data) : decodeUtf8(data);
 
 	return (
-		<div className="font-mono text-sm whitespace-pre-wrap break-all min-w-0 max-w-full" style={{ overflowWrap: 'anywhere', wordBreak: 'break-all' }}>
+		<div className="font-mono text-sm whitespace-pre-wrap break-all break-anywhere min-w-0 max-w-full">
 			{decoded.hasBinaryChars && (
 				<div className="mb-2 text-xs text-amber-600 dark:text-amber-400">
 					Contains non-printable characters shown as [XX].

@@ -49,6 +49,11 @@
 		font-size: smaller;
 		@apply text-gray-500 dark:text-gray-400;
 	}
+
+	/* Aggressive word breaking for long hex strings (iOS-safe). */
+	.break-anywhere {
+		overflow-wrap: anywhere;
+	}
 }
 
 /* Timeline pulse animation - moves left to right, fully traversing and exiting the track. */
