@@ -122,8 +122,13 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		},
 		// ============================================
 		// Genesis code cells (RFC 0024)
+		// Indices verified against RFC 0024:
+		// - Index 1: SECP256K1/blake160 lock binary
+		// - Index 2: NervosDAO type binary
+		// - Index 3: secp256k1_data (precomputed curve data)
+		// - Index 4: Multisig lock binary
 		// ============================================
-		'0xe2fb199810d49a4d8beec56718ba2593b665db9d52299a0f9e6e75416d73ff5c:2': {
+		'0xe2fb199810d49a4d8beec56718ba2593b665db9d52299a0f9e6e75416d73ff5c:1': {
 			name: 'SECP256K1/blake160 Lock Binary',
 			description: 'Contains the compiled RISC-V binary code for the default SECP256K1/blake160 lock script.',
 			importance: 'Core lock script implementation. The type hash of this cell is the code_hash used in standard CKB addresses.',
@@ -134,7 +139,18 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			],
 			rfc: '0024',
 		},
-		'0xe2fb199810d49a4d8beec56718ba2593b665db9d52299a0f9e6e75416d73ff5c:0': {
+		'0xe2fb199810d49a4d8beec56718ba2593b665db9d52299a0f9e6e75416d73ff5c:2': {
+			name: 'NervosDAO Binary',
+			description: 'Contains the compiled RISC-V binary code for the NervosDAO type script.',
+			importance: 'Core economic mechanism for CKB. Enables depositing CKB to earn interest from secondary issuance.',
+			category: 'system',
+			resources: [
+				{ title: 'RFC 0023: Deposit and Withdraw', url: RFC_0023 },
+				{ title: 'RFC 0024: CKB Genesis Script List', url: RFC_0024 },
+			],
+			rfc: '0023',
+		},
+		'0xe2fb199810d49a4d8beec56718ba2593b665db9d52299a0f9e6e75416d73ff5c:3': {
 			name: 'secp256k1_data',
 			description: 'Contains precomputed secp256k1 curve data used by lock scripts for signature verification.',
 			importance: 'Shared cryptographic data required by SECP256K1-based lock scripts to reduce on-chain computation.',
@@ -145,7 +161,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			],
 			rfc: '0024',
 		},
-		'0xe2fb199810d49a4d8beec56718ba2593b665db9d52299a0f9e6e75416d73ff5c:3': {
+		'0xe2fb199810d49a4d8beec56718ba2593b665db9d52299a0f9e6e75416d73ff5c:4': {
 			name: 'Multisig Lock Binary',
 			description: 'Contains the compiled RISC-V binary code for the SECP256K1/blake160 multisig lock script.',
 			importance: 'Enables multi-signature and time-locked transactions on CKB.',
@@ -155,17 +171,6 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 				{ title: 'CKB System Scripts', url: CKB_SYSTEM_SCRIPTS },
 			],
 			rfc: '0024',
-		},
-		'0xe2fb199810d49a4d8beec56718ba2593b665db9d52299a0f9e6e75416d73ff5c:1': {
-			name: 'NervosDAO Binary',
-			description: 'Contains the compiled RISC-V binary code for the NervosDAO type script.',
-			importance: 'Core economic mechanism for CKB. Enables depositing CKB to earn interest from secondary issuance.',
-			category: 'system',
-			resources: [
-				{ title: 'RFC 0023: Deposit and Withdraw', url: RFC_0023 },
-				{ title: 'RFC 0024: CKB Genesis Script List', url: RFC_0024 },
-			],
-			rfc: '0023',
 		},
 		// ============================================
 		// Anyone-Can-Pay (RFC 0026)
@@ -356,9 +361,14 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			rfc: '0024',
 		},
 		// ============================================
-		// Genesis code cells
+		// Genesis code cells (RFC 0024)
+		// Indices verified against RFC 0024:
+		// - Index 1: SECP256K1/blake160 lock binary
+		// - Index 2: NervosDAO type binary
+		// - Index 3: secp256k1_data (precomputed curve data)
+		// - Index 4: Multisig lock binary
 		// ============================================
-		'0x8f8c79eb6671709633fe6a46de93c0fedc9c1b8a6527a18d3983879542635c9f:2': {
+		'0x8f8c79eb6671709633fe6a46de93c0fedc9c1b8a6527a18d3983879542635c9f:1': {
 			name: 'SECP256K1/blake160 Lock Binary',
 			description: 'Contains the compiled RISC-V binary code for the default SECP256K1/blake160 lock script.',
 			importance: 'Core lock script implementation. The type hash of this cell is the code_hash used in standard CKB addresses.',
@@ -369,7 +379,18 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			],
 			rfc: '0024',
 		},
-		'0x8f8c79eb6671709633fe6a46de93c0fedc9c1b8a6527a18d3983879542635c9f:0': {
+		'0x8f8c79eb6671709633fe6a46de93c0fedc9c1b8a6527a18d3983879542635c9f:2': {
+			name: 'NervosDAO Binary',
+			description: 'Contains the compiled RISC-V binary code for the NervosDAO type script.',
+			importance: 'Core economic mechanism for CKB. Enables depositing CKB to earn interest from secondary issuance.',
+			category: 'system',
+			resources: [
+				{ title: 'RFC 0023: Deposit and Withdraw', url: RFC_0023 },
+				{ title: 'RFC 0024: CKB Genesis Script List', url: RFC_0024 },
+			],
+			rfc: '0023',
+		},
+		'0x8f8c79eb6671709633fe6a46de93c0fedc9c1b8a6527a18d3983879542635c9f:3': {
 			name: 'secp256k1_data',
 			description: 'Contains precomputed secp256k1 curve data used by lock scripts for signature verification.',
 			importance: 'Shared cryptographic data required by SECP256K1-based lock scripts to reduce on-chain computation.',
@@ -380,7 +401,7 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			],
 			rfc: '0024',
 		},
-		'0x8f8c79eb6671709633fe6a46de93c0fedc9c1b8a6527a18d3983879542635c9f:3': {
+		'0x8f8c79eb6671709633fe6a46de93c0fedc9c1b8a6527a18d3983879542635c9f:4': {
 			name: 'Multisig Lock Binary',
 			description: 'Contains the compiled RISC-V binary code for the SECP256K1/blake160 multisig lock script.',
 			importance: 'Enables multi-signature and time-locked transactions on CKB.',
@@ -390,17 +411,6 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 				{ title: 'CKB System Scripts', url: CKB_SYSTEM_SCRIPTS },
 			],
 			rfc: '0024',
-		},
-		'0x8f8c79eb6671709633fe6a46de93c0fedc9c1b8a6527a18d3983879542635c9f:1': {
-			name: 'NervosDAO Binary',
-			description: 'Contains the compiled RISC-V binary code for the NervosDAO type script.',
-			importance: 'Core economic mechanism for CKB. Enables depositing CKB to earn interest from secondary issuance.',
-			category: 'system',
-			resources: [
-				{ title: 'RFC 0023: Deposit and Withdraw', url: RFC_0023 },
-				{ title: 'RFC 0024: CKB Genesis Script List', url: RFC_0024 },
-			],
-			rfc: '0023',
 		},
 		// ============================================
 		// Anyone-Can-Pay (RFC 0026)

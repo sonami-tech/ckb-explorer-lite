@@ -1,7 +1,7 @@
 {
   "name": "ckb-explorer-lite",
   "private": true,
-  "version": "0.6.497",
+  "version": "0.6.501",
   "type": "module",
   "scripts": {
     "dev": "vite",
