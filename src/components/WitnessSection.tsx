@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { HexData, type DecoderRegistry, type DecodedResult } from './HexData';
 import { formatBytes } from '../lib/format';
 import {
@@ -9,7 +9,9 @@ import {
 	type WitnessArgsData,
 	type SignatureData,
 } from '../lib/decode';
-import { CopyButton } from './CopyButton';
+import { useTruncation } from '../hooks/ui';
+import { CopyButton, DownloadButton, ModalButton, SizeBadge } from './CopyButton';
+import { DataModal } from './DataModal';
 
 interface WitnessSectionProps {
 	/** Array of witness hex strings. */
@@ -181,45 +183,90 @@ function WitnessArgsView({ data }: { data: WitnessArgsData }) {
 
 /**
  * Individual field in WitnessArgs.
+ * Follows SubDataSection pattern: label row with size + buttons, content row below.
  */
 function WitnessArgsField({ label, value }: { label: string; value: string | null }) {
+	const [isModalOpen, setIsModalOpen] = useState(false);
+
 	// Check if value is a signature (65 bytes).
 	const isValueSignature = value && isSignature(value);
 	const signatureData = isValueSignature ? decodeSignature(value) : null;
 
-	return (
-		<div>
-			<div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-				{label}
-			</div>
-			{value === null ? (
+	// Use responsive truncation for non-signature hex values.
+	const { displayData, byteCount } = useTruncation(value ?? '0x');
+
+	// Empty states.
+	if (value === null) {
+		return (
+			<div>
+				<div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+					{label}
+				</div>
 				<span className="text-sm text-gray-400 dark:text-gray-500 italic">None</span>
-			) : value === '0x' ? (
+			</div>
+		);
+	}
+
+	if (value === '0x') {
+		return (
+			<div>
+				<div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+					{label}
+				</div>
 				<span className="text-sm text-gray-400 dark:text-gray-500 italic">Empty</span>
-			) : signatureData ? (
-				// Show decoded signature for lock field.
+			</div>
+		);
+	}
+
+	// Decoded signature display.
+	if (signatureData) {
+		return (
+			<div>
+				<div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+					{label}
+				</div>
 				<div className="bg-gray-100 dark:bg-gray-800 rounded p-2">
 					<div className="text-size-meta mb-1">
-						SECP256K1 Signature ({formatBytes((value.length - 2) / 2)})
+						SECP256K1 Signature <SizeBadge bytes={byteCount} />
 					</div>
 					<SignatureView data={signatureData} />
 				</div>
-			) : (
-				// Show raw hex with copy button.
-				<div className="bg-gray-100 dark:bg-gray-800 rounded p-2">
-					<div className="flex items-start gap-2">
-						<code className="font-mono text-xs break-all flex-1">
-							{value.length > 128 ? `${value.slice(0, 128)}…` : value}
-						</code>
-						<CopyButton text={value} />
-					</div>
-					{value.length > 128 && (
-						<div className="text-size-meta mt-1">
-							({formatBytes((value.length - 2) / 2)})
-						</div>
-					)}
+			</div>
+		);
+	}
+
+	// Raw hex display following SubDataSection pattern.
+	return (
+		<div>
+			{/* Label row with size and action buttons. */}
+			<div className="flex items-center justify-between mb-1">
+				<span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+					{label} <SizeBadge bytes={byteCount} />
+				</span>
+				<div className="flex items-center gap-1">
+					<CopyButton text={value} />
+					<DownloadButton data={value} filename={label.toLowerCase().replace(/_/g, '-')} />
+					<ModalButton onClick={() => setIsModalOpen(true)} />
 				</div>
-			)}
+			</div>
+			{/* Content row. */}
+			<div className="bg-gray-100 dark:bg-gray-800 rounded p-2">
+				<code className="font-mono text-xs break-all block">
+					{displayData}
+				</code>
+			</div>
+			{/* Modal for full data view. */}
+			<DataModal
+				isOpen={isModalOpen}
+				onClose={() => setIsModalOpen(false)}
+				title={label}
+				byteCount={byteCount}
+				data={value}
+			>
+				<code className="font-mono text-sm break-all break-anywhere block whitespace-pre-wrap min-w-0 max-w-full">
+					{value}
+				</code>
+			</DataModal>
 		</div>
 	);
 }

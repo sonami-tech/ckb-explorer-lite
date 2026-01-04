@@ -322,7 +322,7 @@ interface ModalButtonProps {
 
 export function ModalButton({ onClick, className = '' }: ModalButtonProps) {
 	return (
-		<Tooltip content="Open in modal" interactive>
+		<Tooltip content="View full data" interactive>
 			<span
 				role="button"
 				tabIndex={0}
