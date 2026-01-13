@@ -446,6 +446,3 @@ function formatLabel(format: string, detected: string): string {
 
 	return label;
 }
-
-// Re-export types for external use.
-export type { DecoderRegistry, Decoder, DecodedResult };

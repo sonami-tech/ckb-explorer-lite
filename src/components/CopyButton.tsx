@@ -264,7 +264,10 @@ export function DownloadButton({ data, filename = 'data', className = '' }: Down
 
 	const handleDownloadBinary = useCallback(() => {
 		const bytes = hexToBytes(data);
-		const blob = new Blob([bytes], { type: 'application/octet-stream' });
+		// Copy to fresh ArrayBuffer to satisfy TypeScript's Blob type requirements.
+		const buffer = new ArrayBuffer(bytes.length);
+		new Uint8Array(buffer).set(bytes);
+		const blob = new Blob([buffer], { type: 'application/octet-stream' });
 		downloadBlob(blob, `${filename}.bin`);
 		setIsOpen(false);
 	}, [data, filename]);

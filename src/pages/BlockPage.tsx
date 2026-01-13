@@ -9,7 +9,6 @@ import {
 	isValidHex,
 } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
-import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
@@ -24,7 +23,6 @@ interface BlockPageProps {
 
 export function BlockPage({ id }: BlockPageProps) {
 	const rpc = useRpc();
-	const { archiveHeight } = useArchive();
 	const [block, setBlock] = useState<RpcBlock | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
@@ -44,9 +42,9 @@ export function BlockPage({ id }: BlockPageProps) {
 
 			// Check if id is a number or hash.
 			if (/^\d+$/.test(id)) {
-				result = await rpc.getBlockByNumber(BigInt(id), archiveHeight);
+				result = await rpc.getBlockByNumber(BigInt(id));
 			} else if (isValidHex(id)) {
-				result = await rpc.getBlockByHash(id, archiveHeight);
+				result = await rpc.getBlockByHash(id);
 			} else {
 				throw new Error('Invalid block identifier. Please provide a block number or hash.');
 			}
@@ -69,7 +67,7 @@ export function BlockPage({ id }: BlockPageProps) {
 				setIsLoading(false);
 			}
 		}
-	}, [rpc, id, archiveHeight]);
+	}, [rpc, id]);
 
 	useEffect(() => {
 		fetchBlock();

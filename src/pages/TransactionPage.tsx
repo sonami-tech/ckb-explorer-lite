@@ -9,7 +9,6 @@ import {
 } from '../lib/format';
 import { encodeAddress } from '../lib/address';
 import { navigate, generateLink } from '../lib/router';
-import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
@@ -33,7 +32,6 @@ interface TransactionPageProps {
 export function TransactionPage({ hash }: TransactionPageProps) {
 	const rpc = useRpc();
 	const { currentNetwork } = useNetwork();
-	const { archiveHeight } = useArchive();
 	const [txData, setTxData] = useState<RpcTransactionWithStatus | null>(null);
 	const [blockTimestamp, setBlockTimestamp] = useState<bigint | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -56,14 +54,14 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 				throw new Error('Invalid transaction hash format.');
 			}
 
-			const result = await rpc.getTransaction(hash, archiveHeight);
+			const result = await rpc.getTransaction(hash);
 
 			// Ignore stale response if a newer fetch has started.
 			if (fetchId !== fetchIdRef.current) return;
 
 			if (!result || !result.transaction) {
 				// Transaction not found - try as block hash and redirect if found.
-				const blockResult = await rpc.getBlockByHash(hash, archiveHeight);
+				const blockResult = await rpc.getBlockByHash(hash);
 				if (fetchId !== fetchIdRef.current) return;
 				if (blockResult) {
 					navigate(generateLink(`/block/${hash}`));
@@ -76,7 +74,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 			// Fetch block header for timestamp if transaction is committed.
 			if (result.tx_status.block_hash) {
-				const blockResult = await rpc.getBlockByHash(result.tx_status.block_hash, archiveHeight);
+				const blockResult = await rpc.getBlockByHash(result.tx_status.block_hash);
 				if (fetchId !== fetchIdRef.current) return;
 				if (blockResult) {
 					setBlockTimestamp(BigInt(blockResult.header.timestamp));
@@ -92,7 +90,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 				setIsLoading(false);
 			}
 		}
-	}, [rpc, hash, archiveHeight]);
+	}, [rpc, hash]);
 
 	useEffect(() => {
 		fetchTransaction();
@@ -137,7 +135,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					<span>Transaction</span>
 				</div>
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-					Transaction Details{archiveHeight !== undefined && ` @ Block ${formatNumber(archiveHeight)}`}
+					Transaction Details
 				</h1>
 			</div>
 
@@ -267,7 +265,6 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 									<AddressDisplay
 										address={address}
 										linkTo={generateLink(`/address/${address}`)}
-										responsive
 									/>
 									<InternalLinkIcon
 										linkTo={generateLink(`/cell/${hash}/${index}`)}
