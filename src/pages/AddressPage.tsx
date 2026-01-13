@@ -15,7 +15,7 @@ import { ErrorDisplay } from '../components/ErrorDisplay';
 import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
 import { ScriptSection } from '../components/ScriptSection';
-import { lookupLockScript } from '../lib/wellKnown';
+import { ScriptLink } from '../components/ScriptLink';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import {
 	TransactionRow,
@@ -192,11 +192,6 @@ export function AddressPage({ address }: AddressPageProps) {
 	const formatDescription = getFormatDescription(addressFormat);
 	const isDeprecated = addressFormat !== AddressFormat.Full;
 
-	// Lock script lookup.
-	const lockInfo = script
-		? lookupLockScript(script.code_hash, script.hash_type, networkType, script.args)
-		: null;
-
 	// Alternate address.
 	const alternateAddress = script
 		? getAlternateAddress(address, script, networkType)
@@ -282,20 +277,12 @@ export function AddressPage({ address }: AddressPageProps) {
 					</DetailRow>
 
 					<DetailRow label="Lock Script">
-						{lockInfo ? (
-							<span className="text-gray-900 dark:text-white">
-								{lockInfo.name}
-								{lockInfo.sourceUrl && (
-									<a
-										href={lockInfo.sourceUrl}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="ml-2 text-nervos hover:text-nervos-dark text-sm"
-									>
-										↗
-									</a>
-								)}
-							</span>
+						{script ? (
+							<ScriptLink
+								script={script}
+								scriptType="lock"
+								networkType={networkType}
+							/>
 						) : (
 							<span className="text-gray-500 dark:text-gray-400">Unknown</span>
 						)}

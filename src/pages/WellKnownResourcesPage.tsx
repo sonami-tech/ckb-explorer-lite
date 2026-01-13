@@ -71,6 +71,7 @@ const NOSTR_DOCS = 'https://github.com/cryptape/nostr-binding/blob/main/docs/nos
 const RGBPP_DOCS = 'https://github.com/ckb-cell/rgbpp-sdk/blob/main/packages/ckb/src/constants/index.ts';
 const CKBFS_DOCS = 'https://github.com/nervape/ckbfs/blob/master/README.md';
 const ICKB_DOCS = 'https://github.com/ickb/whitepaper#mainnet-deployment';
+const PWLOCK_DOCS = 'https://github.com/lay2dev/pw-core';
 
 const RESOURCES: ResourceDefinition[] = [
 	{
@@ -205,6 +206,15 @@ const RESOURCES: ResourceDefinition[] = [
 		cellPatterns: ['ickb'],
 		lockScriptNames: ['iCKB Logic', 'iCKB Limit Order', 'iCKB Owned-Owner'],
 		typeScriptNames: ['iCKB Logic', 'iCKB Limit Order', 'iCKB Owned-Owner', 'iCKB'],
+	},
+	{
+		id: 'pwlock',
+		name: 'PW Lock (Deprecated)',
+		description: 'Ethereum-style authentication with built-in Anyone-Can-Pay support. Deprecated in favor of Omnilock, which provides broader authentication support.',
+		sourceUrl: PWLOCK_DOCS,
+		cellPatterns: ['pw-lock', 'pwlock'],
+		lockScriptNames: ['PW Lock'],
+		typeScriptNames: [],
 	},
 ];
 
@@ -342,7 +352,10 @@ function ResourceCard({ resource }: { resource: ResolvedResource }) {
 	const { definition, items } = resource;
 
 	return (
-		<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+		<div
+			id={definition.id}
+			className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden scroll-mt-4"
+		>
 			{/* Resource header. */}
 			<div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700/50">
 				<div className="flex items-center justify-between gap-2">

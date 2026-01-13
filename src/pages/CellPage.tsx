@@ -4,7 +4,8 @@ import { encodeAddress } from '../lib/address';
 import { formatCkb } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
 import { fromHex } from '../lib/rpc';
-import { lookupWellKnownCell, lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
+import { lookupWellKnownCell } from '../lib/wellKnown';
+import { ScriptLink } from '../components/ScriptLink';
 import { AddressDisplay } from '../components/AddressDisplay';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
@@ -154,28 +155,24 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					)}
 					{cellData && (
 						<DetailRow label="Lock Script">
-							<span className="text-gray-900 dark:text-white">
-								{lookupLockScript(
-									cellData.output.lock.code_hash,
-									cellData.output.lock.hash_type,
-									networkType,
-									cellData.output.lock.args
-								)?.name ?? 'Unknown'}
-							</span>
+							<ScriptLink
+								script={cellData.output.lock}
+								scriptType="lock"
+								networkType={networkType}
+							/>
 						</DetailRow>
 					)}
 					{cellData && (
 						<DetailRow label="Type Script">
-							<span className="text-gray-900 dark:text-white">
-								{cellData.output.type
-									? (lookupTypeScript(
-										cellData.output.type.code_hash,
-										cellData.output.type.hash_type,
-										networkType,
-										cellData.output.type.args
-									)?.name ?? 'Unknown')
-									: 'None'}
-							</span>
+							{cellData.output.type ? (
+								<ScriptLink
+									script={cellData.output.type}
+									scriptType="type"
+									networkType={networkType}
+								/>
+							) : (
+								<span className="text-gray-500 dark:text-gray-400">None</span>
+							)}
 						</DetailRow>
 					)}
 					{createdBlock !== null && (

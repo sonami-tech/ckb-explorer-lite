@@ -29,6 +29,8 @@ export interface ScriptInfo {
 	hashType: HashType;
 	/** URL to documentation (RFC or official docs). */
 	sourceUrl?: string;
+	/** Resource ID for linking to Well-Known Resources page anchor. */
+	resourceId?: string;
 	/** Data format in cell data (for type scripts). */
 	dataFormat?: 'udt' | 'sudt' | 'xudt' | 'dao' | 'spore' | 'dep_group';
 	/** Args format (for lock scripts). */
@@ -80,6 +82,16 @@ const CKB_SYSTEM_SCRIPTS = 'https://github.com/nervosnetwork/ckb-system-scripts'
 
 // Internal type for the registry (mainnet and testnet only).
 type RegistryNetwork = 'mainnet' | 'testnet';
+
+/** All-zeros code hash used for permanently locked cells. */
+const ALWAYS_FAIL_CODE_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+/** Script info for unlockable lock (works with any hash_type). */
+const UNLOCKABLE_LOCK: ScriptInfo = {
+	name: 'Unlockable',
+	description: 'Permanently locked cell that can never be spent. Used for burning CKB or creating immutable data.',
+	hashType: 'data', // Placeholder - actual hash_type is ignored for this script.
+};
 
 /**
  * Well-known cells registry by outpoint.
@@ -587,6 +599,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Simple UDT token standard for fungible tokens on CKB.',
 			hashType: 'type',
 			sourceUrl: RFC_0025,
+			resourceId: 'sudt',
 			dataFormat: 'sudt',
 		},
 		// xUDT (Extensible UDT) - RFC 0052.
@@ -595,6 +608,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Extensible UDT with optional extension data for advanced token features.',
 			hashType: 'data1',
 			sourceUrl: RFC_0052,
+			resourceId: 'xudt',
 			dataFormat: 'xudt',
 		},
 		// NervosDAO - RFC 0024.
@@ -603,6 +617,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Native staking mechanism for CKB holders to earn rewards.',
 			hashType: 'type',
 			sourceUrl: RFC_0024,
+			resourceId: 'dao',
 			dataFormat: 'dao',
 		},
 		// Spore - mainnet.
@@ -611,6 +626,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'On-chain digital object protocol for NFTs and content.',
 			hashType: 'data1',
 			sourceUrl: SPORE_VERSIONS,
+			resourceId: 'spore',
 			dataFormat: 'spore',
 		},
 		// iCKB Logic - used for iCKB token minting and burning logic.
@@ -619,6 +635,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for token minting and burning logic.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// iCKB Limit Order - used for iCKB limit order matching.
 		'0x49dfb6afee5cc8ac4225aeea8cb8928b150caf3cd92fea33750683c74b13254a': {
@@ -626,6 +643,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for limit order matching.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// iCKB Owned-Owner - used for ownership verification in iCKB operations.
 		'0xacc79e07d107831feef4c70c9e683dac5644d5993b9cb106dca6e74baa381bd0': {
@@ -633,6 +651,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for ownership verification.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// Spore Cluster - collection grouping for Spore NFTs.
 		'0x7366a61534fa7c7e6225ecc0d828ea3b5366adec2b58206f2ee84995fe030075': {
@@ -640,6 +659,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Enables grouping Spores into collections with shared metadata and permissions.',
 			hashType: 'data1',
 			sourceUrl: SPORE_VERSIONS,
+			resourceId: 'spore',
 		},
 		// CKBFS - On-chain file storage protocol.
 		'0x31e6376287d223b8c0410d562fb422f04d1d617b2947596a14c3d2efb7218d3a': {
@@ -647,6 +667,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'On-chain file storage with content-addressable chunks.',
 			hashType: 'data1',
 			sourceUrl: CKBFS_README,
+			resourceId: 'ckbfs',
 		},
 		// CoTA - Compact Token Aggregator for efficient NFT management.
 		'0x1122a4fb54697cf2e6e3a96c9d80fd398a936559b90954c6e88eb7ba0cf652df': {
@@ -654,6 +675,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Compact Token Aggregator protocol for efficient NFT management with minimal cell usage.',
 			hashType: 'type',
 			sourceUrl: COTA_CONSTANTS,
+			resourceId: 'cota',
 		},
 	},
 	testnet: {
@@ -663,6 +685,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Simple UDT token standard for fungible tokens on CKB.',
 			hashType: 'type',
 			sourceUrl: RFC_0025,
+			resourceId: 'sudt',
 			dataFormat: 'sudt',
 		},
 		// xUDT V1 (data1 hash type) - RFC 0052.
@@ -671,6 +694,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Extensible UDT with optional extension data for advanced token features.',
 			hashType: 'data1',
 			sourceUrl: RFC_0052,
+			resourceId: 'xudt',
 			dataFormat: 'xudt',
 		},
 		// xUDT V2 (type hash type, used by CCC SDK) - RFC 0052.
@@ -679,6 +703,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Extensible UDT with optional extension data for advanced token features.',
 			hashType: 'type',
 			sourceUrl: RFC_0052,
+			resourceId: 'xudt',
 			dataFormat: 'xudt',
 		},
 		// NervosDAO - RFC 0024 (same as mainnet).
@@ -687,6 +712,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Native staking mechanism for CKB holders to earn rewards.',
 			hashType: 'type',
 			sourceUrl: RFC_0024,
+			resourceId: 'dao',
 			dataFormat: 'dao',
 		},
 		// Spore - testnet.
@@ -695,6 +721,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'On-chain digital object protocol for NFTs and content.',
 			hashType: 'data1',
 			sourceUrl: SPORE_VERSIONS,
+			resourceId: 'spore',
 			dataFormat: 'spore',
 		},
 		// iCKB Logic - used for iCKB token minting and burning logic (same as mainnet).
@@ -703,6 +730,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for token minting and burning logic.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// iCKB Limit Order - used for iCKB limit order matching (same as mainnet).
 		'0x49dfb6afee5cc8ac4225aeea8cb8928b150caf3cd92fea33750683c74b13254a': {
@@ -710,6 +738,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for limit order matching.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// iCKB Owned-Owner - used for ownership verification in iCKB operations (same as mainnet).
 		'0xacc79e07d107831feef4c70c9e683dac5644d5993b9cb106dca6e74baa381bd0': {
@@ -717,6 +746,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for ownership verification.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// Spore Cluster - collection grouping for Spore NFTs.
 		'0x0bbe768b519d8ea7b96d58f1182eb7e6ef96c541fbd9526975077ee09f049058': {
@@ -724,6 +754,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Enables grouping Spores into collections with shared metadata and permissions.',
 			hashType: 'data1',
 			sourceUrl: SPORE_VERSIONS,
+			resourceId: 'spore',
 		},
 		// CKBFS - On-chain file storage protocol (same code hash as mainnet).
 		'0x31e6376287d223b8c0410d562fb422f04d1d617b2947596a14c3d2efb7218d3a': {
@@ -731,6 +762,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'On-chain file storage with content-addressable chunks.',
 			hashType: 'data1',
 			sourceUrl: CKBFS_README,
+			resourceId: 'ckbfs',
 		},
 		// CoTA - Compact Token Aggregator for efficient NFT management.
 		'0x89cd8003a0eaf8e65e0c31525b7d1d5c1becefd2ea75bb4cff87810ae37764d8': {
@@ -738,6 +770,7 @@ export const KNOWN_TYPE_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Compact Token Aggregator protocol for efficient NFT management with minimal cell usage.',
 			hashType: 'type',
 			sourceUrl: COTA_CONSTANTS,
+			resourceId: 'cota',
 		},
 	},
 };
@@ -755,6 +788,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Default lock script using secp256k1 signature verification.',
 			hashType: 'type',
 			sourceUrl: RFC_0024,
+			resourceId: 'secp256k1',
 			argsFormat: 'pubkey_hash',
 		},
 		// SECP256K1/blake160 Multisig - RFC 0024.
@@ -763,6 +797,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Multi-signature lock requiring M-of-N signatures to unlock.',
 			hashType: 'type',
 			sourceUrl: RFC_0024,
+			resourceId: 'multisig',
 			argsFormat: 'multisig',
 		},
 		// Omnilock (Mirana) - RFC 0042.
@@ -771,6 +806,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Universal lock supporting multiple authentication methods.',
 			hashType: 'type',
 			sourceUrl: RFC_0042,
+			resourceId: 'omnilock',
 			argsFormat: 'omnilock',
 		},
 		// Anyone-Can-Pay (Lina) - RFC 0026.
@@ -779,6 +815,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Lock allowing anyone to add capacity or tokens to a cell.',
 			hashType: 'type',
 			sourceUrl: RFC_0026,
+			resourceId: 'acp',
 			argsFormat: 'acp',
 		},
 		// iCKB Logic - used for iCKB token minting and burning logic.
@@ -787,6 +824,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for token minting and burning logic.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// iCKB Limit Order - used for iCKB limit order matching.
 		'0x49dfb6afee5cc8ac4225aeea8cb8928b150caf3cd92fea33750683c74b13254a': {
@@ -794,6 +832,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for limit order matching.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// iCKB Owned-Owner - used for ownership verification in iCKB operations.
 		'0xacc79e07d107831feef4c70c9e683dac5644d5993b9cb106dca6e74baa381bd0': {
@@ -801,6 +840,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for ownership verification.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// PW Lock - Ethereum-style authentication (deprecated, use Omnilock instead).
 		'0xbf43c3602455798c1a61a596e0d95278864c552fafe231c063b3fabf97a8febc': {
@@ -808,6 +848,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Ethereum-style authentication with built-in anyone-can-pay support. Deprecated; use Omnilock for new deployments.',
 			hashType: 'type',
 			sourceUrl: PW_LOCK_DOCS,
+			resourceId: 'pwlock',
 		},
 		// JoyID Lock - WebAuthn/passkey authentication.
 		'0xd00c84f0ec8fd441c38bc3f87a371f547190f2fcff88e642bc5bf54b9e318323': {
@@ -815,6 +856,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Passwordless authentication using WebAuthn and device biometrics.',
 			hashType: 'type',
 			sourceUrl: JOYID_DOCS,
+			resourceId: 'joyid',
 		},
 		// Nostr Lock - Nostr protocol schnorr signature authentication.
 		'0x641a89ad2f77721b803cd50d01351c1f308444072d5fa20088567196c0574c68': {
@@ -822,6 +864,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Nostr protocol authentication using schnorr signatures with optional proof-of-work.',
 			hashType: 'type',
 			sourceUrl: NOSTR_DEPLOYMENT,
+			resourceId: 'nostr',
 		},
 		// RGB++ Lock - Bitcoin-secured CKB assets through isomorphic binding.
 		'0xbc6c568a1a0d0a09f6844dc9d74ddb4343c32143ff25f727c59edf4fb72d6936': {
@@ -829,6 +872,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Bitcoin-secured CKB assets through isomorphic binding with Bitcoin UTXOs.',
 			hashType: 'type',
 			sourceUrl: RGBPP_CONSTANTS,
+			resourceId: 'rgbpp',
 		},
 		// BTC Time Lock - Time-based lock for RGB++ protocol.
 		'0x70d64497a075bd651e98ac030455ea200637ee325a12ad08aff03f1a117e5a62': {
@@ -836,6 +880,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Time-based locking mechanism for RGB++ protocol leap operations.',
 			hashType: 'type',
 			sourceUrl: RGBPP_CONSTANTS,
+			resourceId: 'rgbpp',
 		},
 	},
 	testnet: {
@@ -845,6 +890,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Default lock script using secp256k1 signature verification.',
 			hashType: 'type',
 			sourceUrl: RFC_0024,
+			resourceId: 'secp256k1',
 			argsFormat: 'pubkey_hash',
 		},
 		// SECP256K1/blake160 Multisig - RFC 0024 (same as mainnet).
@@ -853,6 +899,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Multi-signature lock requiring M-of-N signatures to unlock.',
 			hashType: 'type',
 			sourceUrl: RFC_0024,
+			resourceId: 'multisig',
 			argsFormat: 'multisig',
 		},
 		// Omnilock (Pudge) - RFC 0042.
@@ -861,6 +908,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Universal lock supporting multiple authentication methods.',
 			hashType: 'type',
 			sourceUrl: RFC_0042,
+			resourceId: 'omnilock',
 			argsFormat: 'omnilock',
 		},
 		// Anyone-Can-Pay (Aggron) - RFC 0026.
@@ -869,6 +917,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Lock allowing anyone to add capacity or tokens to a cell.',
 			hashType: 'type',
 			sourceUrl: RFC_0026,
+			resourceId: 'acp',
 			argsFormat: 'acp',
 		},
 		// iCKB Logic - used for iCKB token minting and burning logic (same as mainnet).
@@ -877,6 +926,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for token minting and burning logic.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// iCKB Limit Order - used for iCKB limit order matching (same as mainnet).
 		'0x49dfb6afee5cc8ac4225aeea8cb8928b150caf3cd92fea33750683c74b13254a': {
@@ -884,6 +934,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for limit order matching.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// iCKB Owned-Owner - used for ownership verification in iCKB operations (same as mainnet).
 		'0xacc79e07d107831feef4c70c9e683dac5644d5993b9cb106dca6e74baa381bd0': {
@@ -891,6 +942,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'iCKB protocol script for ownership verification.',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 		},
 		// PW Lock - Ethereum-style authentication (deprecated, use Omnilock instead).
 		'0x58c5f491aba6d61678b7cf7edf4910b1f5e00ec0cde2f42e0abb4fd9aff25a63': {
@@ -898,6 +950,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Ethereum-style authentication with built-in anyone-can-pay support. Deprecated; use Omnilock for new deployments.',
 			hashType: 'type',
 			sourceUrl: PW_LOCK_DOCS,
+			resourceId: 'pwlock',
 		},
 		// JoyID Lock - WebAuthn/passkey authentication.
 		'0xd23761b364210735c19c60561d213fb3beae2fd6172743719eff6920e020baac': {
@@ -905,6 +958,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Passwordless authentication using WebAuthn and device biometrics.',
 			hashType: 'type',
 			sourceUrl: JOYID_DOCS,
+			resourceId: 'joyid',
 		},
 		// Nostr Lock - Nostr protocol schnorr signature authentication.
 		'0x6ae5ee0cb887b2df5a9a18137315b9bdc55be8d52637b2de0624092d5f0c91d5': {
@@ -912,6 +966,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Nostr protocol authentication using schnorr signatures with optional proof-of-work.',
 			hashType: 'type',
 			sourceUrl: NOSTR_DEPLOYMENT,
+			resourceId: 'nostr',
 		},
 		// RGB++ Lock - Bitcoin-secured CKB assets through isomorphic binding.
 		'0x61ca7a4796a4eb19ca4f0d065cb9b10ddcf002f10f7cbb810c706cb6bb5c3248': {
@@ -919,6 +974,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Bitcoin-secured CKB assets through isomorphic binding with Bitcoin UTXOs.',
 			hashType: 'type',
 			sourceUrl: RGBPP_CONSTANTS,
+			resourceId: 'rgbpp',
 		},
 		// BTC Time Lock - Time-based lock for RGB++ protocol.
 		'0x00cdf8fab0f8ac638758ebf5ea5e4052b1d71e8a77b9f43139718621f6849326': {
@@ -926,6 +982,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			description: 'Time-based locking mechanism for RGB++ protocol leap operations.',
 			hashType: 'type',
 			sourceUrl: RGBPP_CONSTANTS,
+			resourceId: 'rgbpp',
 		},
 	},
 };
@@ -954,6 +1011,7 @@ export const KNOWN_TYPE_SCRIPTS_BY_ARGS: Record<RegistryNetwork, Record<string, 
 			description: 'iCKB NervosDAO liquidity token (xUDT).',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 			dataFormat: 'xudt',
 			baseTypeName: 'xUDT',
 		},
@@ -969,6 +1027,7 @@ export const KNOWN_TYPE_SCRIPTS_BY_ARGS: Record<RegistryNetwork, Record<string, 
 			description: 'iCKB NervosDAO liquidity token (xUDT).',
 			hashType: 'data1',
 			sourceUrl: ICKB_DEPLOYMENT,
+			resourceId: 'ickb',
 			dataFormat: 'xudt',
 			baseTypeName: 'xUDT',
 		},
@@ -1044,6 +1103,11 @@ export function lookupLockScript(
 		if (argsInfo) {
 			return argsInfo;
 		}
+	}
+
+	// Check for unlockable lock (all-zeros code hash, any hash type).
+	if (codeHash === ALWAYS_FAIL_CODE_HASH) {
+		return UNLOCKABLE_LOCK;
 	}
 
 	// Fall back to generic registry.
