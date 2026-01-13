@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { navigate, generateLink } from '../lib/router';
 import { copyToClipboard } from '../lib/clipboard';
+import { truncateHex } from '../lib/format';
+import { useIsMobile } from '../hooks/ui';
 import { Tooltip } from './Tooltip';
 
 interface OutPointProps {
@@ -31,8 +33,10 @@ export function OutPoint({
 	className = '',
 }: OutPointProps) {
 	const [copied, setCopied] = useState(false);
+	const isMobile = useIsMobile(640);
 
 	const outpoint = `${txHash}:${index}`;
+	const displayTxHash = isMobile ? truncateHex(txHash, 8, 8) : txHash;
 
 	// Generate the navigation URL.
 	const href = linkTo === 'cell'
@@ -85,7 +89,7 @@ export function OutPoint({
 					className="inline-flex items-baseline min-w-0 font-mono text-sm cursor-pointer text-nervos hover:text-nervos-dark transition-colors"
 				>
 					<span className="truncate min-w-0">
-						{txHash}
+						{displayTxHash}
 					</span>
 					<span className="text-gray-500 flex-shrink-0">:</span>
 					<span className="flex-shrink-0">{index}</span>
