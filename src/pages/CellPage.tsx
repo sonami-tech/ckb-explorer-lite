@@ -1,10 +1,11 @@
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
-import { useArchive } from '../contexts/ArchiveContext';
-import { formatCkb, formatNumber } from '../lib/format';
+import { encodeAddress } from '../lib/address';
+import { formatCkb } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
 import { fromHex } from '../lib/rpc';
 import { lookupWellKnownCell } from '../lib/wellKnown';
+import { AddressDisplay } from '../components/AddressDisplay';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { CellDataSection } from '../components/CellDataDisplay';
@@ -24,7 +25,6 @@ interface CellPageProps {
 export function CellPage({ txHash, index }: CellPageProps) {
 	const rpc = useRpc();
 	const { currentNetwork } = useNetwork();
-	const { archiveHeight } = useArchive();
 	const [cellData, setCellData] = useState<RpcCellWithLifecycle | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
@@ -101,18 +101,8 @@ export function CellPage({ txHash, index }: CellPageProps) {
 		? Number(fromHex(cellData.consumed_block_number))
 		: null;
 
-	// Derive status based on archive height (if set) or current state.
-	const status = (() => {
-		if (!cellData || createdBlock === null) return 'unknown';
-		if (archiveHeight !== undefined) {
-			// Historical view: status depends on selected height.
-			if (archiveHeight < createdBlock) return 'unknown';
-			if (consumedBlock === null || archiveHeight < consumedBlock) return 'live';
-			return 'dead';
-		}
-		// Current view: simple live/dead based on consumed state.
-		return consumedBlock === null ? 'live' : 'dead';
-	})();
+	// Derive status based on current state.
+	const status = consumedBlock === null ? 'live' : 'dead';
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
@@ -126,7 +116,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					<span>Cell</span>
 				</div>
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-					Cell Details{archiveHeight !== undefined && ` @ Block ${formatNumber(archiveHeight)}`}
+					Cell Details
 				</h1>
 			</div>
 
@@ -147,6 +137,14 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					<DetailRow label="Status">
 						<CellStatusIndicator status={status} />
 					</DetailRow>
+					{cellData && (
+						<DetailRow label="Address">
+							<AddressDisplay
+								address={encodeAddress(cellData.output.lock, networkType)}
+								linkTo={generateLink(`/address/${encodeAddress(cellData.output.lock, networkType)}`)}
+							/>
+						</DetailRow>
+					)}
 					{cellData && (
 						<DetailRow label="Capacity">
 							<span className="text-lg font-semibold text-nervos">
