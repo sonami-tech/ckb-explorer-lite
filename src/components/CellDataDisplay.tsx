@@ -150,68 +150,68 @@ export function CellDataSection({
 	return (
 		<div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 ${className}`}>
 			{/* Header with byte count, action buttons, and decode dropdown. */}
-			<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-				<div className="flex items-center gap-2">
-					<h2 className="font-semibold text-gray-900 dark:text-white">Cell Data</h2>
-					<span className="text-size-meta">
-						({formatBytes(byteCount)})
-					</span>
-				</div>
+			<div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
+				<div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+					<div className="flex items-center gap-2 min-w-0">
+						<h2 className="font-semibold text-gray-900 dark:text-white truncate">Cell Data</h2>
+						<span className="text-size-meta whitespace-nowrap">({formatBytes(byteCount)})</span>
+					</div>
 
-				<div className="flex items-center gap-2">
 					{/* Action buttons for full cell data. */}
 					{data !== '0x' && (
-						<div className="flex items-center gap-1">
+						<div className="flex items-center gap-1 justify-self-end">
 							<CopyButton text={data} />
 							<DownloadButton data={data} filename="cell-data" />
 							<ModalButton onClick={() => setIsModalOpen(true)} />
 						</div>
 					)}
 
-					{/* Decode dropdown. */}
+					{/* Decode dropdown (full-width on mobile). */}
 					{showDropdown && (
-					<div className="relative" ref={dropdownRef}>
-						<button
-							onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-							className="flex items-center gap-1.5 px-2.5 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-						>
-							<span className="text-gray-500 dark:text-gray-500">Decode:</span>
-							<span className="font-medium">{formatModeName(effectiveMode, detectedFormat)}</span>
-							<svg
-								className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
+						<div className="relative col-span-2 sm:col-span-1 sm:col-start-3 sm:justify-self-end" ref={dropdownRef}>
+							<button
+								onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+								className="flex items-center justify-between sm:justify-start gap-2 px-2.5 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded transition-colors w-full sm:w-auto border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 sm:border-0 sm:bg-transparent sm:hover:bg-gray-100 sm:dark:hover:bg-gray-700"
 							>
-								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-							</svg>
-						</button>
+								<span className="flex items-center gap-1.5 min-w-0">
+									<span className="text-gray-500 dark:text-gray-500">Decode:</span>
+									<span className="font-medium truncate">{formatModeName(effectiveMode, detectedFormat)}</span>
+								</span>
+								<svg
+									className={`w-4 h-4 transition-transform flex-shrink-0 ${isDropdownOpen ? 'rotate-180' : ''}`}
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+								</svg>
+							</button>
 
-						{/* Dropdown menu. */}
-						{isDropdownOpen && (
-							<div className="absolute right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
-								{availableModes.map((mode) => (
-									<button
-										key={mode}
-										onClick={() => handleModeSelect(mode)}
-										className={`w-full text-left px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${
-											effectiveMode === mode
-												? 'bg-nervos/10 text-nervos font-medium'
-												: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-										}`}
-									>
-										{formatModeName(mode, detectedFormat)}
-										{effectiveMode === mode && (
-											<svg className="inline w-4 h-4 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-											</svg>
-										)}
-									</button>
-								))}
-							</div>
-						)}
-					</div>
-				)}
+							{/* Dropdown menu. */}
+							{isDropdownOpen && (
+								<div className="absolute left-0 right-0 sm:left-auto sm:right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1">
+									{availableModes.map((mode) => (
+										<button
+											key={mode}
+											onClick={() => handleModeSelect(mode)}
+											className={`w-full text-left px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${
+												effectiveMode === mode
+													? 'bg-nervos/10 text-nervos font-medium'
+													: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+											}`}
+										>
+											{formatModeName(mode, detectedFormat)}
+											{effectiveMode === mode && (
+												<svg className="inline w-4 h-4 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+												</svg>
+											)}
+										</button>
+									))}
+								</div>
+							)}
+						</div>
+					)}
 				</div>
 			</div>
 
@@ -354,9 +354,6 @@ function formatModeName(mode: ViewMode, detectedFormat: string | null): string {
 		case 'raw':
 			return 'Raw Hex';
 		case 'udt':
-		case 'sudt':
-		case 'xudt':
-			// All UDT formats display the same name.
 			return 'UDT (Token Amount)';
 		case 'dao':
 			return 'DAO';
