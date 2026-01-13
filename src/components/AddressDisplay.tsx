@@ -6,8 +6,9 @@ import { navigate } from '../lib/router';
 
 /**
  * Address display with consistent truncation, tooltip, copy, and optional navigation.
- * - Default truncation: 8+4 format (ckb1qzda...xwsq)
- * - Never wraps (whitespace-nowrap)
+ * - Mobile: ALWAYS uses 8+4 JS truncation (ckb1qzda...xwsq), regardless of truncate prop
+ * - Desktop/tablet with truncate=true: CSS ellipsis when address overflows container
+ * - Desktop/tablet with truncate=false: Full address wraps to show complete content
  * - Hover shows full address in tooltip
  * - Text click navigates if linkTo is set, otherwise does nothing
  * - Copy icon copies to clipboard
@@ -16,15 +17,11 @@ interface AddressDisplayProps {
 	address: string;
 	/** URL to navigate to when text is clicked. If not set, text click does nothing. */
 	linkTo?: string;
-	/** Set to false to show full address without truncation. */
+	/** Desktop/tablet only: false allows wrapping to show full address. Mobile always truncates. */
 	truncate?: boolean;
-	/** Responsive mode: full on desktop/tablet, truncated on mobile only. Overrides truncate. */
-	responsive?: boolean;
-	/** Breakpoint for mobile in pixels. Default 640 (sm). Only used when responsive=true. */
-	breakpoint?: number;
-	/** Characters to show at start. Default: 8. */
+	/** Characters to show at start when truncating. Default: 8. */
 	prefixLen?: number;
-	/** Characters to show at end. Default: 4. */
+	/** Characters to show at end when truncating. Default: 4. */
 	suffixLen?: number;
 	className?: string;
 }
@@ -33,18 +30,16 @@ export function AddressDisplay({
 	address,
 	linkTo,
 	truncate = true,
-	responsive = false,
-	breakpoint = 640,
 	prefixLen = 8,
 	suffixLen = 4,
 	className = '',
 }: AddressDisplayProps) {
 	const [copied, setCopied] = useState(false);
-	const isMobile = useIsMobile(breakpoint);
+	const isMobile = useIsMobile();
 
-	// Determine if truncation should be applied.
-	// Responsive mode: truncate only on mobile. Otherwise use truncate prop.
-	const shouldTruncate = responsive ? isMobile : truncate;
+	// Mobile: ALWAYS use JS truncation for consistent 8...4 format, regardless of truncate prop.
+	// Desktop/tablet: behavior controlled by truncate prop.
+	const shouldTruncate = isMobile;
 
 	// Truncate if enabled and address is long enough to need it.
 	// Format: prefixLen chars + ... + suffixLen chars.
@@ -93,9 +88,20 @@ export function AddressDisplay({
 		? 'cursor-pointer text-nervos hover:text-nervos-dark transition-colors'
 		: '';
 
+	// On desktop/tablet, use CSS truncation with ellipsis.
+	// overflow-hidden + text-ellipsis truncates with "..." only when text overflows container.
+	// max-w-full ensures element respects parent width boundaries.
+	const textOverflowClass = !isMobile && truncate
+		? 'overflow-hidden text-ellipsis max-w-full'
+		: '';
+
+	// When truncate is enabled, use whitespace-nowrap to keep address on one line.
+	// When truncate is false (e.g., AddressPage), allow wrapping to show full address.
+	const wrapClass = truncate ? 'whitespace-nowrap' : 'break-all';
+
 	return (
 		<span
-			className={`inline-flex items-center gap-1 font-mono text-sm whitespace-nowrap ${className}`}
+			className={`inline-flex items-center gap-1 font-mono text-sm min-w-0 max-w-full ${wrapClass} ${className}`}
 		>
 			{/* Address text: link if linkTo is set, otherwise plain text. */}
 			<Tooltip content={tooltipContent}>
@@ -104,12 +110,12 @@ export function AddressDisplay({
 						href={linkTo}
 						onClick={handleTextClick}
 						onKeyDown={handleTextKeyDown}
-						className={textClassName}
+						className={`${textClassName} ${textOverflowClass}`}
 					>
 						{displayAddress}
 					</a>
 				) : (
-					<span>{displayAddress}</span>
+					<span className={textOverflowClass}>{displayAddress}</span>
 				)}
 			</Tooltip>
 

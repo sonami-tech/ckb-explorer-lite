@@ -50,14 +50,16 @@ This provides a consistent, predictable user experience:
 
 **Format**: `0x` + 8 chars + `...` + 8 chars = `0x12345678...12345678`
 
-### CKB Addresses (~95 characters)
+### CKB Addresses (~46-95 characters)
 
-| Context | Desktop/Tablet | Mobile | Component |
-|---------|----------------|--------|-----------|
-| Overview sections | Full | 8...4 | `AddressDisplay responsive` |
-| Other contexts | 8...4 | 8...4 | `AddressDisplay` (default) |
+| Screen Size | `truncate={true}` (default) | `truncate={false}` |
+|-------------|-----------------------------|--------------------|
+| Mobile (<768px) | 8...4 JS truncation | 8...4 JS truncation |
+| Tablet/Desktop (≥768px) | Full; CSS ellipsis on overflow | Full; wraps to multiple lines |
 
-**Format**: 8 chars + `...` + 4 chars = `ckb1qzda...xwsq`
+**Mobile format**: 8 chars + `...` + 4 chars = `ckb1qzda...xwsq`
+
+**Key behavior**: Mobile **always** uses 8...4 format regardless of `truncate` prop. The `truncate` prop only affects tablet/desktop behavior.
 
 ### Block Numbers
 
@@ -104,16 +106,16 @@ Limits are in hex string characters (including `0x` prefix), not raw bytes. Defi
 
 ## Responsive Behavior
 
-Components with responsive display (full on desktop/tablet, truncated on mobile):
+Components with responsive display:
 
-| Component | Prop | Default |
-|-----------|------|---------|
-| `HashDisplay` | `responsive={true}` | `false` |
-| `AddressDisplay` | `responsive={true}` | `false` |
-| `OutPoint` | CSS-based truncation | N/A |
-| `HexData` | 3-tier breakpoints | Always responsive |
+| Component | Behavior |
+|-----------|----------|
+| `HashDisplay` | `responsive={true}` shows full on desktop, truncated on mobile |
+| `AddressDisplay` | Mobile always 8...4; desktop/tablet controlled by `truncate` prop |
+| `OutPoint` | CSS-based truncation |
+| `HexData` | 3-tier breakpoints (always responsive) |
 
-**Breakpoints**: Mobile < 640px, Tablet 640-1023px, Desktop ≥ 1024px
+**Breakpoints**: Mobile < 768px (AddressDisplay), < 640px (HexData), Tablet 640-1023px, Desktop ≥ 1024px
 
 ## Visual Indicators
 
@@ -192,24 +194,28 @@ Displays 66-character hashes with optional truncation, copy functionality, and n
 
 ### AddressDisplay
 
-Displays CKB addresses with appropriate truncation and optional navigation.
+Displays CKB addresses with responsive truncation and optional navigation.
 
 ```tsx
-// Copy only, no link (e.g., on address page)
-<AddressDisplay address={address} />
-
-// With navigation link
+// Default: mobile 8...4, desktop CSS ellipsis on overflow
 <AddressDisplay address={address} linkTo={`/address/${address}`} />
 
-// Full on desktop, truncated on mobile
-<AddressDisplay address={address} linkTo={url} responsive />
+// Full address on desktop (wraps), still 8...4 on mobile (e.g., address page)
+<AddressDisplay address={address} truncate={false} />
 ```
 
 **Props:**
 - `address` - The CKB address string.
 - `linkTo` - Optional URL. If set, text click navigates.
-- `responsive` - Full on desktop, truncated on mobile.
-- `truncate` - Enable truncation (default: true).
+- `truncate` - Desktop/tablet only: `true` (default) uses CSS ellipsis on overflow, `false` allows wrapping. Mobile always uses 8...4 regardless.
+- `prefixLen` / `suffixLen` - Mobile truncation lengths (default: 8/4).
+
+**Responsive Behavior:**
+
+| Screen Size | `truncate={true}` | `truncate={false}` |
+|-------------|-------------------|-------------------|
+| Mobile (<768px) | `ckb1qzda...xwsq` | `ckb1qzda...xwsq` |
+| Tablet/Desktop | Full address; ellipsis if overflow | Full address; wraps |
 
 ### BlockNumberDisplay
 

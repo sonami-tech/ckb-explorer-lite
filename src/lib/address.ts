@@ -1,7 +1,33 @@
 import { addressPayloadFromString } from '@ckb-ccc/core/advanced';
-import { bech32m } from 'bech32';
+import { bech32, bech32m } from 'bech32';
 import type { RpcScript } from '../types/rpc';
 import type { NetworkType } from '../config/networks';
+
+/**
+ * Short format code_hash_index to code_hash mapping per RFC 0021.
+ * Only these three lock scripts support the deprecated short address format.
+ */
+const SHORT_FORMAT_SCRIPTS = {
+	/** SECP256K1/blake160 - same for mainnet and testnet. */
+	secp256k1: {
+		index: 0x00,
+		codeHash: '0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8',
+		hashType: 'type' as const,
+	},
+	/** Multisig - same for mainnet and testnet. */
+	multisig: {
+		index: 0x01,
+		codeHash: '0x5c5069eb0857efc65e1bca0c07df34c31663b3622fd3876c876320fc9634e2a8',
+		hashType: 'type' as const,
+	},
+	/** Anyone-Can-Pay - differs between mainnet and testnet. */
+	acp: {
+		index: 0x02,
+		mainnet: '0xd369597ff47f29fbc0d47d2e3775370d1250b85140c670e4718af712983a2354',
+		testnet: '0x3419a1c09eb2567f6552ee7a8ecffd64155cffe0f1796e6e61ec088d740c1356',
+		hashType: 'type' as const,
+	},
+} as const;
 
 /**
  * Address format types.
@@ -167,4 +193,120 @@ function hexToBytes(hex: string): Uint8Array {
 		bytes[i] = parseInt(cleanHex.substr(i * 2, 2), 16);
 	}
 	return bytes;
+}
+
+/**
+ * Get the short format code_hash_index for a script, if it supports short format.
+ * Returns null if the script doesn't support short format.
+ */
+function getShortFormatIndex(script: RpcScript, networkType: NetworkType): number | null {
+	const codeHash = script.code_hash.toLowerCase();
+	const hashType = script.hash_type;
+
+	// All short format scripts use hash_type: type
+	if (hashType !== 'type') {
+		return null;
+	}
+
+	// Check SECP256K1/blake160
+	if (codeHash === SHORT_FORMAT_SCRIPTS.secp256k1.codeHash) {
+		return SHORT_FORMAT_SCRIPTS.secp256k1.index;
+	}
+
+	// Check Multisig
+	if (codeHash === SHORT_FORMAT_SCRIPTS.multisig.codeHash) {
+		return SHORT_FORMAT_SCRIPTS.multisig.index;
+	}
+
+	// Check ACP (network-specific)
+	const acpCodeHash = networkType === 'mainnet'
+		? SHORT_FORMAT_SCRIPTS.acp.mainnet
+		: SHORT_FORMAT_SCRIPTS.acp.testnet;
+	if (codeHash === acpCodeHash) {
+		return SHORT_FORMAT_SCRIPTS.acp.index;
+	}
+
+	return null;
+}
+
+/**
+ * Encode a lock script to a CKB2019 short format address.
+ * Returns null if the script doesn't support short format.
+ *
+ * Short format: bech32 encoding with payload = [0x01, code_hash_index, ...args]
+ * Only supported for SECP256K1/blake160, Multisig, and ACP locks.
+ */
+export function encodeShortAddress(script: RpcScript, networkType: NetworkType): string | null {
+	const index = getShortFormatIndex(script, networkType);
+	if (index === null) {
+		return null;
+	}
+
+	const prefix = getAddressPrefix(networkType);
+	const argsBytes = hexToBytes(script.args);
+
+	// Short format payload: format byte (0x01) + code_hash_index + args
+	const payload = new Uint8Array(2 + argsBytes.length);
+	payload[0] = AddressFormat.Short;
+	payload[1] = index;
+	payload.set(argsBytes, 2);
+
+	// Use bech32 (not bech32m) for CKB2019 format
+	return bech32.encode(prefix, bech32.toWords(payload), 1023);
+}
+
+/**
+ * Get the alternate format address for a given address.
+ *
+ * - If viewing a CKB2019 address: returns the CKB2021 (full format) equivalent
+ * - If viewing a CKB2021 address with a standard lock: returns the CKB2019 (short format) equivalent
+ * - If viewing a CKB2021 address with non-standard lock: returns null (no short format exists)
+ *
+ * @param address - The original address string
+ * @param script - The parsed lock script (required for encoding)
+ * @param networkType - The network type for encoding
+ * @returns Object with alternateAddress and format label, or null if no alternate exists
+ */
+export function getAlternateAddress(
+	address: string,
+	script: RpcScript,
+	networkType: NetworkType,
+): { address: string; formatLabel: string } | null {
+	const parsed = parseAddress(address);
+
+	if (parsed.isDeprecated) {
+		// Viewing CKB2019 address - return CKB2021 equivalent
+		return {
+			address: encodeAddress(script, networkType),
+			formatLabel: 'CKB2021',
+		};
+	} else {
+		// Viewing CKB2021 address - try to return CKB2019 short format
+		const shortAddress = encodeShortAddress(script, networkType);
+		if (shortAddress) {
+			return {
+				address: shortAddress,
+				formatLabel: 'CKB2019',
+			};
+		}
+		return null;
+	}
+}
+
+/**
+ * Get a human-readable format description for an address format.
+ */
+export function getFormatDescription(format: AddressFormat): string {
+	switch (format) {
+		case AddressFormat.Full:
+			return 'CKB2021 (Full)';
+		case AddressFormat.Short:
+			return 'CKB2019 (Short)';
+		case AddressFormat.FullData:
+			return 'CKB2019 (Full Data)';
+		case AddressFormat.FullType:
+			return 'CKB2019 (Full Type)';
+		default:
+			return 'Unknown';
+	}
 }
