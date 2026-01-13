@@ -4,7 +4,7 @@ import { encodeAddress } from '../lib/address';
 import { formatCkb } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
 import { fromHex } from '../lib/rpc';
-import { lookupWellKnownCell } from '../lib/wellKnown';
+import { lookupWellKnownCell, lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
 import { AddressDisplay } from '../components/AddressDisplay';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
@@ -150,6 +150,32 @@ export function CellPage({ txHash, index }: CellPageProps) {
 								address={encodeAddress(cellData.output.lock, networkType)}
 								linkTo={generateLink(`/address/${encodeAddress(cellData.output.lock, networkType)}`)}
 							/>
+						</DetailRow>
+					)}
+					{cellData && (
+						<DetailRow label="Lock Script">
+							<span className="text-gray-900 dark:text-white">
+								{lookupLockScript(
+									cellData.output.lock.code_hash,
+									cellData.output.lock.hash_type,
+									networkType,
+									cellData.output.lock.args
+								)?.name ?? 'Unknown'}
+							</span>
+						</DetailRow>
+					)}
+					{cellData && (
+						<DetailRow label="Type Script">
+							<span className="text-gray-900 dark:text-white">
+								{cellData.output.type
+									? (lookupTypeScript(
+										cellData.output.type.code_hash,
+										cellData.output.type.hash_type,
+										networkType,
+										cellData.output.type.args
+									)?.name ?? 'Unknown')
+									: 'None'}
+							</span>
 						</DetailRow>
 					)}
 					{createdBlock !== null && (

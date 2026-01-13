@@ -1,57 +1,58 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRpc } from '../contexts/NetworkContext';
-import { parseAddress, getNetworkFromPrefix } from '../lib/address';
+import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import {
-	formatNumber,
-	formatCkb,
-	truncateHex,
-} from '../lib/format';
+	parseAddress,
+	getNetworkFromPrefix,
+	getFormatDescription,
+	getAlternateAddress,
+	AddressFormat,
+} from '../lib/address';
+import { formatNumber, formatCkb, formatRelativeTime } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
-import { HashDisplay } from '../components/CopyButton';
 import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
-import type { RpcCell, RpcScript, IndexerSearchKey } from '../types/rpc';
+import { ScriptSection } from '../components/ScriptSection';
+import { lookupLockScript } from '../lib/wellKnown';
+import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import {
-	LEGACY_FORMAT,
-	NETWORK,
-	HAS_TYPE,
-	HASH_DATA,
-} from '../lib/badgeStyles';
+	TransactionRow,
+	getDirection,
+	calculateReceivedAmount,
+	extractTypeScripts,
+	type EnrichedTransaction,
+} from '../components/TransactionRow';
+import type { RpcScript, RpcGroupedTransactionInfo, IndexerSearchKey } from '../types/rpc';
 
 interface AddressPageProps {
 	address: string;
 }
 
-const PAGE_SIZE_OPTIONS = [20, 50, 100];
-const STORAGE_KEY = 'ckb-explorer-page-size';
-
-function getStoredPageSize(): number {
-	const stored = localStorage.getItem(STORAGE_KEY);
-	if (stored && PAGE_SIZE_OPTIONS.includes(parseInt(stored, 10))) {
-		return parseInt(stored, 10);
-	}
-	return 20;
-}
-
 export function AddressPage({ address }: AddressPageProps) {
 	const rpc = useRpc();
+	const { currentNetwork } = useNetwork();
 	const { archiveHeight } = useArchive();
-	const [script, setScript] = useState<RpcScript | null>(null);
-	const [isDeprecated, setIsDeprecated] = useState(false);
-	const [networkPrefix, setNetworkPrefix] = useState<string>('');
-	const [balance, setBalance] = useState<bigint | null>(null);
-	const [cells, setCells] = useState<RpcCell[]>([]);
-	const [cursor, setCursor] = useState<string | null>(null);
-	const [hasMore, setHasMore] = useState(false);
-	const [isLoading, setIsLoading] = useState(true);
-	const [isLoadingMore, setIsLoadingMore] = useState(false);
-	const [error, setError] = useState<Error | null>(null);
-	const [pageSize, setPageSize] = useState(getStoredPageSize);
+	const networkType = currentNetwork?.type ?? 'mainnet';
 
-	// Track fetch ID to ignore stale responses when archiveHeight changes during navigation.
+	// Parsed address state.
+	const [script, setScript] = useState<RpcScript | null>(null);
+	const [addressFormat, setAddressFormat] = useState<AddressFormat>(AddressFormat.Full);
+	const [networkPrefix, setNetworkPrefix] = useState<string>('');
+
+	// Data state.
+	const [balance, setBalance] = useState<bigint | null>(null);
+	const [cellCount, setCellCount] = useState<bigint | null>(null);
+	const [transactionCount, setTransactionCount] = useState<bigint | null>(null);
+	const [recentTransactions, setRecentTransactions] = useState<EnrichedTransaction[]>([]);
+	const [lastActivityTime, setLastActivityTime] = useState<number | null>(null);
+	const [referenceTimestamp, setReferenceTimestamp] = useState<number | undefined>(undefined);
+
+	// UI state.
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<Error | null>(null);
+
 	const fetchIdRef = useRef(0);
 
 	// Parse address on mount.
@@ -62,7 +63,7 @@ export function AddressPage({ address }: AddressPageProps) {
 				throw new Error('Short format addresses are not supported. Please use the full format address.');
 			}
 			setScript(parsed.script);
-			setIsDeprecated(parsed.isDeprecated);
+			setAddressFormat(parsed.format);
 			setNetworkPrefix(parsed.prefix);
 		} catch (err) {
 			setError(err instanceof Error ? err : new Error('Invalid address format.'));
@@ -70,7 +71,56 @@ export function AddressPage({ address }: AddressPageProps) {
 		}
 	}, [address]);
 
-	// Fetch balance and initial cells.
+	// Enrich grouped transactions with full details.
+	const enrichTransactions = useCallback(async (
+		groupedTxs: RpcGroupedTransactionInfo[],
+		lockScript: RpcScript,
+	): Promise<EnrichedTransaction[]> => {
+		if (groupedTxs.length === 0) return [];
+
+		// Fetch full transactions in parallel.
+		const fullTxPromises = groupedTxs.map(async (gtx) => {
+			const txWithStatus = await rpc.getTransaction(gtx.tx_hash, archiveHeight);
+			return { grouped: gtx, full: txWithStatus };
+		});
+
+		const results = await Promise.all(fullTxPromises);
+
+		// Fetch block headers for timestamps.
+		const uniqueBlocks = [...new Set(groupedTxs.map(tx => tx.block_number))];
+		const headerPromises = uniqueBlocks.map(async (blockNum) => {
+			const header = await rpc.getHeaderByNumber(BigInt(blockNum), archiveHeight);
+			return { blockNumber: blockNum, timestamp: header ? Number(BigInt(header.timestamp)) : Date.now() };
+		});
+		const headers = await Promise.all(headerPromises);
+		const timestampMap = new Map(headers.map(h => [h.blockNumber, h.timestamp]));
+
+		// Build enriched transactions.
+		return results.map(({ grouped, full }) => {
+			const direction = getDirection(grouped.cells);
+			const timestamp = timestampMap.get(grouped.block_number) ?? Date.now();
+
+			let receivedAmount: bigint | undefined;
+			if (direction === 'received' && full?.transaction) {
+				receivedAmount = calculateReceivedAmount(full.transaction, lockScript);
+			}
+
+			const typeScripts = full?.transaction
+				? extractTypeScripts(full.transaction, networkType)
+				: [];
+
+			return {
+				txHash: grouped.tx_hash,
+				blockNumber: BigInt(grouped.block_number),
+				timestamp,
+				direction,
+				receivedAmount,
+				typeScripts,
+			};
+		});
+	}, [rpc, archiveHeight, networkType]);
+
+	// Fetch all data.
 	const fetchData = useCallback(async () => {
 		if (!script) return;
 
@@ -84,33 +134,52 @@ export function AddressPage({ address }: AddressPageProps) {
 				script,
 				script_type: 'lock',
 				script_search_mode: 'exact',
-				with_data: true,
 			};
 
-			// Fetch balance and cells in parallel.
-			const [balanceResult, cellsResult] = await Promise.all([
+			// Fetch archive block timestamp if in archive mode.
+			let archiveTimestamp: number | undefined;
+			if (archiveHeight !== undefined) {
+				const archiveHeader = await rpc.getHeaderByNumber(BigInt(archiveHeight), archiveHeight);
+				if (archiveHeader) {
+					archiveTimestamp = Number(BigInt(archiveHeader.timestamp));
+				}
+			}
+
+			// Fetch balance, counts, and recent transactions in parallel.
+			const [balanceResult, cellsCountResult, txCountResult, groupedTxsResult] = await Promise.all([
 				rpc.getCellsCapacity(searchKey, archiveHeight),
-				rpc.getCells(searchKey, 'desc', pageSize, undefined, archiveHeight),
+				rpc.getCellsCount(searchKey, archiveHeight),
+				rpc.getTransactionsCount(searchKey, archiveHeight),
+				rpc.getGroupedTransactions(searchKey, 'desc', PAGE_SIZE_CONFIG.preview, undefined, archiveHeight),
 			]);
 
-			// Ignore stale response if a newer fetch has started.
 			if (fetchId !== fetchIdRef.current) return;
 
 			setBalance(balanceResult);
-			setCells(cellsResult.objects);
-			setCursor(cellsResult.last_cursor);
-			setHasMore(cellsResult.objects.length >= pageSize);
+			setCellCount(BigInt(cellsCountResult.count));
+			setTransactionCount(BigInt(txCountResult.count));
+			setReferenceTimestamp(archiveTimestamp);
+
+			// Enrich recent transactions.
+			const enriched = await enrichTransactions(groupedTxsResult.objects, script);
+
+			if (fetchId !== fetchIdRef.current) return;
+
+			setRecentTransactions(enriched);
+
+			// Set last activity time from most recent transaction.
+			if (enriched.length > 0) {
+				setLastActivityTime(enriched[0].timestamp);
+			}
 		} catch (err) {
-			// Ignore stale errors if a newer fetch has started.
 			if (fetchId !== fetchIdRef.current) return;
 			setError(err instanceof Error ? err : new Error('Failed to fetch address data.'));
 		} finally {
-			// Only update loading state if this is still the current fetch.
 			if (fetchId === fetchIdRef.current) {
 				setIsLoading(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, pageSize]);
+	}, [rpc, script, archiveHeight, enrichTransactions]);
 
 	useEffect(() => {
 		if (script) {
@@ -118,40 +187,42 @@ export function AddressPage({ address }: AddressPageProps) {
 		}
 	}, [fetchData, script]);
 
-	// Load more cells.
-	const loadMore = async () => {
-		if (!script || !cursor || isLoadingMore) return;
+	// Derive display values.
+	const networkName = getNetworkFromPrefix(networkPrefix);
+	const formatDescription = getFormatDescription(addressFormat);
+	const isDeprecated = addressFormat !== AddressFormat.Full;
 
-		setIsLoadingMore(true);
+	// Lock script lookup.
+	const lockInfo = script
+		? lookupLockScript(script.code_hash, script.hash_type, networkType, script.args)
+		: null;
 
-		try {
-			const searchKey: IndexerSearchKey = {
-				script,
-				script_type: 'lock',
-				script_search_mode: 'exact',
-				with_data: true,
-			};
+	// Alternate address.
+	const alternateAddress = script
+		? getAlternateAddress(address, script, networkType)
+		: null;
 
-			const result = await rpc.getCells(searchKey, 'desc', pageSize, cursor, archiveHeight);
-			setCells((prev) => [...prev, ...result.objects]);
-			setCursor(result.last_cursor);
-			setHasMore(result.objects.length >= pageSize);
-		} catch (err) {
-			// Show error but don't clear existing data.
-			console.error('Failed to load more cells:', err);
-		} finally {
-			setIsLoadingMore(false);
-		}
-	};
-
-	// Handle page size change.
-	const handlePageSizeChange = (newSize: number) => {
-		setPageSize(newSize);
-		localStorage.setItem(STORAGE_KEY, newSize.toString());
-		// Reset and refetch.
-		setCells([]);
-		setCursor(null);
-	};
+	// Last activity relative time.
+	const lastActivityLabel = lastActivityTime
+		? referenceTimestamp
+			? (() => {
+				const diff = referenceTimestamp - lastActivityTime;
+				if (diff < 0) return 'just now';
+				const seconds = Math.floor(diff / 1000);
+				if (seconds < 60) return seconds === 1 ? '1 second ago' : `${seconds} seconds ago`;
+				const minutes = Math.floor(seconds / 60);
+				if (minutes < 60) return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
+				const hours = Math.floor(minutes / 60);
+				if (hours < 24) return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+				const days = Math.floor(hours / 24);
+				if (days < 30) return days === 1 ? '1 day ago' : `${days} days ago`;
+				const months = Math.floor(days / 30);
+				if (months < 12) return months === 1 ? '1 month ago' : `${months} months ago`;
+				const years = Math.floor(months / 12);
+				return years === 1 ? '1 year ago' : `${years} years ago`;
+			})()
+			: formatRelativeTime(lastActivityTime)
+		: null;
 
 	if (isLoading) {
 		return (
@@ -180,22 +251,12 @@ export function AddressPage({ address }: AddressPageProps) {
 					<span>/</span>
 					<span>Address</span>
 				</div>
-				<div className="flex items-center gap-2">
-					<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-						Address{archiveHeight !== undefined && ` @ Block ${formatNumber(archiveHeight)}`}
-					</h1>
-					{isDeprecated && (
-						<span className={`px-2 py-0.5 text-xs font-medium ${LEGACY_FORMAT} rounded`}>
-							Legacy Format
-						</span>
-					)}
-					<span className={`px-2 py-0.5 text-xs font-medium ${NETWORK} rounded`}>
-						{getNetworkFromPrefix(networkPrefix)}
-					</span>
-				</div>
+				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+					Address{archiveHeight !== undefined && ` @ Block ${formatNumber(archiveHeight)}`}
+				</h1>
 			</div>
 
-			{/* Address details. */}
+			{/* Overview section. */}
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
 					<h2 className="font-semibold text-gray-900 dark:text-white">Overview</h2>
@@ -204,118 +265,123 @@ export function AddressPage({ address }: AddressPageProps) {
 					<DetailRow label="Address">
 						<AddressDisplay address={address} truncate={false} />
 					</DetailRow>
+
+					<DetailRow label="Network">
+						<span className="text-gray-900 dark:text-white">{networkName}</span>
+					</DetailRow>
+
+					<DetailRow label="Format">
+						<span className="text-gray-900 dark:text-white">
+							{formatDescription}
+							{isDeprecated && (
+								<span className="ml-2 text-amber-600 dark:text-amber-400 text-sm">
+									— Deprecated
+								</span>
+							)}
+						</span>
+					</DetailRow>
+
+					<DetailRow label="Lock Script">
+						{lockInfo ? (
+							<span className="text-gray-900 dark:text-white">
+								{lockInfo.name}
+								{lockInfo.sourceUrl && (
+									<a
+										href={lockInfo.sourceUrl}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="ml-2 text-nervos hover:text-nervos-dark text-sm"
+									>
+										↗
+									</a>
+								)}
+							</span>
+						) : (
+							<span className="text-gray-500 dark:text-gray-400">Unknown</span>
+						)}
+					</DetailRow>
+
+					{alternateAddress && (
+						<DetailRow label={`${alternateAddress.formatLabel} Address`}>
+							<AddressDisplay address={alternateAddress.address} truncate={false} />
+						</DetailRow>
+					)}
+
 					<DetailRow label="Balance">
 						<span className="text-lg font-semibold text-nervos">
 							{balance !== null ? formatCkb(balance) : '...'}
 						</span>
 					</DetailRow>
-					{script && (
-						<>
-							<DetailRow label="Lock Code Hash">
-								<HashDisplay hash={script.code_hash} />
-							</DetailRow>
-							<DetailRow label="Lock Hash Type">
-								{script.hash_type}
-							</DetailRow>
-							<DetailRow label="Lock Args">
-								<HashDisplay hash={script.args} truncate={script.args.length > 44} />
-							</DetailRow>
-						</>
-					)}
+
+					<DetailRow label="Transactions">
+						<div className="flex items-center gap-3">
+							<span className="font-mono text-gray-900 dark:text-white">
+								{transactionCount !== null ? formatNumber(transactionCount) : '...'}
+							</span>
+							<button
+								onClick={() => navigate(generateLink(`/address/${address}/transactions`))}
+								className="text-sm text-nervos hover:text-nervos-dark"
+							>
+								View All →
+							</button>
+						</div>
+					</DetailRow>
+
+					<DetailRow label="Live Cells">
+						<div className="flex items-center gap-3">
+							<span className="font-mono text-gray-900 dark:text-white">
+								{cellCount !== null ? formatNumber(cellCount) : '...'}
+							</span>
+							<button
+								onClick={() => navigate(generateLink(`/address/${address}/cells`))}
+								className="text-sm text-nervos hover:text-nervos-dark"
+							>
+								View All →
+							</button>
+						</div>
+					</DetailRow>
 				</div>
 			</div>
 
-			{/* Live Cells. */}
+			{/* Lock Script. */}
+			{script && (
+				<ScriptSection title="Lock Script" script={script} />
+			)}
+
+			{/* Recent Transactions. */}
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
 					<h2 className="font-semibold text-gray-900 dark:text-white">
-						Live Cells ({cells.length}{hasMore ? '+' : ''})
+						Recent Transactions
+						{lastActivityLabel && (
+							<span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
+								(last: {lastActivityLabel})
+							</span>
+						)}
 					</h2>
+					<button
+						onClick={() => navigate(generateLink(`/address/${address}/transactions`))}
+						className="text-sm text-nervos hover:text-nervos-dark"
+					>
+						View All →
+					</button>
 				</div>
-				<div className="divide-y divide-gray-200 dark:divide-gray-700">
-					{cells.length === 0 ? (
-						<div className="p-4 text-sm text-gray-500 dark:text-gray-400 italic">
-							No live cells found for this address.
+				<div className="px-4">
+					{recentTransactions.length === 0 ? (
+						<div className="py-4 text-sm text-gray-500 dark:text-gray-400 italic">
+							No transactions found for this address.
 						</div>
 					) : (
-						cells.map((cell) => (
-							<CellListItem
-								key={`${cell.out_point.tx_hash}-${cell.out_point.index}`}
-								cell={cell}
+						recentTransactions.map((tx) => (
+							<TransactionRow
+								key={tx.txHash}
+								transaction={tx}
+								referenceTime={referenceTimestamp}
 							/>
 						))
 					)}
 				</div>
-
-				{/* Load more controls. */}
-				{(hasMore || cells.length > 0) && (
-					<div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<span className="text-sm text-gray-500 dark:text-gray-400">
-								Results per load:
-							</span>
-							<select
-								value={pageSize}
-								onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
-								className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-							>
-								{PAGE_SIZE_OPTIONS.map((size) => (
-									<option key={size} value={size}>
-										{size}
-									</option>
-								))}
-							</select>
-						</div>
-
-						{hasMore && (
-							<button
-								onClick={loadMore}
-								disabled={isLoadingMore}
-								className="px-4 py-2 text-sm font-medium text-white bg-nervos rounded-lg hover:bg-nervos-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-							>
-								{isLoadingMore ? 'Loading...' : 'Load More'}
-							</button>
-						)}
-					</div>
-				)}
 			</div>
 		</div>
-	);
-}
-
-function CellListItem({
-	cell,
-}: {
-	cell: RpcCell;
-}) {
-	return (
-		<button
-			onClick={() => navigate(generateLink(
-				`/cell/${cell.out_point.tx_hash}/${parseInt(cell.out_point.index, 16)}`
-			))}
-			className="w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-		>
-			<div className="flex items-center justify-between mb-2">
-				<span className="font-mono text-sm text-nervos">
-					{truncateHex(cell.out_point.tx_hash, 8, 8)}:{parseInt(cell.out_point.index, 16)}
-				</span>
-				<span className="font-mono text-sm">
-					{formatCkb(cell.output.capacity)}
-				</span>
-			</div>
-			<div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-				<span>Block {formatNumber(BigInt(cell.block_number))}</span>
-				{cell.output.type && (
-					<span className={`px-1.5 py-0.5 ${HAS_TYPE} rounded`}>
-						Has Type
-					</span>
-				)}
-				{cell.output_data && cell.output_data !== '0x' && (
-					<span className={`px-1.5 py-0.5 ${HASH_DATA} rounded`}>
-						Has Data
-					</span>
-				)}
-			</div>
-		</button>
 	);
 }
