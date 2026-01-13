@@ -92,7 +92,7 @@ export function NetworkBlockSelector() {
 			<button
 				onClick={() => setIsOpen(!isOpen)}
 				className={`
-					w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 px-3 py-2.5 rounded-lg text-sm
+					w-full sm:w-auto flex items-center justify-start gap-2 px-3 py-2.5 rounded-lg text-sm text-left
 					bg-white dark:bg-gray-900
 					border border-gray-300 dark:border-gray-600
 					hover:border-gray-400 dark:hover:border-gray-500
@@ -100,30 +100,41 @@ export function NetworkBlockSelector() {
 					${isOpen ? 'ring-2 ring-nervos/50 border-nervos' : ''}
 				`}
 			>
-				{/* Network name. */}
-				<span className="font-medium text-gray-900 dark:text-white">
+				{/* Network label (left). */}
+				<span className="flex-1 min-w-0 font-medium text-gray-900 dark:text-white truncate">
 					{networkLabel}
 				</span>
 
-				{/* Separator. */}
-				<span className="text-gray-300 dark:text-gray-600">•</span>
-
-				{/* Block status. */}
-				<span className="text-gray-600 dark:text-gray-400">
+				{/* Tablet/desktop: inline "•" and block label next to network. */}
+				<span className="hidden sm:inline text-gray-300 dark:text-gray-600">•</span>
+				<span className="hidden sm:inline text-gray-600 dark:text-gray-400 whitespace-nowrap">
 					{blockLabel}
 				</span>
 
-				{/* Live indicator - pulsing dot when tracking latest. */}
+				{/* Live indicator (tablet/desktop). */}
 				{isTrackingLatest && isArchiveSupported && (
-					<span className="relative flex h-2 w-2">
+					<span className="hidden sm:flex relative h-2 w-2 flex-shrink-0">
 						<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
 						<span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
 					</span>
 				)}
 
+				{/* Mobile: block label right-aligned, no dot. */}
+				<span className="sm:hidden ml-auto flex items-center gap-2">
+					<span className="text-gray-600 dark:text-gray-400 whitespace-nowrap">
+						{blockLabel}
+					</span>
+					{isTrackingLatest && isArchiveSupported && (
+						<span className="relative flex h-2 w-2 flex-shrink-0">
+							<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+							<span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+						</span>
+					)}
+				</span>
+
 				{/* Chevron. */}
 				<svg
-					className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+					className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
