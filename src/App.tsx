@@ -9,6 +9,8 @@ import { HomePage } from './pages/HomePage';
 import { BlockPage } from './pages/BlockPage';
 import { TransactionPage } from './pages/TransactionPage';
 import { AddressPage } from './pages/AddressPage';
+import { TransactionsForAddressPage } from './pages/TransactionsForAddressPage';
+import { CellsForAddressPage } from './pages/CellsForAddressPage';
 import { CellPage } from './pages/CellPage';
 import { WellKnownResourcesPage } from './pages/WellKnownResourcesPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -25,6 +27,10 @@ function Router() {
 			return <TransactionPage hash={route.hash} />;
 		case 'address':
 			return <AddressPage address={route.address} />;
+		case 'address-transactions':
+			return <TransactionsForAddressPage address={route.address} />;
+		case 'address-cells':
+			return <CellsForAddressPage address={route.address} />;
 		case 'cell':
 			return <CellPage txHash={route.txHash} index={route.index} />;
 		case 'resources':

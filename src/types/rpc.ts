@@ -104,6 +104,23 @@ export interface RpcGetTransactionsResponse {
 	last_cursor: string;
 }
 
+/**
+ * Grouped transaction info from get_transactions with group_by_transaction: true.
+ * Groups all IO for this address within a single transaction.
+ */
+export interface RpcGroupedTransactionInfo {
+	tx_hash: Hex;
+	block_number: Uint64;
+	tx_index: Uint32;
+	/** Array of [io_type, io_index] tuples for this address in this transaction. */
+	cells: Array<['input' | 'output', Uint32]>;
+}
+
+export interface RpcGetGroupedTransactionsResponse {
+	objects: RpcGroupedTransactionInfo[];
+	last_cursor: string;
+}
+
 export interface RpcBlockchainInfo {
 	chain: string;
 	median_time: Uint64;
@@ -167,6 +184,26 @@ export interface IndexerSearchKey {
 		block_range?: [Uint64, Uint64];
 	};
 	with_data?: boolean;
+	/** When true, results are grouped by transaction instead of per-IO. */
+	group_by_transaction?: boolean;
+}
+
+/**
+ * Response for get_cells_count RPC method.
+ */
+export interface RpcCellsCount {
+	count: Uint64;
+	block_hash: Hex;
+	block_number: Uint64;
+}
+
+/**
+ * Response for get_transactions_count RPC method.
+ */
+export interface RpcTransactionsCount {
+	count: Uint64;
+	block_hash: Hex;
+	block_number: Uint64;
 }
 
 /**

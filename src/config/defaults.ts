@@ -65,3 +65,17 @@ export const HEX_DATA_CONFIG = {
 	/** Max height in pixels for expanded in-place view. */
 	maxExpandedHeight: 384,        // ~24rem
 } as const;
+
+/**
+ * Pagination configuration for list views.
+ */
+export const PAGE_SIZE_CONFIG = {
+	/** Default number of items per page. */
+	default: 10,
+	/** Available page size options for user selection. */
+	options: [10, 20, 50, 100] as const,
+	/** Maximum allowed page size. */
+	max: 100,
+	/** Number of items to show in preview sections. */
+	preview: 10,
+} as const;

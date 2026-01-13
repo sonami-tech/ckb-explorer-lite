@@ -3,11 +3,14 @@ import type {
 	RpcBlock,
 	RpcBlockHeader,
 	RpcBlockchainInfo,
+	RpcCellsCount,
 	RpcCellWithLifecycle,
 	RpcEpoch,
 	RpcGetCellsResponse,
+	RpcGetGroupedTransactionsResponse,
 	RpcGetTransactionsResponse,
 	RpcLiveCell,
+	RpcTransactionsCount,
 	RpcTransactionWithStatus,
 	IndexerSearchKey,
 	JsonRpcRequest,
@@ -475,6 +478,21 @@ export function createRpcClient(rpcUrl: string) {
 		},
 
 		/**
+		 * Get a block header by number.
+		 * @param blockNumber - Block number.
+		 * @param height - Optional archive height for historical query.
+		 */
+		async getHeaderByNumber(
+			blockNumber: number | bigint,
+			height?: number,
+		): Promise<RpcBlockHeader | null> {
+			// Headers are immutable chain data; do not scope via `set_block_height`.
+			// Some nodes reject `get_header_by_number` under `set_block_height`.
+			void height;
+			return sendRequest<RpcBlockHeader | null>('get_header_by_number', [toHex(blockNumber)]);
+		},
+
+		/**
 		 * Get a block by hash.
 		 * @param blockHash - Block hash.
 		 * @param height - Optional archive height for historical query.
@@ -584,6 +602,34 @@ export function createRpcClient(rpcUrl: string) {
 		},
 
 		/**
+		 * Get transactions grouped by tx_hash (indexer).
+		 * Each result includes a cells array with [io_type, io_index] tuples
+		 * showing which inputs/outputs involve the searched address.
+		 * @param searchKey - Indexer search key (group_by_transaction is set automatically).
+		 * @param order - Sort order ('asc' or 'desc').
+		 * @param limit - Maximum number of results.
+		 * @param cursor - Pagination cursor.
+		 * @param height - Optional archive height for historical query.
+		 */
+		async getGroupedTransactions(
+			searchKey: Omit<IndexerSearchKey, 'group_by_transaction'>,
+			order: 'asc' | 'desc' = 'asc',
+			limit: number = 20,
+			cursor?: string,
+			height?: number,
+		): Promise<RpcGetGroupedTransactionsResponse> {
+			const groupedSearchKey: IndexerSearchKey = {
+				...searchKey,
+				group_by_transaction: true,
+			};
+			const params = [groupedSearchKey, order, toHex(limit), cursor ?? null];
+			if (height !== undefined) {
+				return sendArchiveRequest<RpcGetGroupedTransactionsResponse>(height, 'get_transactions', params);
+			}
+			return sendRequest<RpcGetGroupedTransactionsResponse>('get_transactions', params);
+		},
+
+		/**
 		 * Get total capacity of cells matching search key.
 		 * @param searchKey - Indexer search key.
 		 * @param height - Optional archive height for historical query.
@@ -604,6 +650,36 @@ export function createRpcClient(rpcUrl: string) {
 			const result = await sendRequest<{ capacity: Hex } | null>('get_cells_capacity', [searchKey]);
 			// Returns null when no cells match the search key.
 			return result ? fromHex(result.capacity) : 0n;
+		},
+
+		/**
+		 * Get count of live cells matching search key.
+		 * @param searchKey - Indexer search key.
+		 * @param height - Optional archive height for historical query.
+		 */
+		async getCellsCount(
+			searchKey: IndexerSearchKey,
+			height?: number,
+		): Promise<RpcCellsCount> {
+			if (height !== undefined) {
+				return sendArchiveRequest<RpcCellsCount>(height, 'get_cells_count', [searchKey]);
+			}
+			return sendRequest<RpcCellsCount>('get_cells_count', [searchKey]);
+		},
+
+		/**
+		 * Get count of distinct transactions matching search key.
+		 * @param searchKey - Indexer search key.
+		 * @param height - Optional archive height for historical query.
+		 */
+		async getTransactionsCount(
+			searchKey: IndexerSearchKey,
+			height?: number,
+		): Promise<RpcTransactionsCount> {
+			if (height !== undefined) {
+				return sendArchiveRequest<RpcTransactionsCount>(height, 'get_transactions_count', [searchKey]);
+			}
+			return sendRequest<RpcTransactionsCount>('get_transactions_count', [searchKey]);
 		},
 	};
 }

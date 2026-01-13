@@ -8,6 +8,8 @@ export type RouteState =
 	| { view: 'block'; id: string }
 	| { view: 'transaction'; hash: string }
 	| { view: 'address'; address: string }
+	| { view: 'address-transactions'; address: string }
+	| { view: 'address-cells'; address: string }
 	| { view: 'cell'; txHash: string; index: number }
 	| { view: 'resources' }
 	| { view: 'not-found' };
@@ -30,6 +32,14 @@ router
 	.on('/tx/:hash', (match) => {
 		const hash = match?.data?.hash ?? '';
 		routeChangeCallback?.({ view: 'transaction', hash });
+	})
+	.on('/address/:address/transactions', (match) => {
+		const address = match?.data?.address ?? '';
+		routeChangeCallback?.({ view: 'address-transactions', address });
+	})
+	.on('/address/:address/cells', (match) => {
+		const address = match?.data?.address ?? '';
+		routeChangeCallback?.({ view: 'address-cells', address });
 	})
 	.on('/address/:address', (match) => {
 		const address = match?.data?.address ?? '';
