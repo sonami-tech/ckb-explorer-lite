@@ -138,18 +138,18 @@ export function CellPage({ txHash, index }: CellPageProps) {
 						<CellStatusIndicator status={status} />
 					</DetailRow>
 					{cellData && (
+						<DetailRow label="Capacity">
+							<span className="text-lg font-semibold text-nervos">
+								{formatCkb(cellData.output.capacity)}
+							</span>
+						</DetailRow>
+					)}
+					{cellData && (
 						<DetailRow label="Address">
 							<AddressDisplay
 								address={encodeAddress(cellData.output.lock, networkType)}
 								linkTo={generateLink(`/address/${encodeAddress(cellData.output.lock, networkType)}`)}
 							/>
-						</DetailRow>
-					)}
-					{cellData && (
-						<DetailRow label="Capacity">
-							<span className="text-lg font-semibold text-nervos">
-								{formatCkb(cellData.output.capacity)}
-							</span>
 						</DetailRow>
 					)}
 					{createdBlock !== null && (
