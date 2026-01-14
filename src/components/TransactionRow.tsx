@@ -2,15 +2,21 @@
 import { useMemo } from 'react';
 import { HashDisplay } from './CopyButton';
 import { generateLink } from '../lib/router';
-import { formatCkb, formatNumber, formatRelativeTime } from '../lib/format';
-import { lookupTypeScript } from '../lib/wellKnown';
+import { formatCkb, formatNumber, formatRelativeTime, truncateHex } from '../lib/format';
+import { lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
+import { getScriptCategoryStyle } from '../lib/badgeStyles';
 import type { NetworkType } from '../config/networks';
-import type { RpcTransaction, RpcScript, RpcGroupedTransactionInfo } from '../types/rpc';
+import type { RpcTransaction } from '../types/rpc';
 
 /**
- * Transaction direction based on cells array from grouped transaction info.
+ * Script indicator for display with optional link.
  */
-export type TransactionDirection = 'received' | 'sent' | 'transfer';
+export interface ScriptIndicator {
+	/** Display name of the script. */
+	name: string;
+	/** Resource ID for linking to /resources#id (undefined if not a known script). */
+	resourceId?: string;
+}
 
 /**
  * Enriched transaction data for display.
@@ -22,12 +28,12 @@ export interface EnrichedTransaction {
 	blockNumber: bigint;
 	/** Block timestamp in milliseconds. */
 	timestamp: number;
-	/** Direction relative to the queried address. */
-	direction: TransactionDirection;
-	/** Amount received (only for 'received' direction). */
-	receivedAmount?: bigint;
-	/** Known type script names from transaction outputs. */
-	typeScripts: string[];
+	/** Total capacity of all outputs in shannons. */
+	totalCapacity: bigint;
+	/** Known lock script indicators from transaction outputs. */
+	lockScripts: ScriptIndicator[];
+	/** Known type script indicators from transaction outputs. */
+	typeScripts: ScriptIndicator[];
 }
 
 interface TransactionRowProps {
@@ -37,47 +43,51 @@ interface TransactionRowProps {
 }
 
 /**
- * Determine transaction direction from cells array.
+ * Calculate total capacity of all outputs in a transaction.
  */
-export function getDirection(cells: RpcGroupedTransactionInfo['cells']): TransactionDirection {
-	const hasInput = cells.some(([type]) => type === 'input');
-	const hasOutput = cells.some(([type]) => type === 'output');
-
-	if (hasOutput && !hasInput) return 'received';
-	if (hasInput && !hasOutput) return 'sent';
-	return 'transfer';
+export function calculateTotalOutputCapacity(tx: RpcTransaction): bigint {
+	return tx.outputs.reduce((sum, output) => sum + BigInt(output.capacity), 0n);
 }
 
 /**
- * Calculate received amount for a transaction.
- * Sums capacities of outputs that match the queried lock script.
+ * Extract known lock script indicators from transaction outputs.
  */
-export function calculateReceivedAmount(
+export function extractLockScripts(
 	tx: RpcTransaction,
-	lockScript: RpcScript,
-): bigint {
-	let total = 0n;
+	networkType: NetworkType,
+): ScriptIndicator[] {
+	const seen = new Set<string>();
+	const indicators: ScriptIndicator[] = [];
+
 	for (const output of tx.outputs) {
-		if (
-			output.lock.code_hash === lockScript.code_hash &&
-			output.lock.hash_type === lockScript.hash_type &&
-			output.lock.args === lockScript.args
-		) {
-			total += BigInt(output.capacity);
+		const info = lookupLockScript(
+			output.lock.code_hash,
+			output.lock.hash_type,
+			networkType,
+			output.lock.args,
+		);
+		const name = info?.name ?? truncateHex(output.lock.code_hash, 6, 4);
+		if (!seen.has(name)) {
+			seen.add(name);
+			indicators.push({
+				name,
+				resourceId: info?.resourceId,
+			});
 		}
 	}
-	return total;
+
+	return indicators;
 }
 
 /**
- * Extract known type script names from transaction outputs.
+ * Extract known type script indicators from transaction outputs.
  */
 export function extractTypeScripts(
 	tx: RpcTransaction,
 	networkType: NetworkType,
-): string[] {
+): ScriptIndicator[] {
 	const seen = new Set<string>();
-	const names: string[] = [];
+	const indicators: ScriptIndicator[] = [];
 
 	for (const output of tx.outputs) {
 		if (output.type) {
@@ -87,73 +97,30 @@ export function extractTypeScripts(
 				networkType,
 				output.type.args,
 			);
-			if (info && !seen.has(info.name)) {
-				seen.add(info.name);
-				names.push(info.name);
+			const name = info?.name ?? truncateHex(output.type.code_hash, 6, 4);
+			if (!seen.has(name)) {
+				seen.add(name);
+				indicators.push({
+					name,
+					resourceId: info?.resourceId,
+				});
 			}
 		}
 	}
 
-	return names;
+	return indicators;
 }
 
-/**
- * Get color class for direction badge.
- */
-function getDirectionColor(direction: TransactionDirection): string {
-	switch (direction) {
-		case 'received':
-			return 'text-green-600 dark:text-green-400';
-		case 'sent':
-			return 'text-red-600 dark:text-red-400';
-		case 'transfer':
-			return 'text-gray-600 dark:text-gray-400';
-	}
-}
-
-/**
- * Get label for direction.
- */
-function getDirectionLabel(direction: TransactionDirection): string {
-	switch (direction) {
-		case 'received':
-			return 'Received';
-		case 'sent':
-			return 'Sent';
-		case 'transfer':
-			return 'Transfer';
-	}
-}
-
-/**
- * Get color class for type script indicator.
- * Uses semantic colors from badgeStyles.ts conventions.
- */
-function getTypeScriptColor(name: string): string {
-	// Tokens - blue
-	if (['SUDT', 'xUDT', 'iCKB'].includes(name)) {
-		return 'text-blue-600 dark:text-blue-400';
-	}
-	// DAO - green
-	if (name === 'NervosDAO') {
-		return 'text-green-600 dark:text-green-400';
-	}
-	// NFTs - purple
-	if (['Spore', 'Spore Cluster', 'CoTA'].includes(name)) {
-		return 'text-purple-600 dark:text-purple-400';
-	}
-	// Other - teal
-	return 'text-teal-600 dark:text-teal-400';
-}
 
 /**
  * Transaction row component with 3-line layout.
  * Line 1: Transaction hash (full on desktop, truncated on mobile)
- * Line 2: Block number · Time · Direction/Amount
- * Line 3: Type script indicators
+ * Line 2: Block number · Time · Total capacity
+ * Line 3: Script indicators (lock scripts, then type scripts)
  */
 export function TransactionRow({ transaction, referenceTime }: TransactionRowProps) {
 	const txLink = generateLink(`/tx/${transaction.txHash}`);
+	const resourcesLink = generateLink('/resources');
 
 	// Calculate relative time from reference (for archive mode) or now.
 	const relativeTime = useMemo(() => {
@@ -177,18 +144,6 @@ export function TransactionRow({ transaction, referenceTime }: TransactionRowPro
 		return formatRelativeTime(transaction.timestamp);
 	}, [transaction.timestamp, referenceTime]);
 
-	const directionColor = getDirectionColor(transaction.direction);
-	const directionLabel = getDirectionLabel(transaction.direction);
-
-	// Format amount for received transactions.
-	const amountDisplay = transaction.direction === 'received' && transaction.receivedAmount !== undefined
-		? `+${formatCkb(transaction.receivedAmount, 2)}`
-		: null;
-
-	// Limit type scripts to 3, show "+N more" if more.
-	const visibleTypes = transaction.typeScripts.slice(0, 3);
-	const moreCount = transaction.typeScripts.length - 3;
-
 	return (
 		<div className="py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
 			{/* Line 1: Transaction hash */}
@@ -201,35 +156,53 @@ export function TransactionRow({ transaction, referenceTime }: TransactionRowPro
 				/>
 			</div>
 
-			{/* Line 2: Block · Time · Direction/Amount */}
-			<div className="flex flex-wrap items-center gap-x-2 text-sm text-gray-600 dark:text-gray-400">
-				<span>Block {formatNumber(transaction.blockNumber)}</span>
-				<span className="text-gray-400 dark:text-gray-600">·</span>
-				<span>{relativeTime}</span>
-				<span className="text-gray-400 dark:text-gray-600">·</span>
-				<span className={directionColor}>
-					{directionLabel}
-					{amountDisplay && ` ${amountDisplay}`}
+			{/* Line 2: Block · Time · Total Capacity */}
+			<div className="flex flex-wrap items-center justify-between text-sm">
+				<div className="flex items-center gap-x-2 text-gray-600 dark:text-gray-400">
+					<span>Block {formatNumber(transaction.blockNumber)}</span>
+					<span className="text-gray-400 dark:text-gray-600">·</span>
+					<span>{relativeTime}</span>
+				</div>
+				<span className="text-gray-600 dark:text-gray-400">
+					{formatCkb(transaction.totalCapacity, 2)}
 				</span>
 			</div>
 
-			{/* Line 3: Type script indicators (only if any) */}
-			{visibleTypes.length > 0 && (
-				<div className="flex flex-wrap items-center gap-x-2 mt-1 text-sm">
-					{visibleTypes.map((name, i) => (
-						<span key={name}>
-							{i > 0 && <span className="text-gray-400 dark:text-gray-600 mr-2">·</span>}
-							<span className={getTypeScriptColor(name)}>{name}</span>
-						</span>
-					))}
-					{moreCount > 0 && (
-						<span className="text-gray-500 dark:text-gray-500">
-							<span className="text-gray-400 dark:text-gray-600 mr-2">·</span>
-							+{moreCount} more
-						</span>
-					)}
-				</div>
-			)}
+			{/* Line 3: Script indicators (only well-known) */}
+			{(() => {
+				// Filter to only well-known scripts (those with resourceId).
+				const wellKnownIndicators = [
+					...transaction.lockScripts.filter(s => s.resourceId).map(s => ({ ...s, isLock: true })),
+					...transaction.typeScripts.filter(s => s.resourceId).map(s => ({ ...s, isLock: false })),
+				];
+
+				if (wellKnownIndicators.length === 0) return null;
+
+				return (
+					<div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+						{wellKnownIndicators.map((indicator) => {
+							const categoryStyle = getScriptCategoryStyle(indicator.name);
+							const prefix = indicator.isLock ? 'Lock' : 'Type';
+							const content = (
+								<>
+									<span className="hidden sm:inline">{prefix}: </span>
+									{indicator.name}
+								</>
+							);
+
+							return (
+								<a
+									key={`${indicator.isLock ? 'lock' : 'type'}-${indicator.name}`}
+									href={`${resourcesLink}#${indicator.resourceId}`}
+									className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${categoryStyle} hover:opacity-80 transition-opacity`}
+								>
+									{content}
+								</a>
+							);
+						})}
+					</div>
+				);
+			})()}
 		</div>
 	);
 }

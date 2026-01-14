@@ -19,8 +19,8 @@ import { ScriptLink } from '../components/ScriptLink';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import {
 	TransactionRow,
-	getDirection,
-	calculateReceivedAmount,
+	calculateTotalOutputCapacity,
+	extractLockScripts,
 	extractTypeScripts,
 	type EnrichedTransaction,
 } from '../components/TransactionRow';
@@ -74,7 +74,6 @@ export function AddressPage({ address }: AddressPageProps) {
 	// Enrich grouped transactions with full details.
 	const enrichTransactions = useCallback(async (
 		groupedTxs: RpcGroupedTransactionInfo[],
-		lockScript: RpcScript,
 	): Promise<EnrichedTransaction[]> => {
 		if (groupedTxs.length === 0) return [];
 
@@ -97,25 +96,15 @@ export function AddressPage({ address }: AddressPageProps) {
 
 		// Build enriched transactions.
 		return results.map(({ grouped, full }) => {
-			const direction = getDirection(grouped.cells);
 			const timestamp = timestampMap.get(grouped.block_number) ?? Date.now();
-
-			let receivedAmount: bigint | undefined;
-			if (direction === 'received' && full?.transaction) {
-				receivedAmount = calculateReceivedAmount(full.transaction, lockScript);
-			}
-
-			const typeScripts = full?.transaction
-				? extractTypeScripts(full.transaction, networkType)
-				: [];
 
 			return {
 				txHash: grouped.tx_hash,
 				blockNumber: BigInt(grouped.block_number),
 				timestamp,
-				direction,
-				receivedAmount,
-				typeScripts,
+				totalCapacity: full?.transaction ? calculateTotalOutputCapacity(full.transaction) : 0n,
+				lockScripts: full?.transaction ? extractLockScripts(full.transaction, networkType) : [],
+				typeScripts: full?.transaction ? extractTypeScripts(full.transaction, networkType) : [],
 			};
 		});
 	}, [rpc, archiveHeight, networkType]);
@@ -161,7 +150,7 @@ export function AddressPage({ address }: AddressPageProps) {
 			setReferenceTimestamp(archiveTimestamp);
 
 			// Enrich recent transactions.
-			const enriched = await enrichTransactions(groupedTxsResult.objects, script);
+			const enriched = await enrichTransactions(groupedTxsResult.objects);
 
 			if (fetchId !== fetchIdRef.current) return;
 

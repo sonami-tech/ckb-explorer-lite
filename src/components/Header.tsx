@@ -16,8 +16,12 @@ export function Header() {
 				{/* Line 1: Logo + spacer + ThemeToggle. */}
 				<div className="flex items-center gap-4">
 					{/* Logo. */}
-					<button
-						onClick={() => navigate(generateLink('/'))}
+					<a
+						href={generateLink('/')}
+						onClick={(e) => {
+							e.preventDefault();
+							navigate(generateLink('/'));
+						}}
 						className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0"
 					>
 						<div className="w-8 h-8 rounded-lg bg-nervos flex items-center justify-center">
@@ -26,7 +30,7 @@ export function Header() {
 						<span className="text-lg font-bold text-gray-900 dark:text-white">
 							Explorer Lite
 						</span>
-					</button>
+					</a>
 
 					{/* Spacer. */}
 					<div className="flex-1" />

@@ -9,8 +9,8 @@ import { ErrorDisplay } from '../components/ErrorDisplay';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import {
 	TransactionRow,
-	getDirection,
-	calculateReceivedAmount,
+	calculateTotalOutputCapacity,
+	extractLockScripts,
 	extractTypeScripts,
 	type EnrichedTransaction,
 } from '../components/TransactionRow';
@@ -66,7 +66,6 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	// Enrich grouped transactions with full details.
 	const enrichTransactions = useCallback(async (
 		groupedTxs: RpcGroupedTransactionInfo[],
-		lockScript: RpcScript,
 	): Promise<EnrichedTransaction[]> => {
 		// Fetch full transactions in parallel.
 		const fullTxPromises = groupedTxs.map(async (gtx) => {
@@ -87,25 +86,15 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 
 		// Build enriched transactions.
 		return results.map(({ grouped, full }) => {
-			const direction = getDirection(grouped.cells);
 			const timestamp = timestampMap.get(grouped.block_number) ?? Date.now();
-
-			let receivedAmount: bigint | undefined;
-			if (direction === 'received' && full?.transaction) {
-				receivedAmount = calculateReceivedAmount(full.transaction, lockScript);
-			}
-
-			const typeScripts = full?.transaction
-				? extractTypeScripts(full.transaction, networkType)
-				: [];
 
 			return {
 				txHash: grouped.tx_hash,
 				blockNumber: BigInt(grouped.block_number),
 				timestamp,
-				direction,
-				receivedAmount,
-				typeScripts,
+				totalCapacity: full?.transaction ? calculateTotalOutputCapacity(full.transaction) : 0n,
+				lockScripts: full?.transaction ? extractLockScripts(full.transaction, networkType) : [],
+				typeScripts: full?.transaction ? extractTypeScripts(full.transaction, networkType) : [],
 			};
 		});
 	}, [rpc, archiveHeight, networkType]);
@@ -146,7 +135,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			setReferenceTimestamp(archiveTimestamp);
 
 			// Enrich transactions with full details.
-			const enriched = await enrichTransactions(groupedTxsResult.objects, script);
+			const enriched = await enrichTransactions(groupedTxsResult.objects);
 
 			if (fetchId !== fetchIdRef.current) return;
 
@@ -185,7 +174,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			const result = await rpc.getGroupedTransactions(searchKey, 'desc', pageSize, cursor, archiveHeight);
 
 			// Enrich new transactions.
-			const enriched = await enrichTransactions(result.objects, script);
+			const enriched = await enrichTransactions(result.objects);
 
 			setTransactions((prev) => [...prev, ...enriched]);
 			setCursor(result.last_cursor);

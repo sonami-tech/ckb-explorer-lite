@@ -49,6 +49,37 @@ export const SCRIPT_LOCK = 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 
 export const SCRIPT_TYPE = 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400';
 
 // =============================================================================
+// SCRIPT CATEGORY BADGES - Color by script family/function
+// =============================================================================
+
+/** Standard authentication: SECP256K1/blake160, Multisig. */
+export const SCRIPT_CAT_STANDARD = 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+
+/** Advanced authentication: Omnilock, JoyID, Nostr Lock, PW Lock. */
+export const SCRIPT_CAT_ADVANCED = 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300';
+
+/** Tokens: SUDT, xUDT. */
+export const SCRIPT_CAT_TOKEN = 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
+
+/** Liquidity: iCKB variants. */
+export const SCRIPT_CAT_LIQUIDITY = 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300';
+
+/** DAO: NervosDAO. */
+export const SCRIPT_CAT_DAO = 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300';
+
+/** NFTs: Spore, Spore Cluster, CoTA. */
+export const SCRIPT_CAT_NFT = 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300';
+
+/** Storage: CKBFS. */
+export const SCRIPT_CAT_STORAGE = 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300';
+
+/** Bitcoin bridge: RGB++ Lock, BTC Time Lock. */
+export const SCRIPT_CAT_BITCOIN = 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300';
+
+/** Special access: Anyone-Can-Pay. */
+export const SCRIPT_CAT_SPECIAL = 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300';
+
+// =============================================================================
 // CELL CATEGORY BADGES - Well-known cell classification
 // =============================================================================
 
@@ -171,4 +202,48 @@ export function getStatusStyle(status: string): string {
 		default:
 			return STATUS_NEUTRAL;
 	}
+}
+
+/**
+ * Get the appropriate category style for a well-known script by name.
+ */
+export function getScriptCategoryStyle(scriptName: string): string {
+	// Standard authentication.
+	if (['SECP256K1/blake160', 'Multisig'].includes(scriptName)) {
+		return SCRIPT_CAT_STANDARD;
+	}
+	// Advanced authentication.
+	if (['Omnilock', 'JoyID', 'Nostr Lock', 'PW Lock'].includes(scriptName)) {
+		return SCRIPT_CAT_ADVANCED;
+	}
+	// Tokens.
+	if (['SUDT', 'xUDT'].includes(scriptName)) {
+		return SCRIPT_CAT_TOKEN;
+	}
+	// Liquidity (iCKB variants).
+	if (scriptName.startsWith('iCKB')) {
+		return SCRIPT_CAT_LIQUIDITY;
+	}
+	// DAO.
+	if (scriptName === 'NervosDAO') {
+		return SCRIPT_CAT_DAO;
+	}
+	// NFTs.
+	if (['Spore', 'Spore Cluster', 'CoTA'].includes(scriptName)) {
+		return SCRIPT_CAT_NFT;
+	}
+	// Storage.
+	if (scriptName === 'CKBFS') {
+		return SCRIPT_CAT_STORAGE;
+	}
+	// Bitcoin bridge.
+	if (['RGB++ Lock', 'BTC Time Lock'].includes(scriptName)) {
+		return SCRIPT_CAT_BITCOIN;
+	}
+	// Special access.
+	if (scriptName === 'Anyone-Can-Pay') {
+		return SCRIPT_CAT_SPECIAL;
+	}
+	// Default fallback.
+	return SCRIPT_CAT_STANDARD;
 }
