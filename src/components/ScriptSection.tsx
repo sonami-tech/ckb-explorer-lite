@@ -7,15 +7,13 @@ import { useMemo, useState } from 'react';
 import { Script as CccScript } from '@ckb-ccc/core';
 import { useNetwork } from '../contexts/NetworkContext';
 import { useTruncation, useIsMobile } from '../hooks/ui';
-import { lookupLockScript, lookupTypeScript, type ScriptInfo } from '../lib/wellKnown';
+import { lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
 import { formatBytes } from '../lib/format';
-import { navigate, generateLink } from '../lib/router';
 import { HashDisplay, CopyButton, DownloadButton, ModalButton, ChevronButton } from './CopyButton';
 import { HashTypeIndicator } from './OptionIndicator';
 import { DetailRow } from './DetailRow';
 import { DataModal } from './DataModal';
-import { Tooltip } from './Tooltip';
-import { BRAND } from '../lib/badgeStyles';
+import { ScriptIndicatorPill } from './ScriptIndicatorPill';
 
 interface ScriptData {
 	code_hash: string;
@@ -61,7 +59,14 @@ export function ScriptSection({ title, script }: ScriptSectionProps) {
 			{/* Header with optional known script badge. */}
 			<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
 				<h2 className="font-semibold text-gray-900 dark:text-white">{title}</h2>
-				{scriptInfo && <ScriptBadge info={scriptInfo} />}
+				{scriptInfo && (
+				<ScriptIndicatorPill
+					name={scriptInfo.name}
+					resourceId={scriptInfo.resourceId}
+					description={scriptInfo.description}
+					size="sm"
+				/>
+			)}
 			</div>
 
 			{/* Script details. */}
@@ -174,48 +179,4 @@ function ScriptArgsRow({ args }: { args: string }) {
 			</DataModal>
 		</div>
 	);
-}
-
-/**
- * Badge showing known script name with tooltip and optional internal resource link.
- * Links to Well-Known Resources page when resourceId is available.
- */
-function ScriptBadge({ info }: { info: ScriptInfo }) {
-	const hasLink = !!info.resourceId;
-	const resourceUrl = hasLink ? generateLink(`/resources#${info.resourceId}`) : undefined;
-
-	const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-		if (!resourceUrl) return;
-		// Allow modifier keys to open in new tab.
-		if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
-			return;
-		}
-		e.preventDefault();
-		navigate(resourceUrl);
-	};
-
-	const badge = (
-		<span
-			className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-sm font-medium ${BRAND} ${hasLink ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'}`}
-		>
-			{info.name}
-		</span>
-	);
-
-	const content = (
-		<Tooltip content={info.description} placement="bottom" interactive={hasLink}>
-			{hasLink ? (
-				<a
-					href={resourceUrl}
-					onClick={handleClick}
-				>
-					{badge}
-				</a>
-			) : (
-				badge
-			)}
-		</Tooltip>
-	);
-
-	return content;
 }

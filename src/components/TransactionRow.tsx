@@ -1,10 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useMemo } from 'react';
 import { HashDisplay } from './CopyButton';
+import { ScriptIndicatorPill } from './ScriptIndicatorPill';
 import { generateLink } from '../lib/router';
 import { formatCkb, formatNumber, formatRelativeTime, truncateHex } from '../lib/format';
 import { lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
-import { getScriptCategoryStyle, BRAND } from '../lib/badgeStyles';
+import { BRAND } from '../lib/badgeStyles';
 import { useIsMobile } from '../hooks/ui';
 import type { NetworkType } from '../config/networks';
 import type { RpcTransaction } from '../types/rpc';
@@ -140,7 +141,6 @@ export function isCellbaseTransaction(tx: RpcTransaction): boolean {
 export function TransactionRow({ transaction, referenceTime }: TransactionRowProps) {
 	const isMobile = useIsMobile();
 	const txLink = generateLink(`/tx/${transaction.txHash}`);
-	const resourcesLink = generateLink('/resources');
 
 	// Calculate relative time from reference (for archive mode) or now.
 	const relativeTime = useMemo(() => {
@@ -220,34 +220,22 @@ export function TransactionRow({ transaction, referenceTime }: TransactionRowPro
 			{(() => {
 				// Filter to only well-known scripts (those with resourceId).
 				const wellKnownIndicators = [
-					...transaction.lockScripts.filter(s => s.resourceId).map(s => ({ ...s, isLock: true })),
-					...transaction.typeScripts.filter(s => s.resourceId).map(s => ({ ...s, isLock: false })),
+					...transaction.lockScripts.filter(s => s.resourceId),
+					...transaction.typeScripts.filter(s => s.resourceId),
 				];
 
 				if (wellKnownIndicators.length === 0) return null;
 
 				return (
 					<div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-						{wellKnownIndicators.map((indicator) => {
-							const categoryStyle = getScriptCategoryStyle(indicator.name);
-							const prefix = indicator.isLock ? 'Lock' : 'Type';
-							const content = (
-								<>
-									<span className="hidden sm:inline">{prefix}: </span>
-									{indicator.name}
-								</>
-							);
-
-							return (
-								<a
-									key={`${indicator.isLock ? 'lock' : 'type'}-${indicator.name}`}
-									href={`${resourcesLink}#${indicator.resourceId}`}
-									className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${categoryStyle} hover:opacity-80 transition-opacity`}
-								>
-									{content}
-								</a>
-							);
-						})}
+						{wellKnownIndicators.map((indicator) => (
+							<ScriptIndicatorPill
+								key={indicator.name}
+								name={indicator.name}
+								resourceId={indicator.resourceId}
+								size="xs"
+							/>
+						))}
 					</div>
 				);
 			})()}

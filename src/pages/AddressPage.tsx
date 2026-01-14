@@ -368,6 +368,16 @@ export function AddressPage({ address }: AddressPageProps) {
 						))
 					)}
 				</div>
+				{recentTransactions.length > 0 && (
+					<div className="p-4 border-t border-gray-200 dark:border-gray-700 text-center">
+						<button
+							onClick={() => navigate(generateLink(`/address/${address}/transactions`))}
+							className="text-sm text-nervos hover:text-nervos-dark"
+						>
+							View All Transactions →
+						</button>
+					</div>
+				)}
 			</div>
 		</div>
 	);

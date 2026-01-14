@@ -140,6 +140,20 @@ Components with responsive display:
 
 **No underline on hover.** Color change provides sufficient affordance.
 
+### Navigation Link Text
+
+Use **title case** for all button and link labels.
+
+| Example | Correct | Incorrect |
+|---------|---------|-----------|
+| Header navigation | View All → | View all → |
+| Footer navigation | View All Transactions → | View all transactions → |
+| Action buttons | Load More | load more |
+
+**Pattern for section links:**
+- **Header** (brief): `View All →` — context is clear from section title.
+- **Footer** (explicit): `View All {Items} →` — context may be forgotten after scrolling.
+
 ### Badges
 
 Badge colors are centralized in `src/lib/badgeStyles.ts` for consistency across the site. This file exports constants for all semantic badge categories and helper functions for dynamic color selection.
