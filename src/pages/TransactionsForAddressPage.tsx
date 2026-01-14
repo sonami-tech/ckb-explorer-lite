@@ -257,9 +257,9 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 						Transactions ({transactionCount !== null ? formatNumber(transactionCount) : '...'})
 					</h2>
 				</div>
-				<div className="px-4">
+				<div>
 					{transactions.length === 0 ? (
-						<div className="py-4 text-sm text-gray-500 dark:text-gray-400 italic">
+						<div className="p-4 text-sm text-gray-500 dark:text-gray-400 italic">
 							No transactions found for this address.
 						</div>
 					) : (

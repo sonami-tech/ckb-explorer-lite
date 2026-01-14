@@ -330,25 +330,32 @@ export function AddressPage({ address }: AddressPageProps) {
 
 			{/* Recent Transactions. */}
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-				<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-					<h2 className="font-semibold text-gray-900 dark:text-white">
-						Recent Transactions
-						{lastActivityLabel && (
-							<span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
-								(last: {lastActivityLabel})
-							</span>
-						)}
-					</h2>
-					<button
-						onClick={() => navigate(generateLink(`/address/${address}/transactions`))}
-						className="text-sm text-nervos hover:text-nervos-dark"
-					>
-						View All →
-					</button>
+				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+					<div className="flex items-center justify-between gap-3">
+						<h2 className="font-semibold text-gray-900 dark:text-white">
+							Recent Transactions
+							{lastActivityLabel && (
+								<span className="ml-2 hidden text-sm font-normal text-gray-500 dark:text-gray-400 sm:inline">
+									(last: {lastActivityLabel})
+								</span>
+							)}
+						</h2>
+						<button
+							onClick={() => navigate(generateLink(`/address/${address}/transactions`))}
+							className="text-sm text-nervos hover:text-nervos-dark whitespace-nowrap"
+						>
+							View All →
+						</button>
+					</div>
+					{lastActivityLabel && (
+						<div className="mt-1 text-sm font-normal text-gray-500 dark:text-gray-400 sm:hidden">
+							(last: {lastActivityLabel})
+						</div>
+					)}
 				</div>
-				<div className="px-4">
+				<div>
 					{recentTransactions.length === 0 ? (
-						<div className="py-4 text-sm text-gray-500 dark:text-gray-400 italic">
+						<div className="p-4 text-sm text-gray-500 dark:text-gray-400 italic">
 							No transactions found for this address.
 						</div>
 					) : (
