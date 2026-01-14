@@ -76,32 +76,43 @@ export function DataModal({
 				aria-hidden="true"
 			/>
 
-			{/* Modal container. */}
-			<div className="relative w-[95vw] h-[90vh] max-w-6xl bg-white dark:bg-gray-800 rounded-lg shadow-xl flex flex-col">
+			{/* Modal container - full screen on mobile, centered card on desktop. */}
+			<div className="relative w-full h-full sm:w-[95vw] sm:h-[90vh] sm:max-w-6xl bg-white dark:bg-gray-800 sm:rounded-lg shadow-xl flex flex-col">
 				{/* Header. */}
-				<div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-					<div className="flex items-center gap-3">
-						<h2 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
-							{title}
-						</h2>
-						<span className="text-size-meta">
-							({formatBytes(byteCount)})
-						</span>
-						<ViewModeSelector current={viewMode} onChange={setViewMode} />
+				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+					{/* Top row: Title, size, and action buttons. */}
+					<div className="flex items-center justify-between gap-2">
+						<div className="flex items-center gap-3 min-w-0">
+							<h2 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
+								{title}
+							</h2>
+							<span className="text-size-meta">
+								({formatBytes(byteCount)})
+							</span>
+							{/* Desktop: inline toggle. */}
+							<div className="hidden sm:block">
+								<ViewModeSelector current={viewMode} onChange={setViewMode} />
+							</div>
+						</div>
+
+						<div className="flex items-center gap-2 shrink-0">
+							<CopyButton text={data} />
+							<DownloadButton data={data} filename={title.toLowerCase().replace(/\s+/g, '-')} />
+							<button
+								onClick={onClose}
+								className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+								aria-label="Close modal"
+							>
+								<svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+								</svg>
+							</button>
+						</div>
 					</div>
 
-					<div className="flex items-center gap-2">
-						<CopyButton text={data} />
-						<DownloadButton data={data} filename={title.toLowerCase().replace(/\s+/g, '-')} />
-						<button
-							onClick={onClose}
-							className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-							aria-label="Close modal"
-						>
-							<svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-							</svg>
-						</button>
+					{/* Mobile: full-width toggle below. */}
+					<div className="sm:hidden mt-3">
+						<ViewModeSelector current={viewMode} onChange={setViewMode} />
 					</div>
 				</div>
 
@@ -135,13 +146,13 @@ function ViewModeSelector({
 	];
 
 	return (
-		<div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded p-0.5">
+		<div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded p-0.5 w-full sm:w-auto">
 			{modes.map((mode) => (
 				<button
 					key={mode.value}
 					onClick={() => onChange(mode.value)}
 					className={`
-						px-2 py-0.5 text-xs font-medium rounded transition-colors
+						flex-1 sm:flex-initial px-2 py-1 sm:py-0.5 text-sm sm:text-xs font-medium rounded transition-colors
 						${current === mode.value
 							? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
 							: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'

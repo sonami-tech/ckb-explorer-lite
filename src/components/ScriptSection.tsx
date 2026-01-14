@@ -3,16 +3,17 @@
  * Includes known script detection with badge, tooltip, and internal resource linking.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Script as CccScript } from '@ckb-ccc/core';
 import { useNetwork } from '../contexts/NetworkContext';
+import { useTruncation, useIsMobile } from '../hooks/ui';
 import { lookupLockScript, lookupTypeScript, type ScriptInfo } from '../lib/wellKnown';
 import { formatBytes } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
-import { HashDisplay } from './CopyButton';
+import { HashDisplay, CopyButton, DownloadButton, ModalButton, ChevronButton } from './CopyButton';
 import { HashTypeIndicator } from './OptionIndicator';
-import { HexData } from './HexData';
 import { DetailRow } from './DetailRow';
+import { DataModal } from './DataModal';
 import { Tooltip } from './Tooltip';
 import { BRAND } from '../lib/badgeStyles';
 
@@ -71,9 +72,7 @@ export function ScriptSection({ title, script }: ScriptSectionProps) {
 				<DetailRow label="Hash Type">
 					<HashTypeIndicator hashType={script.hash_type} />
 				</DetailRow>
-				<DetailRow label={<ArgsLabel args={script.args} />}>
-					<HexData data={script.args} context="inline" showSize={false} />
-				</DetailRow>
+				<ScriptArgsRow args={script.args} />
 				{scriptId && (
 					<DetailRow label="Script ID">
 						<HashDisplay hash={scriptId} responsive />
@@ -85,21 +84,95 @@ export function ScriptSection({ title, script }: ScriptSectionProps) {
 }
 
 /**
- * Args label with size indicator in lighter style.
- * Shows "Args" for empty, "Args (20 B)" for non-empty.
+ * Custom Args row with responsive layout matching DetailRow breakpoints.
+ * Mobile/Tablet (<1024px): Label + buttons on same row, hex content below.
+ * Desktop (>=1024px): Label on left, hex content + inline buttons on right.
+ * If truncated, centered chevron below opens modal for full view.
  */
-function ArgsLabel({ args }: { args: string }) {
+function ScriptArgsRow({ args }: { args: string }) {
+	const isMobile = useIsMobile(1024);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const { displayData, isTruncated, byteCount } = useTruncation(args);
+
+	// Empty args case.
 	if (args === '0x') {
-		return <>Args</>;
+		return (
+			<div className="flex flex-col lg:flex-row lg:items-center p-4 gap-2">
+				<span className="w-40 flex-shrink-0 text-sm font-medium text-gray-500 dark:text-gray-400">
+					Args
+				</span>
+				<span className="text-sm text-gray-500 dark:text-gray-400 italic">Empty</span>
+			</div>
+		);
 	}
-	const byteCount = (args.length - 2) / 2;
-	return (
-		<>
+
+	// Action buttons.
+	const actionButtons = (
+		<div className="flex items-center gap-1 flex-shrink-0">
+			<CopyButton text={args} />
+			<DownloadButton data={args} />
+			<ModalButton onClick={() => setIsModalOpen(true)} />
+		</div>
+	);
+
+	// Args label with size.
+	const argsLabel = (
+		<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
 			Args{' '}
 			<span className="text-size-meta font-normal">
 				({formatBytes(byteCount)})
 			</span>
-		</>
+		</span>
+	);
+
+	return (
+		<div className="p-4">
+			{/* Mobile: Label and buttons on same row. */}
+			{isMobile ? (
+				<>
+					<div className="flex items-center justify-between mb-2">
+						{argsLabel}
+						{actionButtons}
+					</div>
+					<code className="font-mono text-sm break-all block text-gray-900 dark:text-white">
+						{displayData}
+					</code>
+				</>
+			) : (
+				/* Desktop: Label on left, content + buttons on right. */
+				<div className="flex items-center gap-2">
+					<span className="w-40 flex-shrink-0">
+						{argsLabel}
+					</span>
+					<div className="flex-1 flex items-center gap-2">
+						<code className="font-mono text-sm break-all flex-1 min-w-0 text-gray-900 dark:text-white">
+							{displayData}
+						</code>
+						{actionButtons}
+					</div>
+				</div>
+			)}
+
+			{/* Chevron opens modal for full view. */}
+			{isTruncated && (
+				<div className="mt-2 flex justify-center">
+					<ChevronButton isExpanded={false} onClick={() => setIsModalOpen(true)} />
+				</div>
+			)}
+
+			{/* Modal for full data view. */}
+			<DataModal
+				isOpen={isModalOpen}
+				onClose={() => setIsModalOpen(false)}
+				title="Args"
+				byteCount={byteCount}
+				data={args}
+			>
+				<code className="font-mono text-sm break-all block whitespace-pre-wrap">
+					{args}
+				</code>
+			</DataModal>
+		</div>
 	);
 }
 

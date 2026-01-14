@@ -1,8 +1,6 @@
 import { useState, useCallback, useMemo, type ReactNode } from 'react';
-import { useTruncation, type BreakpointTier } from '../hooks/ui';
-import { HEX_DATA_CONFIG } from '../config';
-import { formatBytes } from '../lib/format';
-import { CopyButton, DownloadButton, ModalButton, ChevronButton, SizeBadge } from './CopyButton';
+import { useTruncation, useIsMobile, type BreakpointTier } from '../hooks/ui';
+import { CopyButton, DownloadButton, ChevronButton, SizeBadge } from './CopyButton';
 import { DataModal } from './DataModal';
 
 /** View modes for data display. */
@@ -85,13 +83,9 @@ export function HexData({
 }: HexDataProps) {
 	const [viewMode, setViewMode] = useState<ViewMode>('concise');
 	const [format, setFormat] = useState<string>(registry?.defaultFormat ?? 'raw');
-	const [warnConfirmed, setWarnConfirmed] = useState(false);
 
 	// Calculate truncation.
 	const { displayData, isTruncated, byteCount } = useTruncation(data, charLimits);
-
-	// Warning threshold for large data.
-	const needsWarning = byteCount > HEX_DATA_CONFIG.warnThreshold;
 
 	// Decode data based on current format.
 	const decoded = useMemo((): DecodedResult => {
@@ -124,27 +118,12 @@ export function HexData({
 	}, [registry]);
 
 	// Handlers.
-	const handleExpand = useCallback(() => {
-		if (viewMode === 'concise') {
-			if (needsWarning && !warnConfirmed) {
-				const confirmed = window.confirm(
-					`This data is ${formatBytes(byteCount)}. Expanding may slow your browser. Continue?`
-				);
-				if (!confirmed) return;
-				setWarnConfirmed(true);
-			}
-			setViewMode('expanded');
-		} else {
-			setViewMode('concise');
-		}
-	}, [viewMode, needsWarning, warnConfirmed, byteCount]);
-
 	const handleOpenModal = useCallback(() => {
 		setViewMode('modal');
 	}, []);
 
 	const handleCloseModal = useCallback(() => {
-		setViewMode('expanded');
+		setViewMode('concise');
 	}, []);
 
 	const handleFormatChange = useCallback((newFormat: string) => {
@@ -174,7 +153,6 @@ export function HexData({
 				formatOptions={formatOptions}
 				showSize={showSize}
 				allowModal={allowModal}
-				onExpand={handleExpand}
 				onOpenModal={handleOpenModal}
 				onCloseModal={handleCloseModal}
 				onFormatChange={handleFormatChange}
@@ -197,7 +175,6 @@ export function HexData({
 			label={label}
 			showSize={showSize}
 			allowModal={allowModal}
-			onExpand={handleExpand}
 			onOpenModal={handleOpenModal}
 			onCloseModal={handleCloseModal}
 			onFormatChange={handleFormatChange}
@@ -218,7 +195,6 @@ interface HexDataVariantProps {
 	formatOptions: string[];
 	showSize: boolean;
 	allowModal: boolean;
-	onExpand: () => void;
 	onOpenModal: () => void;
 	onCloseModal: () => void;
 	onFormatChange: (format: string) => void;
@@ -226,7 +202,10 @@ interface HexDataVariantProps {
 }
 
 /**
- * Inline variant - compact, expands below.
+ * Inline variant - compact display with responsive layout.
+ * Mobile: Buttons in header row, hex content below.
+ * Desktop: Buttons inline with hex.
+ * If truncated, centered chevron below opens modal for full view.
  */
 function InlineHexData({
 	data,
@@ -239,49 +218,63 @@ function InlineHexData({
 	formatOptions,
 	showSize,
 	allowModal,
-	onExpand,
 	onOpenModal,
 	onCloseModal,
 	onFormatChange,
 	className,
 }: HexDataVariantProps) {
-	const isExpanded = viewMode === 'expanded';
-	const showContent = isExpanded || decoded.content;
+	const isMobile = useIsMobile(1024);
+	const showChevron = isTruncated && !decoded.content && allowModal;
+
+	// Action buttons (copy, download).
+	const actionButtons = (
+		<div className="flex items-center gap-1 flex-shrink-0">
+			{showSize && <SizeBadge bytes={byteCount} />}
+
+			{formatOptions.length > 1 && (
+				<FormatDropdown
+					current={format}
+					options={formatOptions}
+					detected={decoded.format}
+					onChange={onFormatChange}
+				/>
+			)}
+
+			<CopyButton text={data} />
+			<DownloadButton data={data} />
+		</div>
+	);
 
 	return (
 		<div className={`${className}`}>
-			{/* Main row. */}
-			<div className="flex items-center gap-2 flex-wrap">
+			{/* Mobile/Tablet: Header row with buttons on right. */}
+			{isMobile && (
+				<div className="flex items-center justify-end mb-2">
+					{actionButtons}
+				</div>
+			)}
+
+			{/* Content row. */}
+			<div className="flex items-center gap-2">
 				{/* Hex preview or decoded content. */}
-				{showContent && decoded.content ? (
+				{decoded.content ? (
 					<div className="flex-1 min-w-0">{decoded.content}</div>
 				) : (
 					<code className="font-mono text-sm break-all flex-1 min-w-0">
-						{isExpanded ? data : displayData}
+						{displayData}
 					</code>
 				)}
 
-				{/* Actions. */}
-				<div className="flex items-center gap-1 flex-shrink-0">
-					{showSize && <SizeBadge bytes={byteCount} />}
-
-					{formatOptions.length > 1 && (
-						<FormatDropdown
-							current={format}
-							options={formatOptions}
-							detected={decoded.format}
-							onChange={onFormatChange}
-						/>
-					)}
-
-					<CopyButton text={data} />
-					<DownloadButton data={data} />
-					{isTruncated && !decoded.content && (
-						<ChevronButton isExpanded={isExpanded} onClick={onExpand} />
-					)}
-					{allowModal && <ModalButton onClick={onOpenModal} />}
-				</div>
+				{/* Desktop (>=1024px): Buttons inline. */}
+				{!isMobile && actionButtons}
 			</div>
+
+			{/* Chevron opens modal for full view. */}
+			{showChevron && (
+				<div className="mt-2 flex justify-center">
+					<ChevronButton isExpanded={false} onClick={onOpenModal} />
+				</div>
+			)}
 
 			{/* Modal. */}
 			<DataModal
@@ -299,6 +292,7 @@ function InlineHexData({
 
 /**
  * Section variant - full card with header.
+ * If truncated, centered chevron below content opens modal for full view.
  */
 function SectionHexData({
 	data,
@@ -312,13 +306,12 @@ function SectionHexData({
 	label,
 	showSize,
 	allowModal,
-	onExpand,
 	onOpenModal,
 	onCloseModal,
 	onFormatChange,
 	className,
 }: HexDataVariantProps & { label?: string }) {
-	const isExpanded = viewMode === 'expanded';
+	const showChevron = isTruncated && !decoded.content && allowModal;
 
 	return (
 		<div className={`bg-gray-50 dark:bg-gray-900 rounded ${className}`}>
@@ -344,29 +337,26 @@ function SectionHexData({
 					)}
 					<CopyButton text={data} />
 					<DownloadButton data={data} />
-					{isTruncated && !decoded.content && (
-						<ChevronButton isExpanded={isExpanded} onClick={onExpand} />
-					)}
-					{allowModal && <ModalButton onClick={onOpenModal} />}
 				</div>
 			</div>
 
 			{/* Content. */}
-			<div
-				className="p-3"
-				style={{
-					maxHeight: isExpanded ? `${HEX_DATA_CONFIG.maxExpandedHeight}px` : undefined,
-					overflowY: isExpanded ? 'auto' : undefined,
-				}}
-			>
+			<div className="p-3">
 				{decoded.content ? (
 					decoded.content
 				) : (
 					<code className="font-mono text-sm break-all block">
-						{isExpanded ? data : displayData}
+						{displayData}
 					</code>
 				)}
 			</div>
+
+			{/* Chevron opens modal for full view. */}
+			{showChevron && (
+				<div className="px-3 pb-3 flex justify-center">
+					<ChevronButton isExpanded={false} onClick={onOpenModal} />
+				</div>
+			)}
 
 			{/* Modal. */}
 			<DataModal
