@@ -12,6 +12,7 @@ import {
 	calculateTotalOutputCapacity,
 	extractLockScripts,
 	extractTypeScripts,
+	isCellbaseTransaction,
 	type EnrichedTransaction,
 } from '../components/TransactionRow';
 import type { RpcScript, RpcGroupedTransactionInfo, IndexerSearchKey } from '../types/rpc';
@@ -95,6 +96,9 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				totalCapacity: full?.transaction ? calculateTotalOutputCapacity(full.transaction) : 0n,
 				lockScripts: full?.transaction ? extractLockScripts(full.transaction, networkType) : [],
 				typeScripts: full?.transaction ? extractTypeScripts(full.transaction, networkType) : [],
+				inputCount: full?.transaction?.inputs.length ?? 0,
+				outputCount: full?.transaction?.outputs.length ?? 0,
+				isCellbase: full?.transaction ? isCellbaseTransaction(full.transaction) : false,
 			};
 		});
 	}, [rpc, archiveHeight, networkType]);

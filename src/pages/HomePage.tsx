@@ -370,9 +370,9 @@ function BlockListItem({ block }: { block: BlockInfo }) {
 	);
 }
 
-// Diamond emoji for cellbase (mining reward) on mobile.
+// Pickaxe emoji for cellbase (mining reward) on mobile.
 function CellbaseIcon() {
-	return <span>💎</span>;
+	return <span>⛏️</span>;
 }
 
 function TransactionListItem({ tx }: { tx: TransactionInfo }) {

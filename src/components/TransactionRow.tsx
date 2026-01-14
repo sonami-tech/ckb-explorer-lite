@@ -4,7 +4,8 @@ import { HashDisplay } from './CopyButton';
 import { generateLink } from '../lib/router';
 import { formatCkb, formatNumber, formatRelativeTime, truncateHex } from '../lib/format';
 import { lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
-import { getScriptCategoryStyle } from '../lib/badgeStyles';
+import { getScriptCategoryStyle, BRAND } from '../lib/badgeStyles';
+import { useIsMobile } from '../hooks/ui';
 import type { NetworkType } from '../config/networks';
 import type { RpcTransaction } from '../types/rpc';
 
@@ -34,6 +35,12 @@ export interface EnrichedTransaction {
 	lockScripts: ScriptIndicator[];
 	/** Known type script indicators from transaction outputs. */
 	typeScripts: ScriptIndicator[];
+	/** Number of inputs in the transaction. */
+	inputCount: number;
+	/** Number of outputs in the transaction. */
+	outputCount: number;
+	/** Whether this is a cellbase (mining reward) transaction. */
+	isCellbase: boolean;
 }
 
 interface TransactionRowProps {
@@ -111,14 +118,27 @@ export function extractTypeScripts(
 	return indicators;
 }
 
+/**
+ * Check if a transaction is a cellbase (mining reward) transaction.
+ * Cellbase inputs have tx_hash of all zeros and index 0xffffffff.
+ */
+export function isCellbaseTransaction(tx: RpcTransaction): boolean {
+	if (tx.inputs.length === 0) return true;
+	const firstInput = tx.inputs[0];
+	return (
+		firstInput.previous_output.tx_hash === '0x0000000000000000000000000000000000000000000000000000000000000000' &&
+		firstInput.previous_output.index === '0xffffffff'
+	);
+}
 
 /**
  * Transaction row component with 3-line layout.
- * Line 1: Transaction hash (full on desktop, truncated on mobile)
- * Line 2: Block number · Time · Total capacity
+ * Line 1: Hash + Cellbase badge (if applicable) on left, Relative time on right
+ * Line 2: Block number + input/output counts on left, Total capacity on right
  * Line 3: Script indicators (lock scripts, then type scripts)
  */
 export function TransactionRow({ transaction, referenceTime }: TransactionRowProps) {
+	const isMobile = useIsMobile();
 	const txLink = generateLink(`/tx/${transaction.txHash}`);
 	const resourcesLink = generateLink('/resources');
 
@@ -144,26 +164,54 @@ export function TransactionRow({ transaction, referenceTime }: TransactionRowPro
 		return formatRelativeTime(transaction.timestamp);
 	}, [transaction.timestamp, referenceTime]);
 
+	// Input/output labels.
+	const inputLabel = isMobile
+		? `${transaction.inputCount} in`
+		: transaction.inputCount === 1 ? '1 input' : `${transaction.inputCount} inputs`;
+	const outputLabel = isMobile
+		? `${transaction.outputCount} out`
+		: transaction.outputCount === 1 ? '1 output' : `${transaction.outputCount} outputs`;
+
 	return (
-		<div className="py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
-			{/* Line 1: Transaction hash */}
-			<div className="mb-1">
-				<HashDisplay
-					hash={transaction.txHash}
-					linkTo={txLink}
-					responsive
-					className="font-mono text-sm"
-				/>
+		<div className="w-full min-h-[72px] p-4 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+
+			{/* Line 1: Hash + Cellbase badge on left, Time on right */}
+			<div className="flex items-center justify-between mb-1.5">
+				<div className="flex items-center gap-2">
+					<HashDisplay
+						hash={transaction.txHash}
+						linkTo={txLink}
+						responsive
+						className="font-mono text-sm"
+					/>
+					{transaction.isCellbase && (
+						isMobile ? (
+							<span>⛏️</span>
+						) : (
+							<span className={`${BRAND} px-1.5 py-0.5 text-[10px] font-semibold rounded`}>
+								Cellbase
+							</span>
+						)
+					)}
+				</div>
+				<span className="text-xs text-gray-400 dark:text-gray-500">
+					{relativeTime}
+				</span>
 			</div>
 
-			{/* Line 2: Block · Time · Total Capacity */}
-			<div className="flex flex-wrap items-center justify-between text-sm">
-				<div className="flex items-center gap-x-2 text-gray-600 dark:text-gray-400">
+			{/* Line 2: Block + input/output on left, Total capacity on right */}
+			<div className="flex items-center justify-between">
+				<div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
 					<span>Block {formatNumber(transaction.blockNumber)}</span>
-					<span className="text-gray-400 dark:text-gray-600">·</span>
-					<span>{relativeTime}</span>
+					{/* Hide input/output count for Cellbase - it's always 1/1 and semantically misleading. */}
+					{!transaction.isCellbase && (
+						<>
+							<span className="text-gray-300 dark:text-gray-600">•</span>
+							<span>{inputLabel} / {outputLabel}</span>
+						</>
+					)}
 				</div>
-				<span className="text-gray-600 dark:text-gray-400">
+				<span className="text-xs font-medium text-gray-600 dark:text-gray-300">
 					{formatCkb(transaction.totalCapacity, 2)}
 				</span>
 			</div>
