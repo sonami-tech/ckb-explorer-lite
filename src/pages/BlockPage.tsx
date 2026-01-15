@@ -11,7 +11,7 @@ import { generateLink } from '../lib/router';
 import { InternalLink } from '../components/InternalLink';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
-import { HashDisplay } from '../components/CopyButton';
+import { HashDisplay, CopyButton } from '../components/CopyButton';
 import { DetailRow } from '../components/DetailRow';
 import { Pagination } from '../components/Pagination';
 import {
@@ -236,10 +236,16 @@ export function BlockPage({ id }: BlockPageProps) {
 						<HashDisplay hash={header.transactions_root} responsive />
 					</DetailRow>
 					<DetailRow label="Compact Target">
-						{header.compact_target}
+						<div className="flex items-center gap-2">
+							<span className="font-mono">{header.compact_target}</span>
+							<CopyButton text={header.compact_target} />
+						</div>
 					</DetailRow>
 					<DetailRow label="Nonce">
-						{header.nonce}
+						<div className="flex items-center gap-2">
+							<span className="font-mono">{header.nonce}</span>
+							<CopyButton text={header.nonce} />
+						</div>
 					</DetailRow>
 				</div>
 			</div>
