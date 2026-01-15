@@ -8,7 +8,8 @@ import {
 	truncateHex,
 	isValidHex,
 } from '../lib/format';
-import { navigate, generateLink } from '../lib/router';
+import { generateLink } from '../lib/router';
+import { InternalLink } from '../components/InternalLink';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
@@ -113,13 +114,13 @@ export function BlockPage({ id }: BlockPageProps) {
 		<div className="max-w-7xl mx-auto px-4 py-6">
 			{/* Header. */}
 			<div className="mb-6">
-				<div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-					<button onClick={() => navigate(generateLink('/'))} className="hover:text-nervos">
+				<nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+					<InternalLink href={generateLink('/')} className="hover:text-nervos">
 						Home
-					</button>
-					<span>/</span>
-					<span>Block</span>
-				</div>
+					</InternalLink>
+					<span aria-hidden="true">/</span>
+					<span aria-current="page">Block</span>
+				</nav>
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
 					Block {formatNumber(blockNumber)}
 				</h1>

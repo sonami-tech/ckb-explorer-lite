@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import { encodeAddress } from '../lib/address';
 import { formatCkb } from '../lib/format';
-import { navigate, generateLink } from '../lib/router';
+import { generateLink } from '../lib/router';
 import { fromHex } from '../lib/rpc';
 import { lookupWellKnownCell } from '../lib/wellKnown';
 import { ScriptLink } from '../components/ScriptLink';
@@ -16,6 +16,7 @@ import { CellStatusIndicator } from '../components/OptionIndicator';
 import { ScriptSection } from '../components/ScriptSection';
 import { BlockNumberDisplay } from '../components/BlockNumberDisplay';
 import { WellKnownCellInfo } from '../components/WellKnownCellInfo';
+import { InternalLink } from '../components/InternalLink';
 import type { RpcCellWithLifecycle } from '../types/rpc';
 
 interface CellPageProps {
@@ -109,13 +110,13 @@ export function CellPage({ txHash, index }: CellPageProps) {
 		<div className="max-w-7xl mx-auto px-4 py-6">
 			{/* Header. */}
 			<div className="mb-6">
-				<div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-					<button onClick={() => navigate(generateLink('/'))} className="hover:text-nervos">
+				<nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+					<InternalLink href={generateLink('/')} className="hover:text-nervos">
 						Home
-					</button>
-					<span>/</span>
-					<span>Cell</span>
-				</div>
+					</InternalLink>
+					<span aria-hidden="true">/</span>
+					<span aria-current="page">Cell</span>
+				</nav>
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
 					Cell Details
 				</h1>

@@ -6,6 +6,7 @@ import { navigate, generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
+import { InternalLink } from '../components/InternalLink';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import {
 	TransactionRow,
@@ -223,17 +224,17 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		<div className="max-w-7xl mx-auto px-4 py-6">
 			{/* Header with breadcrumb. */}
 			<div className="mb-6">
-				<div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-					<button onClick={() => navigate(generateLink('/'))} className="hover:text-nervos">
+				<nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+					<InternalLink href={generateLink('/')} className="hover:text-nervos">
 						Home
-					</button>
-					<span>/</span>
-					<button onClick={() => navigate(generateLink(`/address/${address}`))} className="hover:text-nervos">
+					</InternalLink>
+					<span aria-hidden="true">/</span>
+					<InternalLink href={generateLink(`/address/${address}`)} className="hover:text-nervos">
 						Address
-					</button>
-					<span>/</span>
-					<span>Transactions</span>
-				</div>
+					</InternalLink>
+					<span aria-hidden="true">/</span>
+					<span aria-current="page">Transactions</span>
+				</nav>
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
 					Transactions for {truncatedAddress}
 					{archiveHeight !== undefined && ` @ Block ${formatNumber(archiveHeight)}`}

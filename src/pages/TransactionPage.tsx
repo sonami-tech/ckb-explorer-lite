@@ -16,6 +16,7 @@ import { OutPoint } from '../components/OutPoint';
 import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
 import { InternalLinkIcon } from '../components/InternalLinkIcon';
+import { InternalLink } from '../components/InternalLink';
 import { WitnessSection } from '../components/WitnessSection';
 import type { RpcTransaction, RpcTransactionWithStatus } from '../types/rpc';
 import {
@@ -127,13 +128,13 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		<div className="max-w-7xl mx-auto px-4 py-6">
 			{/* Header. */}
 			<div className="mb-6">
-				<div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-					<button onClick={() => navigate(generateLink('/'))} className="hover:text-nervos">
+				<nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+					<InternalLink href={generateLink('/')} className="hover:text-nervos">
 						Home
-					</button>
-					<span>/</span>
-					<span>Transaction</span>
-				</div>
+					</InternalLink>
+					<span aria-hidden="true">/</span>
+					<span aria-current="page">Transaction</span>
+				</nav>
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
 					Transaction Details
 				</h1>

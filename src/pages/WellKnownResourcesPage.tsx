@@ -5,10 +5,11 @@
 
 import { useMemo } from 'react';
 import { useNetwork } from '../contexts/NetworkContext';
-import { navigate, generateLink } from '../lib/router';
+import { generateLink } from '../lib/router';
 import { HashDisplay } from '../components/CopyButton';
 import { OutPoint } from '../components/OutPoint';
 import { Tooltip } from '../components/Tooltip';
+import { InternalLink } from '../components/InternalLink';
 import {
 	KNOWN_LOCK_SCRIPTS,
 	KNOWN_TYPE_SCRIPTS,
@@ -320,13 +321,13 @@ export function WellKnownResourcesPage() {
 		<div className="max-w-7xl mx-auto px-4 py-6">
 			{/* Header. */}
 			<div className="mb-6">
-				<div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-					<button onClick={() => navigate(generateLink('/'))} className="hover:text-nervos">
+				<nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+					<InternalLink href={generateLink('/')} className="hover:text-nervos">
 						Home
-					</button>
-					<span>/</span>
-					<span>Well-Known Resources</span>
-				</div>
+					</InternalLink>
+					<span aria-hidden="true">/</span>
+					<span aria-current="page">Well-Known Resources</span>
+				</nav>
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
 					Well-Known Resources
 				</h1>

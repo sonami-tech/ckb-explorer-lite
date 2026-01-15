@@ -17,10 +17,38 @@ This provides a consistent, predictable user experience:
 
 | Element | Click Behavior | Visual Indicator |
 |---------|----------------|------------------|
-| Text (linkable) | Navigates to resource | Nervos color, pointer cursor |
+| Internal link (SPA) | Navigates within app | Nervos color, pointer cursor |
 | Text (not linkable) | Nothing | Default text color |
 | Copy icon | Copies to clipboard | Two-squares icon → checkmark |
 | External link | Opens new tab | Box-arrow icon (↗) |
+
+### Internal Links (SPA)
+
+**Always render internal navigation as a real anchor (`<a href>`), not a `<button>`.**
+
+Rationale:
+- Desktop hover shows a real URL.
+- Users get standard browser link behaviors (open in new tab, copy link address, etc.).
+- Improves semantics/accessibility.
+
+**Standard implementation**:
+- Use `generateLink()` to build internal URLs (preserves `network` and `height` query params).
+- Use `InternalLink` (`src/components/InternalLink.tsx`) for plain text links, breadcrumbs, and other navigation that isn’t handled by a display component.
+- `InternalLink` intercepts only plain left-clicks to call `navigate()`, and lets modifier-key clicks fall back to the browser.
+
+```tsx
+import { generateLink } from '../lib/router';
+import { InternalLink } from '../components/InternalLink';
+
+<InternalLink href={generateLink('/resources')} className="hover:text-nervos">
+	Well-Known Resources
+</InternalLink>
+```
+
+**Breadcrumbs**:
+- Wrap the trail in `nav aria-label="Breadcrumb"`.
+- Mark the current crumb with `aria-current="page"`.
+- Mark separators (e.g. `/`) as `aria-hidden="true"`.
 
 ### Data Type Behaviors
 
