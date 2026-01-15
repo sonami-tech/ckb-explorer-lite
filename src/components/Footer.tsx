@@ -72,6 +72,11 @@ export function Footer() {
 									Well-Known Resources
 								</InternalLink>
 							</li>
+							<li>
+								<ExternalLink href="https://github.com/sonami-tech/CKB-Explorer-Lite">
+									GitHub
+								</ExternalLink>
+							</li>
 						</ul>
 					</div>
 
