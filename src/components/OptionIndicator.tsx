@@ -2,7 +2,6 @@ import { Tooltip } from './Tooltip';
 import {
 	STATUS_SUCCESS,
 	STATUS_ERROR,
-	STATUS_WARNING,
 	HASH_TYPE,
 	HASH_DATA,
 	INACTIVE,
@@ -87,12 +86,6 @@ const CELL_STATUS_OPTIONS: OptionConfig[] = [
 		tooltip: 'Cell has been consumed (spent) in a transaction.',
 		activeClass: STATUS_ERROR,
 	},
-	{
-		value: 'unknown',
-		label: 'Unknown',
-		tooltip: 'Cell does not exist at the selected block height.',
-		activeClass: STATUS_WARNING,
-	},
 ];
 
 /** Hash type options for scripts. */
@@ -124,7 +117,7 @@ const HASH_TYPE_OPTIONS: OptionConfig[] = [
 ];
 
 /** Convenience component for cell status. */
-export function CellStatusIndicator({ status }: { status: 'live' | 'dead' | 'unknown' }) {
+export function CellStatusIndicator({ status }: { status: 'live' | 'dead' }) {
 	return <OptionIndicator options={CELL_STATUS_OPTIONS} activeValue={status} />;
 }
 
