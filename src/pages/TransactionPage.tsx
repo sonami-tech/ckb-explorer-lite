@@ -18,6 +18,7 @@ import { AddressDisplay } from '../components/AddressDisplay';
 import { InternalLinkIcon } from '../components/InternalLinkIcon';
 import { InternalLink } from '../components/InternalLink';
 import { WitnessSection } from '../components/WitnessSection';
+import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
 import type { RpcTransaction, RpcTransactionWithStatus } from '../types/rpc';
 import {
 	BRAND,
@@ -139,6 +140,8 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					Transaction Details
 				</h1>
 			</div>
+
+			<ArchiveHeightWarning />
 
 			{/* Transaction details. */}
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">

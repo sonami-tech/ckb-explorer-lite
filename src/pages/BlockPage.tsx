@@ -18,6 +18,7 @@ import { HashDisplay, CopyButton } from '../components/CopyButton';
 import { Tooltip } from '../components/Tooltip';
 import { DetailRow } from '../components/DetailRow';
 import { Pagination } from '../components/Pagination';
+import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
 import {
 	TransactionRow,
 	calculateTotalOutputCapacity,
@@ -205,6 +206,8 @@ export function BlockPage({ id }: BlockPageProps) {
 					Block {formatNumber(blockNumber)}
 				</h1>
 			</div>
+
+			<ArchiveHeightWarning />
 
 			{/* Block details. */}
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">

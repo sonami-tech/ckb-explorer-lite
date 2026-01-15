@@ -17,6 +17,7 @@ import { ScriptSection } from '../components/ScriptSection';
 import { BlockNumberDisplay } from '../components/BlockNumberDisplay';
 import { WellKnownCellInfo } from '../components/WellKnownCellInfo';
 import { InternalLink } from '../components/InternalLink';
+import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
 import type { RpcCellWithLifecycle } from '../types/rpc';
 
 interface CellPageProps {
@@ -121,6 +122,8 @@ export function CellPage({ txHash, index }: CellPageProps) {
 					Cell Details
 				</h1>
 			</div>
+
+			<ArchiveHeightWarning />
 
 			{/* Well-known cell info (if applicable). */}
 			{wellKnownCellInfo && (
