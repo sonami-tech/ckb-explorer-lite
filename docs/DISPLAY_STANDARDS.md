@@ -170,42 +170,49 @@ Components with responsive display:
 
 ### Dropdown Selects
 
-All `<select>` dropdowns use a custom chevron icon to match the visual style of the header network/block selector.
+All `<select>` dropdowns use the `ChevronDownIcon` component to match the visual style of the header network/block selector.
 
 **Standard implementation:**
 - Wrap `<select>` in a `relative` container.
 - Add `appearance-none` to remove browser default arrow.
 - Add `cursor-pointer` for hover affordance.
-- Add `pr-8` (or `pr-6` for smaller selects) to make room for chevron.
-- Position an SVG chevron absolutely in the container.
+- Use `px-3` left padding to match header selector.
+- Use `pr-9` right padding for standard selects, `pr-5` for small inline selects.
+- Use `ChevronDownIcon` component positioned absolutely in the container.
 
 ```tsx
+import { ChevronDownIcon } from '../components/CopyButton';
+
+// Standard select (matches header network/block selector padding)
 <div className="relative">
   <select
     value={value}
     onChange={handleChange}
-    className="... pr-8 cursor-pointer appearance-none"
+    className="... px-3 py-1.5 pr-9 cursor-pointer appearance-none"
   >
     {options.map((opt) => (
       <option key={opt} value={opt}>{opt}</option>
     ))}
   </select>
-  <svg
-    className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-  </svg>
+  <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2" />
+</div>
+
+// Small inline select (e.g., format selectors)
+<div className="relative inline-block">
+  <select className="text-xs px-1.5 py-0.5 pr-5 ...">
+    ...
+  </select>
+  <ChevronDownIcon size="w-3 h-3" className="absolute right-1.5 top-1/2 -translate-y-1/2" />
 </div>
 ```
 
+**ChevronDownIcon props:**
+- `size` - Size class (default: `'w-4 h-4'`). Use `'w-3 h-3'` for small selects.
+- `className` - Additional classes for positioning.
+
 **Key styling details:**
-- Chevron: `w-4 h-4 text-gray-400 pointer-events-none` (standard size).
-- Chevron: `w-3 h-3` for smaller inline selects (e.g., format selectors).
-- Position: `right-2` (standard), `right-1` (small selects).
-- Padding: `pr-8` (standard), `pr-6` (small selects).
+- Standard select: `px-3` left, `pr-9` right, chevron at `right-3`.
+- Small select: `px-1.5` left, `pr-5` right, chevron at `right-1.5` with `size="w-3 h-3"`.
 
 **Examples:**
 - Pagination: `src/components/Pagination.tsx` - Items per page selector.

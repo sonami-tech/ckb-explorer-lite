@@ -388,3 +388,27 @@ export function ChevronButton({ isExpanded, onClick, className = '' }: ChevronBu
 		</Tooltip>
 	);
 }
+
+interface ChevronDownIconProps {
+	/** Size class for the icon (default: 'w-4 h-4'). */
+	size?: string;
+	/** Additional CSS classes. */
+	className?: string;
+}
+
+/**
+ * Chevron down icon for dropdown selects.
+ * Used with absolute positioning inside a relative container.
+ */
+export function ChevronDownIcon({ size = 'w-4 h-4', className = '' }: ChevronDownIconProps) {
+	return (
+		<svg
+			className={`${size} text-gray-400 pointer-events-none ${className}`}
+			fill="none"
+			stroke="currentColor"
+			viewBox="0 0 24 24"
+		>
+			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+		</svg>
+	);
+}

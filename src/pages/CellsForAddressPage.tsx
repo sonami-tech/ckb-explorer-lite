@@ -7,6 +7,7 @@ import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { InternalLink } from '../components/InternalLink';
+import { ChevronDownIcon } from '../components/CopyButton';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import type { RpcCell, RpcScript, IndexerSearchKey } from '../types/rpc';
 import { HAS_TYPE, HASH_DATA } from '../lib/badgeStyles';
@@ -217,7 +218,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 								<select
 									value={pageSize}
 									onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
-									className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 pr-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-white cursor-pointer appearance-none"
+									className="text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 pr-9 bg-white dark:bg-gray-800 text-gray-900 dark:text-white cursor-pointer appearance-none"
 								>
 									{PAGE_SIZE_CONFIG.options.map((size) => (
 										<option key={size} value={size}>
@@ -225,14 +226,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 										</option>
 									))}
 								</select>
-								<svg
-									className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-								</svg>
+								<ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2" />
 							</div>
 						</div>
 

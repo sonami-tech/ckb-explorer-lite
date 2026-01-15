@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import { useTruncation, useIsMobile, type BreakpointTier } from '../hooks/ui';
-import { CopyButton, DownloadButton, ChevronButton, SizeBadge } from './CopyButton';
+import { CopyButton, DownloadButton, ChevronButton, ChevronDownIcon, SizeBadge } from './CopyButton';
 import { DataModal } from './DataModal';
 
 /** View modes for data display. */
@@ -402,7 +402,7 @@ function FormatDropdown({
 			<select
 				value={current}
 				onChange={(e) => onChange(e.target.value)}
-				className="text-xs bg-transparent border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 pr-6 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-1 focus:ring-nervos cursor-pointer appearance-none"
+				className="text-xs bg-transparent border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 pr-5 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-1 focus:ring-nervos cursor-pointer appearance-none"
 			>
 				{options.map((opt) => (
 					<option key={opt} value={opt}>
@@ -410,14 +410,7 @@ function FormatDropdown({
 					</option>
 				))}
 			</select>
-			<svg
-				className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none"
-				fill="none"
-				stroke="currentColor"
-				viewBox="0 0 24 24"
-			>
-				<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-			</svg>
+			<ChevronDownIcon size="w-3 h-3" className="absolute right-1.5 top-1/2 -translate-y-1/2" />
 		</div>
 	);
 }

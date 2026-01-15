@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Tooltip } from './Tooltip';
+import { ChevronDownIcon } from './CopyButton';
 
 interface PaginationProps {
 	/** Current page number (1-indexed). */
@@ -146,7 +147,7 @@ export function Pagination({
 					<select
 						value={pageSize}
 						onChange={handlePageSizeChange}
-						className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 pr-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-nervos cursor-pointer appearance-none"
+						className="text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 pr-9 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-nervos cursor-pointer appearance-none"
 					>
 						{pageSizeOptions.map((size) => (
 							<option key={size} value={size}>
@@ -154,14 +155,7 @@ export function Pagination({
 							</option>
 						))}
 					</select>
-					<svg
-						className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-					>
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-					</svg>
+					<ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2" />
 				</div>
 			</div>
 
