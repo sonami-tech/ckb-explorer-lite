@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRpc } from '../contexts/NetworkContext';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import {
 	formatNumber,
 	formatRelativeTime,
 	formatAbsoluteTime,
 	formatEpoch,
-	truncateHex,
 	isValidHex,
 } from '../lib/format';
 import { generateLink } from '../lib/router';
@@ -14,20 +13,74 @@ import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
 import { DetailRow } from '../components/DetailRow';
-import { OutPoint } from '../components/OutPoint';
+import { Pagination } from '../components/Pagination';
+import {
+	TransactionRow,
+	calculateTotalOutputCapacity,
+	extractLockScripts,
+	extractTypeScripts,
+	isCellbaseTransaction,
+	type EnrichedTransaction,
+} from '../components/TransactionRow';
+import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import type { RpcBlock, RpcTransaction } from '../types/rpc';
-import { BRAND } from '../lib/badgeStyles';
+import type { NetworkType } from '../config/networks';
 
 interface BlockPageProps {
 	id: string;
 }
 
+const STORAGE_KEY = 'ckb-explorer-txs-page-size';
+
+function getStoredPageSize(): number {
+	const stored = localStorage.getItem(STORAGE_KEY);
+	const parsed = parseInt(stored ?? '', 10);
+	if (PAGE_SIZE_CONFIG.options.includes(parsed as 10 | 20 | 50 | 100)) {
+		return parsed;
+	}
+	return PAGE_SIZE_CONFIG.default;
+}
+
+/**
+ * Enrich a single raw RPC transaction for display.
+ */
+function enrichTransaction(
+	tx: RpcTransaction,
+	index: number,
+	blockNumber: bigint,
+	blockTimestamp: number,
+	networkType: NetworkType,
+): EnrichedTransaction {
+	const txHash = tx.hash ?? `pending-${index}`;
+
+	return {
+		txHash,
+		blockNumber,
+		timestamp: blockTimestamp,
+		totalCapacity: calculateTotalOutputCapacity(tx),
+		lockScripts: extractLockScripts(tx, networkType),
+		typeScripts: extractTypeScripts(tx, networkType),
+		inputCount: tx.inputs.length,
+		outputCount: tx.outputs.length,
+		isCellbase: isCellbaseTransaction(tx),
+	};
+}
+
 export function BlockPage({ id }: BlockPageProps) {
 	const rpc = useRpc();
+	const { currentNetwork } = useNetwork();
+	const networkType = currentNetwork?.type ?? 'mainnet';
+
 	const [block, setBlock] = useState<RpcBlock | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
-	const [expandedTx, setExpandedTx] = useState<Set<number>>(new Set());
+
+	// Pagination state.
+	const [currentPage, setCurrentPage] = useState(1);
+	const [pageSize, setPageSize] = useState(getStoredPageSize);
+
+	// Cache for enriched transactions (indexed by original position).
+	const enrichedCacheRef = useRef<Map<number, EnrichedTransaction>>(new Map());
 
 	// Track fetch ID to ignore stale responses when archiveHeight changes during navigation.
 	const fetchIdRef = useRef(0);
@@ -37,6 +90,9 @@ export function BlockPage({ id }: BlockPageProps) {
 
 		setIsLoading(true);
 		setError(null);
+		// Reset pagination and cache on new block fetch.
+		setCurrentPage(1);
+		enrichedCacheRef.current = new Map();
 
 		try {
 			let result: RpcBlock | null = null;
@@ -74,17 +130,37 @@ export function BlockPage({ id }: BlockPageProps) {
 		fetchBlock();
 	}, [fetchBlock]);
 
-	const toggleTx = (index: number) => {
-		setExpandedTx((prev) => {
-			const next = new Set(prev);
-			if (next.has(index)) {
-				next.delete(index);
-			} else {
-				next.add(index);
+	// Handle page size change.
+	const handlePageSizeChange = useCallback((newSize: number) => {
+		setPageSize(newSize);
+		localStorage.setItem(STORAGE_KEY, newSize.toString());
+		setCurrentPage(1); // Reset to first page.
+	}, []);
+
+	// Derive values from block (may be null during loading).
+	const transactions = block?.transactions ?? [];
+	const totalTransactions = transactions.length;
+	const startIndex = (currentPage - 1) * pageSize;
+	const endIndex = Math.min(startIndex + pageSize, totalTransactions);
+	const currentPageTransactions = transactions.slice(startIndex, endIndex);
+	const blockNumber = block ? BigInt(block.header.number) : 0n;
+	const blockTimestamp = block ? Number(BigInt(block.header.timestamp)) : 0;
+
+	// Lazily enrich transactions for the current page with caching.
+	// Must be called unconditionally (React hooks rule).
+	const enrichedTransactions = useMemo(() => {
+		if (!block) return [];
+		return currentPageTransactions.map((tx, localIndex) => {
+			const globalIndex = startIndex + localIndex;
+			const cached = enrichedCacheRef.current.get(globalIndex);
+			if (cached) {
+				return cached;
 			}
-			return next;
+			const enriched = enrichTransaction(tx, globalIndex, blockNumber, blockTimestamp, networkType);
+			enrichedCacheRef.current.set(globalIndex, enriched);
+			return enriched;
 		});
-	};
+	}, [block, currentPageTransactions, startIndex, blockNumber, blockTimestamp, networkType]);
 
 	if (isLoading) {
 		return (
@@ -106,9 +182,9 @@ export function BlockPage({ id }: BlockPageProps) {
 		return null;
 	}
 
-	const { header, transactions, proposals } = block;
-	const blockNumber = BigInt(header.number);
+	const { header, proposals } = block;
 	const timestamp = BigInt(header.timestamp);
+	const totalPages = Math.max(1, Math.ceil(totalTransactions / pageSize));
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
@@ -148,7 +224,7 @@ export function BlockPage({ id }: BlockPageProps) {
 						{formatEpoch(header.epoch)}
 					</DetailRow>
 					<DetailRow label="Transactions">
-						{transactions.length}
+						{formatNumber(totalTransactions)}
 					</DetailRow>
 					<DetailRow label="Proposals">
 						{proposals.length}
@@ -171,107 +247,45 @@ export function BlockPage({ id }: BlockPageProps) {
 			{/* Transactions. */}
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
-					<h2 className="font-semibold text-gray-900 dark:text-white">
-						Transactions ({transactions.length})
-					</h2>
+					<div className="flex items-center justify-between">
+						<h2 className="font-semibold text-gray-900 dark:text-white">
+							Transactions ({formatNumber(totalTransactions)})
+						</h2>
+						{totalPages > 1 && (
+							<span className="text-sm text-gray-500 dark:text-gray-400">
+								Showing {startIndex + 1}-{endIndex} of {formatNumber(totalTransactions)}
+							</span>
+						)}
+					</div>
 				</div>
-				<div className="divide-y divide-gray-200 dark:divide-gray-700">
-					{transactions.map((tx, index) => (
-						<TransactionRow
-							key={index}
-							tx={tx}
-							index={index}
-							isExpanded={expandedTx.has(index)}
-							onToggle={() => toggleTx(index)}
-						/>
-					))}
-				</div>
-			</div>
-		</div>
-	);
-}
-
-function TransactionRow({
-	tx,
-	index,
-	isExpanded,
-	onToggle,
-}: {
-	tx: RpcTransaction;
-	index: number;
-	isExpanded: boolean;
-	onToggle: () => void;
-}) {
-	return (
-		<div className="p-4">
-			<div
-				className="flex items-center justify-between cursor-pointer"
-				onClick={onToggle}
-			>
-				<div className="flex items-center gap-2">
-					<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-						#{index}
-					</span>
-					{index === 0 && (
-						<span className={`px-2 py-0.5 text-xs font-medium ${BRAND} rounded`}>
-							Cellbase
-						</span>
+				<div>
+					{enrichedTransactions.length === 0 ? (
+						<div className="p-4 text-sm text-gray-500 dark:text-gray-400 italic">
+							No transactions in this block.
+						</div>
+					) : (
+						enrichedTransactions.map((tx) => (
+							<TransactionRow
+								key={tx.txHash}
+								transaction={tx}
+								referenceTime={blockTimestamp}
+							/>
+						))
 					)}
 				</div>
-				<div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
-					<span>{tx.inputs.length} inputs</span>
-					<span>{tx.outputs.length} outputs</span>
-					<svg
-						className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-					>
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-					</svg>
-				</div>
+				{totalTransactions > 0 && (
+					<div className="p-4 border-t border-gray-200 dark:border-gray-700">
+						<Pagination
+							currentPage={currentPage}
+							totalItems={totalTransactions}
+							pageSize={pageSize}
+							pageSizeOptions={PAGE_SIZE_CONFIG.options}
+							onPageChange={setCurrentPage}
+							onPageSizeChange={handlePageSizeChange}
+						/>
+					</div>
+				)}
 			</div>
-
-			{isExpanded && (
-				<div className="mt-4 pl-4 border-l-2 border-gray-200 dark:border-gray-700 space-y-4">
-					{/* Inputs. */}
-					<div>
-						<h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-							Inputs ({tx.inputs.length})
-						</h4>
-						{tx.inputs.map((input, i) => (
-							<div key={i} className="text-xs text-gray-600 dark:text-gray-300 mb-1" onClick={(e) => e.stopPropagation()}>
-								{index === 0 ? (
-									<span className="italic">Cellbase (no input)</span>
-								) : (
-									<OutPoint
-										txHash={input.previous_output.tx_hash}
-										index={parseInt(input.previous_output.index, 16)}
-									/>
-								)}
-							</div>
-						))}
-					</div>
-
-					{/* Outputs. */}
-					<div>
-						<h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-							Outputs ({tx.outputs.length})
-						</h4>
-						{tx.outputs.map((output, i) => (
-							<div key={i} className="text-xs text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-2">
-								<span className="text-gray-400">#{i}</span>
-								<span className="font-mono">
-									{(BigInt(output.capacity) / 100_000_000n).toString()} CKB
-								</span>
-								<span className="text-gray-400 font-mono text-xs">
-									Lock: {truncateHex(output.lock.code_hash)}
-								</span>
-							</div>
-						))}
-					</div>
-				</div>
-			)}
 		</div>
 	);
 }
