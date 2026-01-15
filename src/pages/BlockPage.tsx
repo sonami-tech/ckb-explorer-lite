@@ -6,12 +6,16 @@ import {
 	formatAbsoluteTime,
 	formatEpoch,
 	isValidHex,
+	compactTargetToTarget,
+	compactTargetToDifficulty,
+	formatDifficulty,
 } from '../lib/format';
 import { generateLink } from '../lib/router';
 import { InternalLink } from '../components/InternalLink';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay, CopyButton } from '../components/CopyButton';
+import { Tooltip } from '../components/Tooltip';
 import { DetailRow } from '../components/DetailRow';
 import { Pagination } from '../components/Pagination';
 import {
@@ -35,7 +39,7 @@ const STORAGE_KEY = 'ckb-explorer-txs-page-size';
 function getStoredPageSize(): number {
 	const stored = localStorage.getItem(STORAGE_KEY);
 	const parsed = parseInt(stored ?? '', 10);
-	if (PAGE_SIZE_CONFIG.options.includes(parsed as 10 | 20 | 50 | 100)) {
+	if (PAGE_SIZE_CONFIG.options.includes(parsed as 5 | 10 | 20 | 50 | 100)) {
 		return parsed;
 	}
 	return PAGE_SIZE_CONFIG.default;
@@ -237,9 +241,22 @@ export function BlockPage({ id }: BlockPageProps) {
 					</DetailRow>
 					<DetailRow label="Compact Target">
 						<div className="flex items-center gap-2">
-							<span className="font-mono">{header.compact_target}</span>
+							<Tooltip content={compactTargetToTarget(header.compact_target)}>
+								<span className="font-mono">{header.compact_target}</span>
+							</Tooltip>
 							<CopyButton text={header.compact_target} />
 						</div>
+					</DetailRow>
+					<DetailRow label="Difficulty">
+						{(() => {
+							const difficultyHex = compactTargetToDifficulty(header.compact_target);
+							const fullValue = formatNumber(BigInt(difficultyHex));
+							return (
+								<Tooltip content={fullValue}>
+									<span>{formatDifficulty(difficultyHex)}</span>
+								</Tooltip>
+							);
+						})()}
 					</DetailRow>
 					<DetailRow label="Nonce">
 						<div className="flex items-center gap-2">
@@ -274,7 +291,6 @@ export function BlockPage({ id }: BlockPageProps) {
 							<TransactionRow
 								key={tx.txHash}
 								transaction={tx}
-								referenceTime={blockTimestamp}
 							/>
 						))
 					)}

@@ -2,8 +2,9 @@
 import { useMemo } from 'react';
 import { HashDisplay } from './CopyButton';
 import { ScriptIndicatorPill } from './ScriptIndicatorPill';
+import { Tooltip } from './Tooltip';
 import { generateLink } from '../lib/router';
-import { formatCkb, formatNumber, formatRelativeTime, truncateHex } from '../lib/format';
+import { formatAbsoluteTime, formatCkb, formatNumber, formatRelativeTime, truncateHex } from '../lib/format';
 import { lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
 import { BRAND } from '../lib/badgeStyles';
 import { useIsMobile } from '../hooks/ui';
@@ -194,9 +195,11 @@ export function TransactionRow({ transaction, referenceTime }: TransactionRowPro
 						)
 					)}
 				</div>
-				<span className="text-xs text-gray-400 dark:text-gray-500">
-					{relativeTime}
-				</span>
+				<Tooltip content={formatAbsoluteTime(transaction.timestamp)}>
+					<span className="text-xs text-gray-400 dark:text-gray-500">
+						{relativeTime}
+					</span>
+				</Tooltip>
 			</div>
 
 			{/* Line 2: Block + input/output on left, Total capacity on right */}

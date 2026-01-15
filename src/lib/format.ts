@@ -217,6 +217,40 @@ export function formatSiNumber(value: bigint | number, decimals = 2): string {
 }
 
 /**
+ * Decode compact target to the full target value.
+ * CKB uses a compact target format similar to Bitcoin's "nBits".
+ * - Exponent: bits 24-31 (1 byte)
+ * - Mantissa: bits 0-23 (3 bytes)
+ * - Target = mantissa * 2^(8 * (exponent - 3))
+ *
+ * @param compactTarget - The compact_target hex string from block header.
+ * @returns Full target as hex string (64 hex chars, 256 bits).
+ */
+export function compactTargetToTarget(compactTarget: string): string {
+	const compact = BigInt(compactTarget);
+
+	// Extract exponent (high byte) and mantissa (low 3 bytes).
+	const exponent = Number((compact >> 24n) & 0xFFn);
+	const mantissa = compact & 0xFFFFFFn;
+
+	// Handle edge case: zero mantissa means zero target.
+	if (mantissa === 0n) {
+		return '0x' + '0'.repeat(64);
+	}
+
+	// Calculate target = mantissa * 2^(8 * (exponent - 3)).
+	let target: bigint;
+	if (exponent <= 3) {
+		target = mantissa >> BigInt(8 * (3 - exponent));
+	} else {
+		target = mantissa << BigInt(8 * (exponent - 3));
+	}
+
+	// Return as 64-char hex string (256 bits).
+	return '0x' + target.toString(16).padStart(64, '0');
+}
+
+/**
  * Convert compact target (from block header) to difficulty.
  * CKB uses a compact target format similar to Bitcoin's "nBits".
  * - Exponent: bits 24-31 (1 byte)

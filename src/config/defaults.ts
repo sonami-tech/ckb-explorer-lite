@@ -71,9 +71,9 @@ export const HEX_DATA_CONFIG = {
  */
 export const PAGE_SIZE_CONFIG = {
 	/** Default number of items per page. */
-	default: 10,
+	default: 5,
 	/** Available page size options for user selection. */
-	options: [10, 20, 50, 100] as const,
+	options: [5, 10, 20, 50, 100] as const,
 	/** Maximum allowed page size. */
 	max: 100,
 	/** Number of items to show in preview sections. */

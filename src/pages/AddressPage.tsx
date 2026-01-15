@@ -7,7 +7,7 @@ import {
 	getAlternateAddress,
 	AddressFormat,
 } from '../lib/address';
-import { formatNumber, formatCkb, formatRelativeTime } from '../lib/format';
+import { formatNumber, formatCkb } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
@@ -48,7 +48,6 @@ export function AddressPage({ address }: AddressPageProps) {
 	const [cellCount, setCellCount] = useState<bigint | null>(null);
 	const [transactionCount, setTransactionCount] = useState<bigint | null>(null);
 	const [recentTransactions, setRecentTransactions] = useState<EnrichedTransaction[]>([]);
-	const [lastActivityTime, setLastActivityTime] = useState<number | null>(null);
 	const [referenceTimestamp, setReferenceTimestamp] = useState<number | undefined>(undefined);
 
 	// UI state.
@@ -160,11 +159,6 @@ export function AddressPage({ address }: AddressPageProps) {
 			if (fetchId !== fetchIdRef.current) return;
 
 			setRecentTransactions(enriched);
-
-			// Set last activity time from most recent transaction.
-			if (enriched.length > 0) {
-				setLastActivityTime(enriched[0].timestamp);
-			}
 		} catch (err) {
 			if (fetchId !== fetchIdRef.current) return;
 			setError(err instanceof Error ? err : new Error('Failed to fetch address data.'));
@@ -189,28 +183,6 @@ export function AddressPage({ address }: AddressPageProps) {
 	// Alternate address.
 	const alternateAddress = script
 		? getAlternateAddress(address, script, networkType)
-		: null;
-
-	// Last activity relative time.
-	const lastActivityLabel = lastActivityTime
-		? referenceTimestamp
-			? (() => {
-				const diff = referenceTimestamp - lastActivityTime;
-				if (diff < 0) return 'just now';
-				const seconds = Math.floor(diff / 1000);
-				if (seconds < 60) return seconds === 1 ? '1 second ago' : `${seconds} seconds ago`;
-				const minutes = Math.floor(seconds / 60);
-				if (minutes < 60) return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
-				const hours = Math.floor(minutes / 60);
-				if (hours < 24) return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
-				const days = Math.floor(hours / 24);
-				if (days < 30) return days === 1 ? '1 day ago' : `${days} days ago`;
-				const months = Math.floor(days / 30);
-				if (months < 12) return months === 1 ? '1 month ago' : `${months} months ago`;
-				const years = Math.floor(months / 12);
-				return years === 1 ? '1 year ago' : `${years} years ago`;
-			})()
-			: formatRelativeTime(lastActivityTime)
 		: null;
 
 	if (isLoading) {
@@ -335,11 +307,6 @@ export function AddressPage({ address }: AddressPageProps) {
 					<div className="flex items-center justify-between gap-3">
 						<h2 className="font-semibold text-gray-900 dark:text-white">
 							Recent Transactions
-							{lastActivityLabel && (
-								<span className="ml-2 hidden text-sm font-normal text-gray-500 dark:text-gray-400 sm:inline">
-									(last: {lastActivityLabel})
-								</span>
-							)}
 						</h2>
 						<button
 							onClick={() => navigate(generateLink(`/address/${address}/transactions`))}
@@ -348,11 +315,6 @@ export function AddressPage({ address }: AddressPageProps) {
 							View All →
 						</button>
 					</div>
-					{lastActivityLabel && (
-						<div className="mt-1 text-sm font-normal text-gray-500 dark:text-gray-400 sm:hidden">
-							(last: {lastActivityLabel})
-						</div>
-					)}
 				</div>
 				<div>
 					{recentTransactions.length === 0 ? (

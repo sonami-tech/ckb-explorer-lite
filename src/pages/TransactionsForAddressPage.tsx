@@ -27,7 +27,7 @@ const STORAGE_KEY = 'ckb-explorer-txs-page-size';
 function getStoredPageSize(): number {
 	const stored = localStorage.getItem(STORAGE_KEY);
 	const parsed = parseInt(stored ?? '', 10);
-	if (PAGE_SIZE_CONFIG.options.includes(parsed as 10 | 20 | 50 | 100)) {
+	if (PAGE_SIZE_CONFIG.options.includes(parsed as 5 | 10 | 20 | 50 | 100)) {
 		return parsed;
 	}
 	return PAGE_SIZE_CONFIG.default;
