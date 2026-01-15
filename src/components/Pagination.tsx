@@ -142,17 +142,27 @@ export function Pagination({
 				<label className="text-sm text-gray-500 dark:text-gray-400">
 					Items per page:
 				</label>
-				<select
-					value={pageSize}
-					onChange={handlePageSizeChange}
-					className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-nervos"
-				>
-					{pageSizeOptions.map((size) => (
-						<option key={size} value={size}>
-							{size}
-						</option>
-					))}
-				</select>
+				<div className="relative">
+					<select
+						value={pageSize}
+						onChange={handlePageSizeChange}
+						className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 pr-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-nervos cursor-pointer appearance-none"
+					>
+						{pageSizeOptions.map((size) => (
+							<option key={size} value={size}>
+								{size}
+							</option>
+						))}
+					</select>
+					<svg
+						className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+					</svg>
+				</div>
 			</div>
 
 			{/* Center: Page numbers with prev/next. */}

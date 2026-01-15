@@ -168,6 +168,50 @@ Components with responsive display:
 
 **No underline on hover.** Color change provides sufficient affordance.
 
+### Dropdown Selects
+
+All `<select>` dropdowns use a custom chevron icon to match the visual style of the header network/block selector.
+
+**Standard implementation:**
+- Wrap `<select>` in a `relative` container.
+- Add `appearance-none` to remove browser default arrow.
+- Add `cursor-pointer` for hover affordance.
+- Add `pr-8` (or `pr-6` for smaller selects) to make room for chevron.
+- Position an SVG chevron absolutely in the container.
+
+```tsx
+<div className="relative">
+  <select
+    value={value}
+    onChange={handleChange}
+    className="... pr-8 cursor-pointer appearance-none"
+  >
+    {options.map((opt) => (
+      <option key={opt} value={opt}>{opt}</option>
+    ))}
+  </select>
+  <svg
+    className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+  </svg>
+</div>
+```
+
+**Key styling details:**
+- Chevron: `w-4 h-4 text-gray-400 pointer-events-none` (standard size).
+- Chevron: `w-3 h-3` for smaller inline selects (e.g., format selectors).
+- Position: `right-2` (standard), `right-1` (small selects).
+- Padding: `pr-8` (standard), `pr-6` (small selects).
+
+**Examples:**
+- Pagination: `src/components/Pagination.tsx` - Items per page selector.
+- Address pages: `src/pages/TransactionsForAddressPage.tsx`, `CellsForAddressPage.tsx` - Results per load selector.
+- HexData: `src/components/HexData.tsx` - Format selector (small variant).
+
 ### Navigation Link Text
 
 Use **title case** for all button and link labels.

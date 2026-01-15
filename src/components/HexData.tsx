@@ -398,17 +398,27 @@ function FormatDropdown({
 	onChange: (format: string) => void;
 }) {
 	return (
-		<select
-			value={current}
-			onChange={(e) => onChange(e.target.value)}
-			className="text-xs bg-transparent border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-1 focus:ring-nervos"
-		>
-			{options.map((opt) => (
-				<option key={opt} value={opt}>
-					{formatLabel(opt, detected)}
-				</option>
-			))}
-		</select>
+		<div className="relative inline-block">
+			<select
+				value={current}
+				onChange={(e) => onChange(e.target.value)}
+				className="text-xs bg-transparent border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 pr-6 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-1 focus:ring-nervos cursor-pointer appearance-none"
+			>
+				{options.map((opt) => (
+					<option key={opt} value={opt}>
+						{formatLabel(opt, detected)}
+					</option>
+				))}
+			</select>
+			<svg
+				className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+			>
+				<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+			</svg>
+		</div>
 	);
 }
 

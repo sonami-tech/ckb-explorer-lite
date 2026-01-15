@@ -281,17 +281,27 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 							<span className="text-sm text-gray-500 dark:text-gray-400">
 								Results per load:
 							</span>
-							<select
-								value={pageSize}
-								onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
-								className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-							>
-								{PAGE_SIZE_CONFIG.options.map((size) => (
-									<option key={size} value={size}>
-										{size}
-									</option>
-								))}
-							</select>
+							<div className="relative">
+								<select
+									value={pageSize}
+									onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
+									className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 pr-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-white cursor-pointer appearance-none"
+								>
+									{PAGE_SIZE_CONFIG.options.map((size) => (
+										<option key={size} value={size}>
+											{size}
+										</option>
+									))}
+								</select>
+								<svg
+									className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+								</svg>
+							</div>
 						</div>
 
 						{hasMore && (
