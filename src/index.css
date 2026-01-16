@@ -21,6 +21,7 @@
 	html, body {
 		@apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
 		min-width: 375px;
+		overflow-x: hidden;
 		/* Use dvh for proper iOS viewport handling with fallback. */
 		min-height: 100vh;
 		min-height: 100dvh;

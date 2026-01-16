@@ -17,12 +17,6 @@ const AnimationContext = createContext<AnimationContextValue | null>(null);
 
 const STORAGE_KEY = 'ckb-explorer-animation';
 
-function getDefaultEnabled(): boolean {
-	if (typeof window === 'undefined') return true;
-	// Default to on for desktop/tablet (>= 768px), off for mobile.
-	return window.innerWidth >= 768;
-}
-
 function getStoredState(): boolean | null {
 	if (typeof window === 'undefined') return null;
 	const stored = localStorage.getItem(STORAGE_KEY);
@@ -31,10 +25,15 @@ function getStoredState(): boolean | null {
 	return null;
 }
 
+function getDefaultEnabled(): boolean {
+	if (typeof window === 'undefined') return true;
+	// Default to on for desktop/tablet (>= 768px), off for mobile.
+	return window.innerWidth >= 768;
+}
+
 export function AnimationProvider({ children }: { children: ReactNode }) {
 	const [isPlaying, setIsPlayingState] = useState<boolean>(() => {
 		const stored = getStoredState();
-		// Use stored value if exists, otherwise use default based on screen size.
 		return stored !== null ? stored : getDefaultEnabled();
 	});
 

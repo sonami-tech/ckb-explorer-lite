@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, type RefObject } from 'react';
+import { useEffect, useMemo, type RefObject } from 'react';
+import { useResponsive } from '../contexts/ResponsiveContext';
 
 /**
  * Hook to detect if viewport is below a breakpoint (mobile).
@@ -6,18 +7,8 @@ import { useState, useEffect, useMemo, type RefObject } from 'react';
  * @returns true if viewport width is less than breakpoint.
  */
 export function useIsMobile(breakpoint = 640): boolean {
-	const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
-
-	useEffect(() => {
-		const checkMobile = () => {
-			setIsMobile(window.innerWidth < breakpoint);
-		};
-
-		window.addEventListener('resize', checkMobile);
-		return () => window.removeEventListener('resize', checkMobile);
-	}, [breakpoint]);
-
-	return isMobile;
+	const { width } = useResponsive();
+	return width < breakpoint;
 }
 
 /**
@@ -41,37 +32,16 @@ export function useClickOutside(ref: RefObject<HTMLElement | null>, callback: ()
 /** Breakpoint tier for responsive layouts. */
 export type BreakpointTier = 'mobile' | 'tablet' | 'desktop';
 
-/** Breakpoint thresholds in pixels. */
-const BREAKPOINTS = {
-	tablet: 640,   // Tailwind sm
-	desktop: 1024, // Tailwind lg
-} as const;
-
 /**
  * Hook to detect current breakpoint tier.
  * @returns Current breakpoint: 'mobile' (<640), 'tablet' (640-1023), 'desktop' (>=1024).
  */
 export function useBreakpoint(): BreakpointTier {
-	const [tier, setTier] = useState<BreakpointTier>(() => {
-		const width = window.innerWidth;
-		if (width >= BREAKPOINTS.desktop) return 'desktop';
-		if (width >= BREAKPOINTS.tablet) return 'tablet';
-		return 'mobile';
-	});
+	const { isTablet, isDesktop } = useResponsive();
 
-	useEffect(() => {
-		const checkBreakpoint = () => {
-			const width = window.innerWidth;
-			if (width >= BREAKPOINTS.desktop) setTier('desktop');
-			else if (width >= BREAKPOINTS.tablet) setTier('tablet');
-			else setTier('mobile');
-		};
-
-		window.addEventListener('resize', checkBreakpoint);
-		return () => window.removeEventListener('resize', checkBreakpoint);
-	}, []);
-
-	return tier;
+	if (isDesktop) return 'desktop';
+	if (isTablet) return 'tablet';
+	return 'mobile';
 }
 
 /** Default character limits for each breakpoint tier (hex chars including 0x prefix). */

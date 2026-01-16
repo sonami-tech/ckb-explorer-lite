@@ -3,6 +3,7 @@ import { AnimationProvider } from './contexts/AnimationContext';
 import { NetworkProvider } from './contexts/NetworkContext';
 import { ArchiveProvider } from './contexts/ArchiveContext';
 import { TickProvider } from './contexts/TickContext';
+import { ResponsiveProvider } from './contexts/ResponsiveContext';
 import { Layout } from './components/Layout';
 import { useRouter } from './hooks/useRouter';
 import { HomePage } from './pages/HomePage';
@@ -43,19 +44,21 @@ function Router() {
 
 function App() {
 	return (
-		<ThemeProvider>
-			<AnimationProvider>
-				<NetworkProvider>
-					<ArchiveProvider>
-						<TickProvider>
-							<Layout>
-								<Router />
-							</Layout>
-						</TickProvider>
-					</ArchiveProvider>
-				</NetworkProvider>
-			</AnimationProvider>
-		</ThemeProvider>
+		<ResponsiveProvider>
+			<ThemeProvider>
+				<AnimationProvider>
+					<NetworkProvider>
+						<ArchiveProvider>
+							<TickProvider>
+								<Layout>
+									<Router />
+								</Layout>
+							</TickProvider>
+						</ArchiveProvider>
+					</NetworkProvider>
+				</AnimationProvider>
+			</ThemeProvider>
+		</ResponsiveProvider>
 	);
 }
 
