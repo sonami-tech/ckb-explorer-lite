@@ -43,6 +43,8 @@ export interface EnrichedTransaction {
 	outputCount: number;
 	/** Whether this is a cellbase (mining reward) transaction. */
 	isCellbase: boolean;
+	/** Original index in the block for sorting back to block order (BlockPage only). */
+	originalIndex?: number;
 }
 
 interface TransactionRowProps {

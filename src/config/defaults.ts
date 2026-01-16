@@ -79,3 +79,15 @@ export const PAGE_SIZE_CONFIG = {
 	/** Number of items to show in preview sections. */
 	preview: 10,
 } as const;
+
+/**
+ * Default filter values for BlockPage transaction filtering.
+ */
+export const DEFAULT_BLOCK_FILTERS = {
+	cellbase: 'all' as const,
+	minTotalCkb: null,
+	minInputs: null,
+	minOutputs: null,
+	typeScriptGroups: [] as string[],
+	lockScriptGroups: [] as string[],
+};

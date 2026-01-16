@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import { parseAddress } from '../lib/address';
 import { formatNumber } from '../lib/format';
@@ -17,6 +17,15 @@ import {
 	isCellbaseTransaction,
 	type EnrichedTransaction,
 } from '../components/TransactionRow';
+import {
+	AddressTransactionFilters,
+	DEFAULT_ADDRESS_FILTERS,
+	DEFAULT_ADDRESS_SORT,
+	buildIndexerFilter,
+	type AddressPageFilters,
+	type AddressPageSort,
+} from '../components/AddressTransactionFilters';
+import { ActiveFilterChips, type FilterChip } from '../components/ActiveFilterChips';
 import type { RpcScript, RpcGroupedTransactionInfo, IndexerSearchKey } from '../types/rpc';
 
 interface TransactionsForAddressPageProps {
@@ -49,8 +58,14 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	const [error, setError] = useState<Error | null>(null);
 	const [pageSize, setPageSize] = useState(getStoredPageSize);
 	const [referenceTimestamp, setReferenceTimestamp] = useState<number | undefined>(undefined);
+	const [filters, setFilters] = useState<AddressPageFilters>(DEFAULT_ADDRESS_FILTERS);
+	const [sort, setSort] = useState<AddressPageSort>(DEFAULT_ADDRESS_SORT);
+	const [filtersExpanded, setFiltersExpanded] = useState(false);
+	const [tipBlockNumber, setTipBlockNumber] = useState<bigint | null>(null);
 
 	const fetchIdRef = useRef(0);
+	const prevFiltersRef = useRef<string>(JSON.stringify(DEFAULT_ADDRESS_FILTERS));
+	const prevSortRef = useRef<string>(JSON.stringify(DEFAULT_ADDRESS_SORT));
 
 	// Parse address on mount.
 	useEffect(() => {
@@ -115,10 +130,18 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		setError(null);
 
 		try {
+			// Fetch tip header for block range filter presets.
+			const tipHeader = await rpc.getTipHeader();
+			const currentTip = BigInt(tipHeader.number);
+			setTipBlockNumber(currentTip);
+
+			// Build search key with filters.
+			const indexerFilter = buildIndexerFilter(filters, currentTip, networkType);
 			const searchKey: IndexerSearchKey = {
 				script,
 				script_type: 'lock',
 				script_search_mode: 'exact',
+				filter: indexerFilter,
 			};
 
 			// Fetch archive block timestamp if in archive mode.
@@ -132,7 +155,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 
 			const [txCountResult, groupedTxsResult] = await Promise.all([
 				rpc.getTransactionsCount(searchKey, archiveHeight),
-				rpc.getGroupedTransactions(searchKey, 'desc', pageSize, undefined, archiveHeight),
+				rpc.getGroupedTransactions(searchKey, sort.direction, pageSize, undefined, archiveHeight),
 			]);
 
 			if (fetchId !== fetchIdRef.current) return;
@@ -156,7 +179,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				setIsLoading(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, pageSize, enrichTransactions]);
+	}, [rpc, script, archiveHeight, pageSize, enrichTransactions, filters, sort.direction, networkType]);
 
 	useEffect(() => {
 		if (script) {
@@ -171,13 +194,16 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		setIsLoadingMore(true);
 
 		try {
+			// Build search key with filters.
+			const indexerFilter = buildIndexerFilter(filters, tipBlockNumber, networkType);
 			const searchKey: IndexerSearchKey = {
 				script,
 				script_type: 'lock',
 				script_search_mode: 'exact',
+				filter: indexerFilter,
 			};
 
-			const result = await rpc.getGroupedTransactions(searchKey, 'desc', pageSize, cursor, archiveHeight);
+			const result = await rpc.getGroupedTransactions(searchKey, sort.direction, pageSize, cursor, archiveHeight);
 
 			// Enrich new transactions.
 			const enriched = await enrichTransactions(result.objects);
@@ -199,6 +225,97 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		setTransactions([]);
 		setCursor(null);
 	};
+
+	// Reset pagination when filters or sort change.
+	useEffect(() => {
+		const currentFilters = JSON.stringify(filters);
+		const currentSort = JSON.stringify(sort);
+
+		if (currentFilters !== prevFiltersRef.current || currentSort !== prevSortRef.current) {
+			prevFiltersRef.current = currentFilters;
+			prevSortRef.current = currentSort;
+
+			// Reset pagination and reload.
+			setTransactions([]);
+			setCursor(null);
+		}
+	}, [filters, sort]);
+
+	// Build filter chips for display.
+	const filterChips = useMemo<FilterChip[]>(() => {
+		const chips: FilterChip[] = [];
+
+		if (filters.minCellCkb !== null) {
+			chips.push({
+				type: 'minCkb',
+				label: `Cell \u2265${filters.minCellCkb.toLocaleString()} CKB`,
+				value: String(filters.minCellCkb),
+			});
+		}
+
+		if (filters.typeScript !== null) {
+			chips.push({
+				type: 'typeScript',
+				label: filters.typeScript,
+				value: filters.typeScript,
+			});
+		}
+
+		if (filters.blockRange.preset !== 'all') {
+			let label = '';
+			switch (filters.blockRange.preset) {
+				case 'last_1k':
+					label = 'Last 1,000 blocks';
+					break;
+				case 'last_10k':
+					label = 'Last 10,000 blocks';
+					break;
+				case 'last_100k':
+					label = 'Last 100,000 blocks';
+					break;
+				case 'custom': {
+					const start = filters.blockRange.customStart;
+					const end = filters.blockRange.customEnd;
+					if (start !== null && end !== null) {
+						label = `Blocks ${start.toLocaleString()}-${end.toLocaleString()}`;
+					} else if (start !== null) {
+						label = `From block ${start.toLocaleString()}`;
+					} else if (end !== null) {
+						label = `To block ${end.toLocaleString()}`;
+					}
+					break;
+				}
+			}
+			chips.push({
+				type: 'blockRange',
+				label,
+				value: filters.blockRange.preset,
+			});
+		}
+
+		return chips;
+	}, [filters]);
+
+	// Handle filter chip removal.
+	const handleRemoveChip = useCallback((chip: FilterChip) => {
+		setFilters((prev) => {
+			switch (chip.type) {
+				case 'minCkb':
+					return { ...prev, minCellCkb: null };
+				case 'typeScript':
+					return { ...prev, typeScript: null };
+				case 'blockRange':
+					return { ...prev, blockRange: { preset: 'all', customStart: null, customEnd: null } };
+				default:
+					return prev;
+			}
+		});
+	}, []);
+
+	// Handle clear all filters.
+	const handleClearFilters = useCallback(() => {
+		setFilters(DEFAULT_ADDRESS_FILTERS);
+	}, []);
 
 	// Truncate address for display in header.
 	const truncatedAddress = address.length > 20
@@ -248,9 +365,32 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 					onClick={() => navigate(generateLink(`/address/${address}`))}
 					className="text-sm text-nervos hover:text-nervos-dark"
 				>
-					← Back to Address
+					&larr; Back to Address
 				</button>
 			</div>
+
+			{/* Filters panel. */}
+			<div className="mb-4">
+				<AddressTransactionFilters
+					filters={filters}
+					onFiltersChange={setFilters}
+					sort={sort}
+					onSortChange={setSort}
+					isExpanded={filtersExpanded}
+					onExpandedChange={setFiltersExpanded}
+				/>
+			</div>
+
+			{/* Active filter chips. */}
+			{filterChips.length > 0 && (
+				<div className="mb-4">
+					<ActiveFilterChips
+						chips={filterChips}
+						onRemove={handleRemoveChip}
+						onClearAll={handleClearFilters}
+					/>
+				</div>
+			)}
 
 			{/* Transactions list. */}
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -262,7 +402,9 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				<div>
 					{transactions.length === 0 ? (
 						<div className="p-4 text-sm text-gray-500 dark:text-gray-400 italic">
-							No transactions found for this address.
+							{filterChips.length > 0
+								? 'No transactions match the current filters.'
+								: 'No transactions found for this address.'}
 						</div>
 					) : (
 						transactions.map((tx) => (

@@ -356,7 +356,7 @@ interface ChevronButtonProps {
 	/** Whether the content is currently expanded. */
 	isExpanded: boolean;
 	/** Click handler. */
-	onClick: () => void;
+	onClick: (e?: React.MouseEvent) => void;
 	/** Additional CSS classes. */
 	className?: string;
 }
@@ -367,7 +367,7 @@ export function ChevronButton({ isExpanded, onClick, className = '' }: ChevronBu
 			<span
 				role="button"
 				tabIndex={0}
-				onClick={onClick}
+				onClick={(e) => onClick(e)}
 				onKeyDown={(e) => {
 					if (e.key === 'Enter' || e.key === ' ') {
 						e.preventDefault();

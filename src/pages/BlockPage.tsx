@@ -19,6 +19,7 @@ import { Tooltip } from '../components/Tooltip';
 import { DetailRow } from '../components/DetailRow';
 import { Pagination } from '../components/Pagination';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
+import { SortDropdown, type SortOption } from '../components/SortDropdown';
 import {
 	TransactionRow,
 	calculateTotalOutputCapacity,
@@ -27,8 +28,17 @@ import {
 	isCellbaseTransaction,
 	type EnrichedTransaction,
 } from '../components/TransactionRow';
+import {
+	TransactionFilters,
+	type BlockPageFilters,
+	type PresentScripts,
+	DEFAULT_BLOCK_FILTERS,
+} from '../components/TransactionFilters';
+import { ActiveFilterChips, type FilterChip } from '../components/ActiveFilterChips';
+import { FilterModal } from '../components/FilterModal';
+import { getTypeScriptGroup, getLockScriptGroups } from '../lib/scriptGroups';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
-import type { RpcBlock, RpcTransaction } from '../types/rpc';
+import type { RpcBlock, RpcCellOutput, RpcTransaction } from '../types/rpc';
 import type { NetworkType } from '../config/networks';
 
 interface BlockPageProps {
@@ -36,6 +46,98 @@ interface BlockPageProps {
 }
 
 const STORAGE_KEY = 'ckb-explorer-txs-page-size';
+
+const SORT_OPTIONS: SortOption[] = [
+	{ field: 'block_order', label: 'Block Order', ascLabel: 'First to Last', descLabel: 'Last to First' },
+	{ field: 'ckb_amount', label: 'CKB Amount', ascLabel: 'Lowest First', descLabel: 'Highest First' },
+	{ field: 'input_count', label: 'Input Count', ascLabel: 'Fewest First', descLabel: 'Most First' },
+	{ field: 'output_count', label: 'Output Count', ascLabel: 'Fewest First', descLabel: 'Most First' },
+];
+
+const DEFAULT_SORT = { field: 'block_order', direction: 'asc' as const };
+
+/**
+ * Sort enriched transactions by the specified field and direction.
+ */
+function sortTransactions(
+	transactions: EnrichedTransaction[],
+	sort: { field: string; direction: 'asc' | 'desc' }
+): EnrichedTransaction[] {
+	return [...transactions].sort((a, b) => {
+		let comparison = 0;
+		switch (sort.field) {
+			case 'block_order':
+				comparison = (a.originalIndex ?? 0) - (b.originalIndex ?? 0);
+				break;
+			case 'ckb_amount':
+				comparison = Number(a.totalCapacity - b.totalCapacity);
+				break;
+			case 'input_count':
+				comparison = a.inputCount - b.inputCount;
+				break;
+			case 'output_count':
+				comparison = a.outputCount - b.outputCount;
+				break;
+		}
+		if (sort.direction === 'desc') comparison = -comparison;
+		// Tiebreaker: original block order.
+		if (comparison === 0 && sort.field !== 'block_order') {
+			comparison = (a.originalIndex ?? 0) - (b.originalIndex ?? 0);
+		}
+		return comparison;
+	});
+}
+
+/**
+ * Filter enriched transactions based on the given filter criteria.
+ */
+function filterTransactions(
+	transactions: EnrichedTransaction[],
+	rawTransactions: RpcTransaction[],
+	filters: BlockPageFilters,
+	network: NetworkType
+): EnrichedTransaction[] {
+	return transactions.filter((tx) => {
+		const rawTx = rawTransactions[tx.originalIndex ?? 0];
+
+		// Cellbase filter.
+		if (filters.cellbase === 'only' && !tx.isCellbase) return false;
+		if (filters.cellbase === 'exclude' && tx.isCellbase) return false;
+
+		// Min total CKB filter.
+		if (filters.minTotalCkb !== null) {
+			const totalCkb = Number(tx.totalCapacity) / 100_000_000;
+			if (totalCkb < filters.minTotalCkb) return false;
+		}
+
+		// Min inputs filter.
+		if (filters.minInputs !== null && tx.inputCount < filters.minInputs) return false;
+
+		// Min outputs filter.
+		if (filters.minOutputs !== null && tx.outputCount < filters.minOutputs) return false;
+
+		// Type script groups filter (OR logic within groups).
+		if (filters.typeScriptGroups.length > 0) {
+			const hasMatchingType = rawTx.outputs.some((output: RpcCellOutput) => {
+				if (!output.type) return false;
+				const groups = getTypeScriptGroup(output.type.code_hash, network);
+				return groups && groups.some(g => filters.typeScriptGroups.includes(g));
+			});
+			if (!hasMatchingType) return false;
+		}
+
+		// Lock script groups filter (OR logic within groups).
+		if (filters.lockScriptGroups.length > 0) {
+			const hasMatchingLock = rawTx.outputs.some((output: RpcCellOutput) => {
+				const groups = getLockScriptGroups(output.lock.code_hash, network);
+				return groups && groups.some(g => filters.lockScriptGroups.includes(g));
+			});
+			if (!hasMatchingLock) return false;
+		}
+
+		return true;
+	});
+}
 
 function getStoredPageSize(): number {
 	const stored = localStorage.getItem(STORAGE_KEY);
@@ -68,6 +170,7 @@ function enrichTransaction(
 		inputCount: tx.inputs.length,
 		outputCount: tx.outputs.length,
 		isCellbase: isCellbaseTransaction(tx),
+		originalIndex: index,
 	};
 }
 
@@ -84,6 +187,14 @@ export function BlockPage({ id }: BlockPageProps) {
 	const [currentPage, setCurrentPage] = useState(1);
 	const [pageSize, setPageSize] = useState(getStoredPageSize);
 
+	// Sort state.
+	const [sort, setSort] = useState<{ field: string; direction: 'asc' | 'desc' }>(DEFAULT_SORT);
+
+	// Filter state.
+	const [filters, setFilters] = useState<BlockPageFilters>(DEFAULT_BLOCK_FILTERS);
+	const [filtersExpanded, setFiltersExpanded] = useState(false);
+	const [filterModalOpen, setFilterModalOpen] = useState(false);
+
 	// Cache for enriched transactions (indexed by original position).
 	const enrichedCacheRef = useRef<Map<number, EnrichedTransaction>>(new Map());
 
@@ -95,8 +206,10 @@ export function BlockPage({ id }: BlockPageProps) {
 
 		setIsLoading(true);
 		setError(null);
-		// Reset pagination and cache on new block fetch.
+		// Reset pagination, sort, filters, and cache on new block fetch.
 		setCurrentPage(1);
+		setSort(DEFAULT_SORT);
+		setFilters(DEFAULT_BLOCK_FILTERS);
 		enrichedCacheRef.current = new Map();
 
 		try {
@@ -143,29 +256,150 @@ export function BlockPage({ id }: BlockPageProps) {
 	}, []);
 
 	// Derive values from block (may be null during loading).
-	const transactions = block?.transactions ?? [];
+	const transactions = useMemo(() => block?.transactions ?? [], [block]);
 	const totalTransactions = transactions.length;
-	const startIndex = (currentPage - 1) * pageSize;
-	const endIndex = Math.min(startIndex + pageSize, totalTransactions);
-	const currentPageTransactions = transactions.slice(startIndex, endIndex);
 	const blockNumber = block ? BigInt(block.header.number) : 0n;
 	const blockTimestamp = block ? Number(BigInt(block.header.timestamp)) : 0;
 
-	// Lazily enrich transactions for the current page with caching.
+	// Enrich all transactions with caching (needed for sorting).
 	// Must be called unconditionally (React hooks rule).
-	const enrichedTransactions = useMemo(() => {
+	const allEnrichedTransactions = useMemo(() => {
 		if (!block) return [];
-		return currentPageTransactions.map((tx, localIndex) => {
-			const globalIndex = startIndex + localIndex;
-			const cached = enrichedCacheRef.current.get(globalIndex);
+		return transactions.map((tx, index) => {
+			const cached = enrichedCacheRef.current.get(index);
 			if (cached) {
 				return cached;
 			}
-			const enriched = enrichTransaction(tx, globalIndex, blockNumber, blockTimestamp, networkType);
-			enrichedCacheRef.current.set(globalIndex, enriched);
+			const enriched = enrichTransaction(tx, index, blockNumber, blockTimestamp, networkType);
+			enrichedCacheRef.current.set(index, enriched);
 			return enriched;
 		});
-	}, [block, currentPageTransactions, startIndex, blockNumber, blockTimestamp, networkType]);
+	}, [block, transactions, blockNumber, blockTimestamp, networkType]);
+
+	// Sort transactions.
+	const sortedTransactions = useMemo(
+		() => sortTransactions(allEnrichedTransactions, sort),
+		[allEnrichedTransactions, sort]
+	);
+
+	// Scan transactions for present scripts to show only relevant filter options.
+	const presentScripts = useMemo<PresentScripts>(() => {
+		const typeGroups = new Map<string, number>();
+		const lockGroups = new Map<string, number>();
+
+		for (const tx of transactions) {
+			const seenTypeGroups = new Set<string>();
+			const seenLockGroups = new Set<string>();
+
+			for (const output of tx.outputs) {
+				// Check type script groups.
+				if (output.type) {
+					const groups = getTypeScriptGroup(output.type.code_hash, networkType);
+					if (groups) {
+						for (const group of groups) {
+							seenTypeGroups.add(group);
+						}
+					}
+				}
+
+				// Check lock script groups.
+				const lockGroupsList = getLockScriptGroups(output.lock.code_hash, networkType);
+				if (lockGroupsList) {
+					for (const group of lockGroupsList) {
+						seenLockGroups.add(group);
+					}
+				}
+			}
+
+			// Increment counts for scripts seen in this transaction.
+			for (const group of seenTypeGroups) {
+				typeGroups.set(group, (typeGroups.get(group) || 0) + 1);
+			}
+			for (const group of seenLockGroups) {
+				lockGroups.set(group, (lockGroups.get(group) || 0) + 1);
+			}
+		}
+
+		return { typeGroups, lockGroups };
+	}, [transactions, networkType]);
+
+	// Filter transactions.
+	const filteredTransactions = useMemo(
+		() => filterTransactions(sortedTransactions, transactions, filters, networkType),
+		[sortedTransactions, transactions, filters, networkType]
+	);
+
+	const filteredCount = filteredTransactions.length;
+	const isFiltered = filteredCount !== totalTransactions;
+
+	// Build filter chips for display.
+	const filterChips = useMemo<FilterChip[]>(() => {
+		const chips: FilterChip[] = [];
+
+		if (filters.cellbase === 'only') {
+			chips.push({ type: 'cellbase', label: 'Cellbase Only', value: 'only' });
+		} else if (filters.cellbase === 'exclude') {
+			chips.push({ type: 'cellbase', label: 'Exclude Cellbase', value: 'exclude' });
+		}
+
+		if (filters.minTotalCkb !== null) {
+			chips.push({ type: 'minCkb', label: `>=${filters.minTotalCkb.toLocaleString()} CKB`, value: String(filters.minTotalCkb) });
+		}
+
+		if (filters.minInputs !== null) {
+			chips.push({ type: 'minInputs', label: `>=${filters.minInputs} inputs`, value: String(filters.minInputs) });
+		}
+
+		if (filters.minOutputs !== null) {
+			chips.push({ type: 'minOutputs', label: `>=${filters.minOutputs} outputs`, value: String(filters.minOutputs) });
+		}
+
+		for (const group of filters.typeScriptGroups) {
+			chips.push({ type: 'typeScript', label: group, value: group });
+		}
+
+		for (const group of filters.lockScriptGroups) {
+			chips.push({ type: 'lockScript', label: group, value: group });
+		}
+
+		return chips;
+	}, [filters]);
+
+	// Handle chip removal.
+	const handleRemoveChip = useCallback((chip: FilterChip) => {
+		setFilters(prev => {
+			switch (chip.type) {
+				case 'cellbase':
+					return { ...prev, cellbase: 'all' };
+				case 'minCkb':
+					return { ...prev, minTotalCkb: null };
+				case 'minInputs':
+					return { ...prev, minInputs: null };
+				case 'minOutputs':
+					return { ...prev, minOutputs: null };
+				case 'typeScript':
+					return { ...prev, typeScriptGroups: prev.typeScriptGroups.filter(g => g !== chip.value) };
+				case 'lockScript':
+					return { ...prev, lockScriptGroups: prev.lockScriptGroups.filter(g => g !== chip.value) };
+				default:
+					return prev;
+			}
+		});
+	}, []);
+
+	const handleClearFilters = useCallback(() => {
+		setFilters(DEFAULT_BLOCK_FILTERS);
+	}, []);
+
+	// Reset to first page when filters change.
+	useEffect(() => {
+		setCurrentPage(1);
+	}, [filters]);
+
+	// Paginate filtered transactions.
+	const startIndex = (currentPage - 1) * pageSize;
+	const endIndex = Math.min(startIndex + pageSize, filteredCount);
+	const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
 
 	if (isLoading) {
 		return (
@@ -189,7 +423,7 @@ export function BlockPage({ id }: BlockPageProps) {
 
 	const { header, proposals } = block;
 	const timestamp = BigInt(header.timestamp);
-	const totalPages = Math.max(1, Math.ceil(totalTransactions / pageSize));
+	const totalPages = Math.max(1, Math.ceil(filteredCount / pageSize));
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
@@ -273,24 +507,96 @@ export function BlockPage({ id }: BlockPageProps) {
 			{/* Transactions. */}
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
-					<div className="flex items-center justify-between">
-						<h2 className="font-semibold text-gray-900 dark:text-white">
-							Transactions ({formatNumber(totalTransactions)})
-						</h2>
-						{totalPages > 1 && (
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+						<div className="flex items-center gap-4">
+							<h2 className="font-semibold text-gray-900 dark:text-white">
+								Transactions ({formatNumber(totalTransactions)})
+							</h2>
+							{/* Desktop: SortDropdown. */}
+							{totalTransactions > 1 && (
+								<div className="hidden md:block">
+									<SortDropdown
+										options={SORT_OPTIONS}
+										value={sort}
+										onChange={setSort}
+									/>
+								</div>
+							)}
+							{/* Mobile: Filter & Sort button. */}
+							{totalTransactions > 1 && (
+								<button
+									type="button"
+									onClick={() => setFilterModalOpen(true)}
+									className="flex md:hidden items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+								>
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+									</svg>
+									Filter & Sort
+									{filterChips.length > 0 && (
+										<span className="flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-semibold text-white bg-nervos rounded-full">
+											{filterChips.length}
+										</span>
+									)}
+								</button>
+							)}
+						</div>
+						{(totalPages > 1 || isFiltered) && (
 							<span className="text-sm text-gray-500 dark:text-gray-400">
-								Showing {startIndex + 1}-{endIndex} of {formatNumber(totalTransactions)}
+								{isFiltered
+									? `Showing ${filteredCount === 0 ? 0 : startIndex + 1}-${endIndex} of ${formatNumber(filteredCount)} (${formatNumber(totalTransactions)} total)`
+									: `Showing ${startIndex + 1}-${endIndex} of ${formatNumber(totalTransactions)}`
+								}
 							</span>
 						)}
 					</div>
 				</div>
+
+				{/* Filters panel (desktop only). */}
+				{totalTransactions > 1 && (
+					<div className="hidden md:block p-4 border-b border-gray-200 dark:border-gray-700">
+						<TransactionFilters
+							filters={filters}
+							onFiltersChange={setFilters}
+							presentScripts={presentScripts}
+							isExpanded={filtersExpanded}
+							onExpandedChange={setFiltersExpanded}
+						/>
+
+						{/* Active filter chips (desktop). */}
+						{filterChips.length > 0 && (
+							<div className="mt-3">
+								<ActiveFilterChips
+									chips={filterChips}
+									onRemove={handleRemoveChip}
+									onClearAll={handleClearFilters}
+								/>
+							</div>
+						)}
+					</div>
+				)}
+
+				{/* Active filter chips (mobile only). */}
+				{totalTransactions > 1 && filterChips.length > 0 && (
+					<div className="md:hidden p-4 border-b border-gray-200 dark:border-gray-700">
+						<ActiveFilterChips
+							chips={filterChips}
+							onRemove={handleRemoveChip}
+							onClearAll={handleClearFilters}
+						/>
+					</div>
+				)}
+
 				<div>
-					{enrichedTransactions.length === 0 ? (
+					{paginatedTransactions.length === 0 ? (
 						<div className="p-4 text-sm text-gray-500 dark:text-gray-400 italic">
-							No transactions in this block.
+							{isFiltered
+								? 'No transactions match the current filters.'
+								: 'No transactions in this block.'
+							}
 						</div>
 					) : (
-						enrichedTransactions.map((tx) => (
+						paginatedTransactions.map((tx) => (
 							<TransactionRow
 								key={tx.txHash}
 								transaction={tx}
@@ -298,11 +604,11 @@ export function BlockPage({ id }: BlockPageProps) {
 						))
 					)}
 				</div>
-				{totalTransactions > 0 && (
+				{filteredCount > 0 && (
 					<div className="p-4 border-t border-gray-200 dark:border-gray-700">
 						<Pagination
 							currentPage={currentPage}
-							totalItems={totalTransactions}
+							totalItems={filteredCount}
 							pageSize={pageSize}
 							pageSizeOptions={PAGE_SIZE_CONFIG.options}
 							onPageChange={setCurrentPage}
@@ -311,6 +617,19 @@ export function BlockPage({ id }: BlockPageProps) {
 					</div>
 				)}
 			</div>
+
+			{/* Mobile filter modal. */}
+			<FilterModal
+				isOpen={filterModalOpen}
+				onClose={() => setFilterModalOpen(false)}
+				sortOptions={SORT_OPTIONS}
+				sortValue={sort}
+				onSortChange={setSort}
+				filters={filters}
+				onFiltersChange={setFilters}
+				presentScripts={presentScripts}
+				onClearAll={handleClearFilters}
+			/>
 		</div>
 	);
 }
