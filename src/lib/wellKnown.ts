@@ -16,6 +16,7 @@
  */
 
 import type { NetworkType } from '../config/networks';
+import type { RpcScript } from '../types/rpc';
 
 /** Hash type values used in CKB scripts. */
 export type HashType = 'type' | 'data' | 'data1' | 'data2';
@@ -1192,4 +1193,17 @@ export function lookupWellKnownCell(
 	const registryNetwork = toRegistryNetwork(network);
 	const key = `${txHash}:${index}`;
 	return WELL_KNOWN_CELLS[registryNetwork][key] ?? null;
+}
+
+/**
+ * Get the NervosDAO type script.
+ * Used for filtering DAO cells in indexer queries.
+ * Note: The code_hash is the same for mainnet and testnet.
+ */
+export function getDaoTypeScript(): RpcScript {
+	return {
+		code_hash: '0x82d76d1b75fe2fd9a27dfbaa65a039221a380d76c926f378d3f81cf3e7e13f2e',
+		hash_type: 'type',
+		args: '0x',
+	};
 }

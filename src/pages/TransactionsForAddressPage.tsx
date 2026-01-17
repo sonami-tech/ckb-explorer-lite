@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import { parseAddress } from '../lib/address';
-import { formatNumber } from '../lib/format';
-import { navigate, generateLink } from '../lib/router';
+import { formatNumber, formatActivitySpan, formatCkb } from '../lib/format';
+import { DetailRow } from '../components/DetailRow';
+import { AddressDisplay } from '../components/AddressDisplay';
+import { getDaoTypeScript } from '../lib/wellKnown';
+import { generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
@@ -18,13 +21,14 @@ import {
 	type EnrichedTransaction,
 } from '../components/TransactionRow';
 import {
-	AddressTransactionFilters,
 	DEFAULT_ADDRESS_FILTERS,
 	DEFAULT_ADDRESS_SORT,
 	buildIndexerFilter,
 	type AddressPageFilters,
 	type AddressPageSort,
 } from '../components/AddressTransactionFilters';
+import { FilterSortButton } from '../components/FilterSortButton';
+import { AddressFilterModal } from '../components/AddressFilterModal';
 import { ActiveFilterChips, type FilterChip } from '../components/ActiveFilterChips';
 import type { RpcScript, RpcGroupedTransactionInfo, IndexerSearchKey } from '../types/rpc';
 
@@ -60,8 +64,23 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	const [referenceTimestamp, setReferenceTimestamp] = useState<number | undefined>(undefined);
 	const [filters, setFilters] = useState<AddressPageFilters>(DEFAULT_ADDRESS_FILTERS);
 	const [sort, setSort] = useState<AddressPageSort>(DEFAULT_ADDRESS_SORT);
-	const [filtersExpanded, setFiltersExpanded] = useState(false);
+	const [filterModalOpen, setFilterModalOpen] = useState(false);
 	const [tipBlockNumber, setTipBlockNumber] = useState<bigint | null>(null);
+
+	// Overview stats state.
+	const [balance, setBalance] = useState<bigint | null>(null);
+	const [firstActivity, setFirstActivity] = useState<{
+		txHash: string;
+		blockNumber: bigint;
+		timestamp: number;
+	} | null>(null);
+	const [lastActivity, setLastActivity] = useState<{
+		txHash: string;
+		blockNumber: bigint;
+		timestamp: number;
+	} | null>(null);
+	const [daoLockedCapacity, setDaoLockedCapacity] = useState<bigint | null>(null);
+	const [daoCellCount, setDaoCellCount] = useState<bigint | null>(null);
 
 	const fetchIdRef = useRef(0);
 	const prevFiltersRef = useRef<string>(JSON.stringify(DEFAULT_ADDRESS_FILTERS));
@@ -153,15 +172,77 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				}
 			}
 
-			const [txCountResult, groupedTxsResult] = await Promise.all([
+			// Build DAO filter for DAO-specific queries.
+			// Filter by DAO type script (args: '0x' matches all DAO cells).
+			const daoScript = getDaoTypeScript();
+			const daoSearchKey: IndexerSearchKey = {
+				script,
+				script_type: 'lock',
+				script_search_mode: 'exact',
+				filter: {
+					script: daoScript,
+				},
+			};
+
+			// Fetch overview stats in parallel with existing calls.
+			const [
+				txCountResult,
+				groupedTxsResult,
+				balanceResult,
+				firstTxResult,
+				daoCapacityResult,
+				daoCellCountResult,
+			] = await Promise.all([
 				rpc.getTransactionsCount(searchKey, archiveHeight),
 				rpc.getGroupedTransactions(searchKey, sort.direction, pageSize, undefined, archiveHeight),
+				rpc.getCellsCapacity(searchKey, archiveHeight),
+				rpc.getGroupedTransactions(searchKey, 'asc', 1, undefined, archiveHeight),
+				rpc.getCellsCapacity(daoSearchKey, archiveHeight),
+				rpc.getCellsCount(daoSearchKey, archiveHeight),
 			]);
+
+			if (fetchId !== fetchIdRef.current) return;
+
+			// Process first activity.
+			let firstActivityData: typeof firstActivity = null;
+			if (firstTxResult.objects.length > 0) {
+				const firstTx = firstTxResult.objects[0];
+				const firstHeader = await rpc.getHeaderByNumber(BigInt(firstTx.block_number), archiveHeight);
+				firstActivityData = {
+					txHash: firstTx.tx_hash,
+					blockNumber: BigInt(firstTx.block_number),
+					timestamp: firstHeader ? Number(BigInt(firstHeader.timestamp)) : Date.now(),
+				};
+			}
+
+			// Process last activity (from the first item of desc-ordered results).
+			let lastActivityData: typeof lastActivity = null;
+			if (groupedTxsResult.objects.length > 0) {
+				const lastTx = groupedTxsResult.objects[0];
+				// Only fetch header if different from first activity block.
+				let lastTimestamp: number;
+				if (firstActivityData && firstActivityData.blockNumber === BigInt(lastTx.block_number)) {
+					lastTimestamp = firstActivityData.timestamp;
+				} else {
+					const lastHeader = await rpc.getHeaderByNumber(BigInt(lastTx.block_number), archiveHeight);
+					lastTimestamp = lastHeader ? Number(BigInt(lastHeader.timestamp)) : Date.now();
+				}
+				lastActivityData = {
+					txHash: lastTx.tx_hash,
+					blockNumber: BigInt(lastTx.block_number),
+					timestamp: lastTimestamp,
+				};
+			}
 
 			if (fetchId !== fetchIdRef.current) return;
 
 			setTransactionCount(BigInt(txCountResult.count));
 			setReferenceTimestamp(archiveTimestamp);
+			setBalance(balanceResult);
+			setFirstActivity(firstActivityData);
+			setLastActivity(lastActivityData);
+			setDaoLockedCapacity(daoCapacityResult);
+			setDaoCellCount(BigInt(daoCellCountResult.count));
 
 			// Enrich transactions with full details.
 			const enriched = await enrichTransactions(groupedTxsResult.objects);
@@ -248,7 +329,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		if (filters.minCellCkb !== null) {
 			chips.push({
 				type: 'minCkb',
-				label: `Cell \u2265${filters.minCellCkb.toLocaleString()} CKB`,
+				label: `Cell ≥${filters.minCellCkb.toLocaleString()} CKB`,
 				value: String(filters.minCellCkb),
 			});
 		}
@@ -317,11 +398,6 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		setFilters(DEFAULT_ADDRESS_FILTERS);
 	}, []);
 
-	// Truncate address for display in header.
-	const truncatedAddress = address.length > 20
-		? `${address.slice(0, 12)}...${address.slice(-8)}`
-		: address;
-
 	if (isLoading) {
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
@@ -354,43 +430,118 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 					<span aria-current="page">Transactions</span>
 				</nav>
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-					Transactions for {truncatedAddress}
+					Transactions for Address
 					{archiveHeight !== undefined && ` @ Block ${formatNumber(archiveHeight)}`}
 				</h1>
 			</div>
 
-			{/* Back to address link. */}
-			<div className="mb-4">
-				<button
-					onClick={() => navigate(generateLink(`/address/${address}`))}
-					className="text-sm text-nervos hover:text-nervos-dark"
-				>
-					&larr; Back to Address
-				</button>
-			</div>
-
-			{/* Filters panel. */}
-			<div className="mb-4">
-				<AddressTransactionFilters
-					filters={filters}
-					onFiltersChange={setFilters}
-					sort={sort}
-					onSortChange={setSort}
-					isExpanded={filtersExpanded}
-					onExpandedChange={setFiltersExpanded}
-				/>
-			</div>
-
-			{/* Active filter chips. */}
-			{filterChips.length > 0 && (
-				<div className="mb-4">
-					<ActiveFilterChips
-						chips={filterChips}
-						onRemove={handleRemoveChip}
-						onClearAll={handleClearFilters}
-					/>
+			{/* Overview section. */}
+			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+					<h2 className="font-semibold text-gray-900 dark:text-white">Overview</h2>
 				</div>
-			)}
+				<div className="divide-y divide-gray-200 dark:divide-gray-700">
+					<DetailRow label="Address">
+						<InternalLink href={generateLink(`/address/${address}`)}>
+							<AddressDisplay address={address} truncate={false} />
+						</InternalLink>
+					</DetailRow>
+
+					<DetailRow label="Total Balance">
+						<span className="text-lg font-semibold text-nervos">
+							{balance !== null ? formatCkb(balance) : '...'}
+						</span>
+					</DetailRow>
+
+					<DetailRow label="Transactions">
+						<span className="font-mono text-gray-900 dark:text-white">
+							{transactionCount !== null ? formatNumber(transactionCount) : '...'}
+						</span>
+					</DetailRow>
+
+					<DetailRow label="DAO Deposits">
+						<span className="text-gray-900 dark:text-white">
+							{daoCellCount !== null
+								? `${formatNumber(daoCellCount)} cell${daoCellCount === 1n ? '' : 's'}`
+								: '...'}
+						</span>
+					</DetailRow>
+
+					<DetailRow label="DAO Locked">
+						{daoLockedCapacity !== null && balance !== null ? (
+							<span className="text-gray-900 dark:text-white">
+								{formatCkb(daoLockedCapacity)}
+								{daoLockedCapacity > 0n && balance > 0n && (
+									<span className="text-gray-500 dark:text-gray-400 ml-2">
+										({((Number(daoLockedCapacity) / Number(balance)) * 100).toFixed(1)}% of balance)
+									</span>
+								)}
+							</span>
+						) : (
+							<span className="text-gray-500 dark:text-gray-400">...</span>
+						)}
+					</DetailRow>
+
+					<DetailRow label="Activity Span">
+						{firstActivity && lastActivity ? (
+							<span className="text-gray-900 dark:text-white">
+								{formatActivitySpan(
+									firstActivity.blockNumber,
+									lastActivity.blockNumber,
+									firstActivity.timestamp,
+									lastActivity.timestamp
+								)}
+							</span>
+						) : (
+							<span className="text-gray-500 dark:text-gray-400">...</span>
+						)}
+					</DetailRow>
+
+					<DetailRow label="First Activity">
+						{firstActivity ? (
+							<span className="text-gray-900 dark:text-white">
+								<InternalLink
+									href={generateLink(`/tx/${firstActivity.txHash}`)}
+									className="text-nervos hover:text-nervos-dark"
+								>
+									{formatNumber(firstActivity.blockNumber)}
+								</InternalLink>
+								<span className="text-gray-500 dark:text-gray-400 ml-2">
+									({new Date(firstActivity.timestamp).toLocaleDateString('en-US', {
+										year: 'numeric',
+										month: 'short',
+										day: 'numeric',
+									})})
+								</span>
+							</span>
+						) : (
+							<span className="text-gray-500 dark:text-gray-400">...</span>
+						)}
+					</DetailRow>
+
+					<DetailRow label="Last Activity">
+						{lastActivity ? (
+							<span className="text-gray-900 dark:text-white">
+								<InternalLink
+									href={generateLink(`/tx/${lastActivity.txHash}`)}
+									className="text-nervos hover:text-nervos-dark"
+								>
+									{formatNumber(lastActivity.blockNumber)}
+								</InternalLink>
+								<span className="text-gray-500 dark:text-gray-400 ml-2">
+									({new Date(lastActivity.timestamp).toLocaleDateString('en-US', {
+										year: 'numeric',
+										month: 'short',
+										day: 'numeric',
+									})})
+								</span>
+							</span>
+						) : (
+							<span className="text-gray-500 dark:text-gray-400">...</span>
+						)}
+					</DetailRow>
+				</div>
+			</div>
 
 			{/* Transactions list. */}
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -398,7 +549,23 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 					<h2 className="font-semibold text-gray-900 dark:text-white">
 						Transactions ({transactionCount !== null ? formatNumber(transactionCount) : '...'})
 					</h2>
+					<FilterSortButton
+						onClick={() => setFilterModalOpen(true)}
+						activeFilterCount={filterChips.length}
+					/>
 				</div>
+
+				{/* Active filter chips. */}
+				{filterChips.length > 0 && (
+					<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+						<ActiveFilterChips
+							chips={filterChips}
+							onRemove={handleRemoveChip}
+							onClearAll={handleClearFilters}
+						/>
+					</div>
+				)}
+
 				<div>
 					{transactions.length === 0 ? (
 						<div className="p-4 text-sm text-gray-500 dark:text-gray-400 italic">
@@ -452,6 +619,18 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 					</div>
 				)}
 			</div>
+
+			{/* Filter modal. */}
+			<AddressFilterModal
+				isOpen={filterModalOpen}
+				onClose={() => setFilterModalOpen(false)}
+				filters={filters}
+				sort={sort}
+				onApply={(newFilters, newSort) => {
+					setFilters(newFilters);
+					setSort(newSort);
+				}}
+			/>
 		</div>
 	);
 }

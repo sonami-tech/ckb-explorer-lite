@@ -19,7 +19,7 @@ import { Tooltip } from '../components/Tooltip';
 import { DetailRow } from '../components/DetailRow';
 import { Pagination } from '../components/Pagination';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
-import { SortDropdown, type SortOption } from '../components/SortDropdown';
+import { type SortOption } from '../components/SortDropdown';
 import {
 	TransactionRow,
 	calculateTotalOutputCapacity,
@@ -29,13 +29,13 @@ import {
 	type EnrichedTransaction,
 } from '../components/TransactionRow';
 import {
-	TransactionFilters,
 	type BlockPageFilters,
 	type PresentScripts,
 	DEFAULT_BLOCK_FILTERS,
 } from '../components/TransactionFilters';
+import { FilterSortButton } from '../components/FilterSortButton';
 import { ActiveFilterChips, type FilterChip } from '../components/ActiveFilterChips';
-import { FilterModal } from '../components/FilterModal';
+import { BlockFilterModal } from '../components/BlockFilterModal';
 import { getTypeScriptGroup, getLockScriptGroups } from '../lib/scriptGroups';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import type { RpcBlock, RpcCellOutput, RpcTransaction } from '../types/rpc';
@@ -192,7 +192,6 @@ export function BlockPage({ id }: BlockPageProps) {
 
 	// Filter state.
 	const [filters, setFilters] = useState<BlockPageFilters>(DEFAULT_BLOCK_FILTERS);
-	const [filtersExpanded, setFiltersExpanded] = useState(false);
 	const [filterModalOpen, setFilterModalOpen] = useState(false);
 
 	// Cache for enriched transactions (indexed by original position).
@@ -391,6 +390,12 @@ export function BlockPage({ id }: BlockPageProps) {
 		setFilters(DEFAULT_BLOCK_FILTERS);
 	}, []);
 
+	// Handle filter modal apply: update both filters and sort at once.
+	const handleFilterModalApply = useCallback((newFilters: BlockPageFilters, newSort: { field: string; direction: 'asc' | 'desc' }) => {
+		setFilters(newFilters);
+		setSort(newSort);
+	}, []);
+
 	// Reset to first page when filters change.
 	useEffect(() => {
 		setCurrentPage(1);
@@ -507,78 +512,28 @@ export function BlockPage({ id }: BlockPageProps) {
 			{/* Transactions. */}
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
-					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-						<div className="flex items-center gap-4">
-							<h2 className="font-semibold text-gray-900 dark:text-white">
-								Transactions ({formatNumber(totalTransactions)})
-							</h2>
-							{/* Desktop: SortDropdown. */}
-							{totalTransactions > 1 && (
-								<div className="hidden md:block">
-									<SortDropdown
-										options={SORT_OPTIONS}
-										value={sort}
-										onChange={setSort}
-									/>
-								</div>
+					<div className="flex items-center justify-between">
+						<h2 className="font-semibold text-gray-900 dark:text-white">
+							Transactions {(totalPages > 1 || isFiltered) ? (
+								isFiltered
+									? `(${filteredCount === 0 ? 0 : startIndex + 1}-${endIndex} of ${formatNumber(filteredCount)}, ${formatNumber(totalTransactions)} total)`
+									: `(${startIndex + 1}-${endIndex} of ${formatNumber(totalTransactions)})`
+							) : (
+								`(${formatNumber(totalTransactions)})`
 							)}
-							{/* Mobile: Filter & Sort button. */}
-							{totalTransactions > 1 && (
-								<button
-									type="button"
-									onClick={() => setFilterModalOpen(true)}
-									className="flex md:hidden items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-								>
-									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-									</svg>
-									Filter & Sort
-									{filterChips.length > 0 && (
-										<span className="flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-semibold text-white bg-nervos rounded-full">
-											{filterChips.length}
-										</span>
-									)}
-								</button>
-							)}
-						</div>
-						{(totalPages > 1 || isFiltered) && (
-							<span className="text-sm text-gray-500 dark:text-gray-400">
-								{isFiltered
-									? `Showing ${filteredCount === 0 ? 0 : startIndex + 1}-${endIndex} of ${formatNumber(filteredCount)} (${formatNumber(totalTransactions)} total)`
-									: `Showing ${startIndex + 1}-${endIndex} of ${formatNumber(totalTransactions)}`
-								}
-							</span>
+						</h2>
+						{totalTransactions > 1 && (
+							<FilterSortButton
+								onClick={() => setFilterModalOpen(true)}
+								activeFilterCount={filterChips.length}
+							/>
 						)}
 					</div>
 				</div>
 
-				{/* Filters panel (desktop only). */}
-				{totalTransactions > 1 && (
-					<div className="hidden md:block p-4 border-b border-gray-200 dark:border-gray-700">
-						<TransactionFilters
-							filters={filters}
-							onFiltersChange={setFilters}
-							presentScripts={presentScripts}
-							isExpanded={filtersExpanded}
-							onExpandedChange={setFiltersExpanded}
-						/>
-
-						{/* Active filter chips (desktop). */}
-						{filterChips.length > 0 && (
-							<div className="mt-3">
-								<ActiveFilterChips
-									chips={filterChips}
-									onRemove={handleRemoveChip}
-									onClearAll={handleClearFilters}
-								/>
-							</div>
-						)}
-					</div>
-				)}
-
-				{/* Active filter chips (mobile only). */}
+				{/* Active filter chips. */}
 				{totalTransactions > 1 && filterChips.length > 0 && (
-					<div className="md:hidden p-4 border-b border-gray-200 dark:border-gray-700">
+					<div className="p-4 border-b border-gray-200 dark:border-gray-700">
 						<ActiveFilterChips
 							chips={filterChips}
 							onRemove={handleRemoveChip}
@@ -619,16 +574,15 @@ export function BlockPage({ id }: BlockPageProps) {
 			</div>
 
 			{/* Mobile filter modal. */}
-			<FilterModal
+			<BlockFilterModal
 				isOpen={filterModalOpen}
 				onClose={() => setFilterModalOpen(false)}
 				sortOptions={SORT_OPTIONS}
 				sortValue={sort}
-				onSortChange={setSort}
 				filters={filters}
-				onFiltersChange={setFilters}
 				presentScripts={presentScripts}
-				onClearAll={handleClearFilters}
+				defaultSort={DEFAULT_SORT}
+				onApply={handleFilterModalApply}
 			/>
 		</div>
 	);

@@ -336,6 +336,57 @@ export function formatDuration(seconds: number): string {
 }
 
 /**
+ * Format an activity span between two blocks as a human-readable duration with block count.
+ * @param firstBlock - The first block number.
+ * @param lastBlock - The last block number.
+ * @param firstTimestamp - Unix timestamp (milliseconds) of the first block.
+ * @param lastTimestamp - Unix timestamp (milliseconds) of the last block.
+ * @returns Formatted string like "2 years, 14 days (400,000 blocks)" or "Single transaction".
+ */
+export function formatActivitySpan(
+	firstBlock: bigint,
+	lastBlock: bigint,
+	firstTimestamp: number,
+	lastTimestamp: number
+): string {
+	// Single transaction case.
+	if (firstBlock === lastBlock) {
+		return 'Single transaction';
+	}
+
+	const blockSpan = lastBlock - firstBlock;
+	const timeSpanMs = lastTimestamp - firstTimestamp;
+
+	// Calculate duration components.
+	const totalDays = Math.floor(timeSpanMs / (1000 * 60 * 60 * 24));
+	const years = Math.floor(totalDays / 365);
+	const remainingDaysAfterYears = totalDays % 365;
+	const months = Math.floor(remainingDaysAfterYears / 30);
+	const days = remainingDaysAfterYears % 30;
+
+	// Build duration string.
+	const parts: string[] = [];
+
+	if (years > 0) {
+		parts.push(years === 1 ? '1 year' : `${years} years`);
+	}
+
+	if (months > 0) {
+		parts.push(months === 1 ? '1 month' : `${months} months`);
+	}
+
+	// Only show days if years === 0 and days > 0.
+	if (years === 0 && days > 0) {
+		parts.push(days === 1 ? '1 day' : `${days} days`);
+	}
+
+	// Handle very short durations.
+	const durationStr = parts.length > 0 ? parts.join(', ') : 'Less than a day';
+
+	return `${durationStr} (${formatNumber(blockSpan)} blocks)`;
+}
+
+/**
  * Check if a string is a valid hex format.
  */
 export function isValidHex(str: string): boolean {
