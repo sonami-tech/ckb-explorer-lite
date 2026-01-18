@@ -32,7 +32,7 @@ export function WitnessSection({ witnesses }: WitnessSectionProps) {
 		<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 			<div className="p-4 border-b border-gray-200 dark:border-gray-700">
 				<h2 className="font-semibold text-gray-900 dark:text-white">
-					Witnesses ({witnesses.length}) <span className="text-size-meta font-normal">· {formatBytes(totalBytes)}</span>
+					Witnesses ({formatNumber(witnesses.length)}) <span className="text-size-meta font-normal">· {formatBytes(totalBytes)}</span>
 				</h2>
 			</div>
 

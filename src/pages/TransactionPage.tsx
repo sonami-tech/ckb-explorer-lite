@@ -418,7 +418,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
 					<h2 className="font-semibold text-gray-900 dark:text-white">
-						Inputs ({transaction.inputs.length})
+						Inputs ({formatNumber(transaction.inputs.length)})
 					</h2>
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -604,7 +604,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
 					<h2 className="font-semibold text-gray-900 dark:text-white">
-						Outputs ({transaction.outputs.length})
+						Outputs ({formatNumber(transaction.outputs.length)})
 					</h2>
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -678,7 +678,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
 					<div className="p-4 border-b border-gray-200 dark:border-gray-700">
 						<h2 className="font-semibold text-gray-900 dark:text-white">
-							Cell Dependencies ({transaction.cell_deps.length})
+							Cell Dependencies ({formatNumber(transaction.cell_deps.length)})
 						</h2>
 					</div>
 					<div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -753,7 +753,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
 					<h2 className="font-semibold text-gray-900 dark:text-white">
-						Header Dependencies ({transaction.header_deps.length})
+						Header Dependencies ({formatNumber(transaction.header_deps.length)})
 					</h2>
 				</div>
 				{transaction.header_deps.length > 0 ? (
