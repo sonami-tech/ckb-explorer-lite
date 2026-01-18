@@ -814,6 +814,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			sourceUrl: RFC_0024,
 			resourceId: 'secp256k1',
 			argsFormat: 'pubkey_hash',
+			groups: ['SECP256K1'],
 		},
 		// SECP256K1/blake160 Multisig - RFC 0024.
 		'0x5c5069eb0857efc65e1bca0c07df34c31663b3622fd3876c876320fc9634e2a8': {
@@ -928,6 +929,7 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			sourceUrl: RFC_0024,
 			resourceId: 'secp256k1',
 			argsFormat: 'pubkey_hash',
+			groups: ['SECP256K1'],
 		},
 		// SECP256K1/blake160 Multisig - RFC 0024 (same as mainnet).
 		'0x5c5069eb0857efc65e1bca0c07df34c31663b3622fd3876c876320fc9634e2a8': {

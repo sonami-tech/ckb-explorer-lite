@@ -125,6 +125,11 @@ export function BlockFilterModal({
 		});
 	}, []);
 
+	// Clear all type script selections (for "Any" option).
+	const clearTypeScriptGroups = useCallback(() => {
+		setPendingFilters(prev => ({ ...prev, typeScriptGroups: [] }));
+	}, []);
+
 	// Toggle lock script group selection.
 	const toggleLockScriptGroup = useCallback((groupName: string) => {
 		setPendingFilters(prev => {
@@ -134,6 +139,11 @@ export function BlockFilterModal({
 				: [...current, groupName];
 			return { ...prev, lockScriptGroups: newSelection };
 		});
+	}, []);
+
+	// Clear all lock script selections (for "Any" option).
+	const clearLockScriptGroups = useCallback(() => {
+		setPendingFilters(prev => ({ ...prev, lockScriptGroups: [] }));
 	}, []);
 
 	// Handle sort option selection.
@@ -149,14 +159,14 @@ export function BlockFilterModal({
 	// Get current cellbase label.
 	const cellbaseLabel = CELLBASE_OPTIONS.find(opt => opt.value === pendingFilters.cellbase)?.label ?? 'All';
 
-	// Get type script groups that are present in the block.
-	const presentTypeGroups = Array.from(presentScripts.typeGroups.entries())
-		.filter(([groupName]) => Object.keys(TYPE_SCRIPT_GROUPS).includes(groupName))
+	// Get all known type script groups with their counts (0 if not present).
+	const allTypeGroups = Object.keys(TYPE_SCRIPT_GROUPS)
+		.map((groupName) => [groupName, presentScripts.typeGroups.get(groupName) ?? 0] as const)
 		.sort((a, b) => a[0].localeCompare(b[0]));
 
-	// Get lock script groups that are present in the block.
-	const presentLockGroups = Array.from(presentScripts.lockGroups.entries())
-		.filter(([groupName]) => Object.keys(LOCK_SCRIPT_GROUPS).includes(groupName))
+	// Get all known lock script groups with their counts (0 if not present).
+	const allLockGroups = Object.keys(LOCK_SCRIPT_GROUPS)
+		.map((groupName) => [groupName, presentScripts.lockGroups.get(groupName) ?? 0] as const)
 		.sort((a, b) => a[0].localeCompare(b[0]));
 
 	return (
@@ -172,7 +182,7 @@ export function BlockFilterModal({
 				<h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
 					Sort By
 				</h3>
-				<div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
+				<div className="grid grid-cols-2 gap-x-6 gap-y-4">
 					{sortOptions.map((option) => (
 						<div key={option.field}>
 							{/* Descending option. */}
@@ -202,6 +212,86 @@ export function BlockFilterModal({
 								</span>
 							</label>
 						</div>
+					))}
+				</div>
+			</section>
+
+			{/* Lock scripts section. */}
+			<section className="mb-6">
+				<h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+					Lock Scripts
+				</h3>
+				<div className="grid grid-cols-2 gap-x-6 gap-y-1">
+					{/* "Show All" option - checked when no filters are selected. */}
+					<label className="flex items-center gap-3 py-1 cursor-pointer">
+						<input
+							type="checkbox"
+							checked={pendingFilters.lockScriptGroups.length === 0}
+							onChange={clearLockScriptGroups}
+							className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-nervos focus:ring-nervos focus:ring-2 bg-white dark:bg-gray-800"
+						/>
+						<span className="text-sm text-gray-700 dark:text-gray-300">
+							Show All
+						</span>
+					</label>
+					{allLockGroups.map(([groupName, count]) => (
+						<label
+							key={groupName}
+							className="flex items-center gap-3 py-1 cursor-pointer"
+						>
+							<input
+								type="checkbox"
+								checked={pendingFilters.lockScriptGroups.includes(groupName)}
+								onChange={() => toggleLockScriptGroup(groupName)}
+								className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-nervos focus:ring-nervos focus:ring-2 bg-white dark:bg-gray-800"
+							/>
+							<span className="text-sm text-gray-700 dark:text-gray-300">
+								{groupName}
+							</span>
+							<span className="text-xs text-gray-400 dark:text-gray-500">
+								({count})
+							</span>
+						</label>
+					))}
+				</div>
+			</section>
+
+			{/* Type scripts section. */}
+			<section className="mb-6">
+				<h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+					Type Scripts
+				</h3>
+				<div className="grid grid-cols-2 gap-x-6 gap-y-1">
+					{/* "Show All" option - checked when no filters are selected. */}
+					<label className="flex items-center gap-3 py-1 cursor-pointer">
+						<input
+							type="checkbox"
+							checked={pendingFilters.typeScriptGroups.length === 0}
+							onChange={clearTypeScriptGroups}
+							className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-nervos focus:ring-nervos focus:ring-2 bg-white dark:bg-gray-800"
+						/>
+						<span className="text-sm text-gray-700 dark:text-gray-300">
+							Show All
+						</span>
+					</label>
+					{allTypeGroups.map(([groupName, count]) => (
+						<label
+							key={groupName}
+							className="flex items-center gap-3 py-1 cursor-pointer"
+						>
+							<input
+								type="checkbox"
+								checked={pendingFilters.typeScriptGroups.includes(groupName)}
+								onChange={() => toggleTypeScriptGroup(groupName)}
+								className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-nervos focus:ring-nervos focus:ring-2 bg-white dark:bg-gray-800"
+							/>
+							<span className="text-sm text-gray-700 dark:text-gray-300">
+								{groupName}
+							</span>
+							<span className="text-xs text-gray-400 dark:text-gray-500">
+								({count})
+							</span>
+						</label>
 					))}
 				</div>
 			</section>
@@ -314,66 +404,6 @@ export function BlockFilterModal({
 					className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-nervos focus:border-transparent"
 				/>
 			</section>
-
-			{/* Type scripts section. */}
-			{presentTypeGroups.length > 0 && (
-				<section className="mb-6">
-					<h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-						Type Scripts
-					</h3>
-					<div className="space-y-2">
-						{presentTypeGroups.map(([groupName, count]) => (
-							<label
-								key={groupName}
-								className="flex items-center gap-3 py-2 cursor-pointer"
-							>
-								<input
-									type="checkbox"
-									checked={pendingFilters.typeScriptGroups.includes(groupName)}
-									onChange={() => toggleTypeScriptGroup(groupName)}
-									className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-nervos focus:ring-nervos focus:ring-2 bg-white dark:bg-gray-800"
-								/>
-								<span className="text-sm text-gray-700 dark:text-gray-300">
-									{groupName}
-								</span>
-								<span className="text-xs text-gray-400 dark:text-gray-500">
-									({count})
-								</span>
-							</label>
-						))}
-					</div>
-				</section>
-			)}
-
-			{/* Lock scripts section. */}
-			{presentLockGroups.length > 0 && (
-				<section className="mb-6">
-					<h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-						Lock Scripts
-					</h3>
-					<div className="space-y-2">
-						{presentLockGroups.map(([groupName, count]) => (
-							<label
-								key={groupName}
-								className="flex items-center gap-3 py-2 cursor-pointer"
-							>
-								<input
-									type="checkbox"
-									checked={pendingFilters.lockScriptGroups.includes(groupName)}
-									onChange={() => toggleLockScriptGroup(groupName)}
-									className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-nervos focus:ring-nervos focus:ring-2 bg-white dark:bg-gray-800"
-								/>
-								<span className="text-sm text-gray-700 dark:text-gray-300">
-									{groupName}
-								</span>
-								<span className="text-xs text-gray-400 dark:text-gray-500">
-									({count})
-								</span>
-							</label>
-						))}
-					</div>
-				</section>
-			)}
 		</FilterModalShell>
 	);
 }
