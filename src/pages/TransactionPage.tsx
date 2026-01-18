@@ -408,7 +408,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 										</div>
 
 										{/* Line 3: Script pills. */}
-										<div className="ml-6 flex flex-wrap gap-1.5">
+										<div className="ml-6 flex flex-wrap gap-2 items-center">
 											{lockIndicator.isKnown ? (
 												<ScriptIndicatorPill
 													name={lockIndicator.name}
@@ -416,22 +416,25 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 													description={lockIndicator.description}
 												/>
 											) : (
-												<span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+												<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
 													{lockIndicator.name}
 												</span>
 											)}
 											{typeIndicator && (
-												typeIndicator.isKnown ? (
-													<ScriptIndicatorPill
-														name={typeIndicator.name}
-														resourceId={typeIndicator.resourceId}
-														description={typeIndicator.description}
-													/>
-												) : (
-													<span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-														{typeIndicator.name}
-													</span>
-												)
+												<>
+													<span className="text-gray-300 dark:text-gray-600">•</span>
+													{typeIndicator.isKnown ? (
+														<ScriptIndicatorPill
+															name={typeIndicator.name}
+															resourceId={typeIndicator.resourceId}
+															description={typeIndicator.description}
+														/>
+													) : (
+														<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
+															{typeIndicator.name}
+														</span>
+													)}
+												</>
 											)}
 										</div>
 									</div>
@@ -498,7 +501,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 								</div>
 
 								{/* Line 3: Script pills. */}
-								<div className="ml-6 flex flex-wrap gap-1.5">
+								<div className="ml-6 flex flex-wrap gap-2 items-center">
 									{lockIndicator.isKnown ? (
 										<ScriptIndicatorPill
 											name={lockIndicator.name}
@@ -506,22 +509,25 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 											description={lockIndicator.description}
 										/>
 									) : (
-										<span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+										<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
 											{lockIndicator.name}
 										</span>
 									)}
 									{typeIndicator && (
-										typeIndicator.isKnown ? (
-											<ScriptIndicatorPill
-												name={typeIndicator.name}
-												resourceId={typeIndicator.resourceId}
-												description={typeIndicator.description}
-											/>
-										) : (
-											<span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-												{typeIndicator.name}
-											</span>
-										)
+										<>
+											<span className="text-gray-300 dark:text-gray-600">•</span>
+											{typeIndicator.isKnown ? (
+												<ScriptIndicatorPill
+													name={typeIndicator.name}
+													resourceId={typeIndicator.resourceId}
+													description={typeIndicator.description}
+												/>
+											) : (
+												<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
+													{typeIndicator.name}
+												</span>
+											)}
+										</>
 									)}
 								</div>
 							</div>
