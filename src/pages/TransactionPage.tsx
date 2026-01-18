@@ -9,7 +9,7 @@ import {
 	truncateHex,
 } from '../lib/format';
 import { encodeAddress } from '../lib/address';
-import { lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
+import { lookupLockScript, lookupTypeScript, lookupWellKnownCell } from '../lib/wellKnown';
 import { navigate, generateLink } from '../lib/router';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
@@ -81,6 +81,33 @@ function extractTypeScriptIndicator(typeScript: RpcScript, networkType: NetworkT
 	};
 }
 
+/** Map well-known cell names to resource page IDs. */
+function getWellKnownCellResourceId(name: string): string | undefined {
+	// Map dep group and system cell names to their related script resource IDs.
+	const resourceIdMap: Record<string, string> = {
+		'SECP256K1/blake160 Dep Group': 'secp256k1',
+		'SECP256K1/blake160 Lock Binary': 'secp256k1',
+		'Multisig Dep Group': 'multisig',
+		'Multisig Lock Binary': 'multisig',
+		'NervosDAO Binary': 'dao',
+		'secp256k1_data': 'secp256k1',
+		'Anyone-Can-Pay Dep Group': 'acp',
+		'SUDT Binary': 'sudt',
+		'xUDT Binary': 'xudt',
+		'Omnilock Binary': 'omnilock',
+		'Spore Binary': 'spore',
+		'Spore Cluster Binary': 'spore',
+		'JoyID Dep Group': 'joyid',
+		'CoTA Dep Group': 'cota',
+		'NostrLock Binary': 'nostr',
+		'RGB++ Lock Binary': 'rgbpp',
+		'BTC Time Lock Binary': 'rgbpp',
+		'CKBFS Dep Group': 'ckbfs',
+		'iCKB Dep Group': 'ickb',
+	};
+	return resourceIdMap[name];
+}
+
 export function TransactionPage({ hash }: TransactionPageProps) {
 	const rpc = useRpc();
 	const { currentNetwork } = useNetwork();
@@ -93,6 +120,11 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 	const [inputCellData, setInputCellData] = useState<Map<number, RpcCellWithLifecycle>>(new Map());
 	const [inputErrors, setInputErrors] = useState<Map<number, Error>>(new Map());
 	const [inputsLoading, setInputsLoading] = useState(false);
+
+	// Cell dependency data fetching state.
+	const [cellDepData, setCellDepData] = useState<Map<number, RpcCellWithLifecycle>>(new Map());
+	const [cellDepErrors, setCellDepErrors] = useState<Map<number, Error>>(new Map());
+	const [cellDepsLoading, setCellDepsLoading] = useState(false);
 
 	const networkType = currentNetwork?.type ?? 'mainnet';
 
@@ -196,6 +228,48 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		}
 	}, [rpc]);
 
+	const fetchCellDepData = useCallback(async (cellDeps: { out_point: { tx_hash: string; index: string }; dep_type: string }[]) => {
+		setCellDepsLoading(true);
+		setCellDepErrors(new Map());
+		setCellDepData(new Map());
+
+		try {
+			// Fetch all cell deps in parallel.
+			const promises = cellDeps.map(async (dep, idx) => {
+				try {
+					const cellData = await rpc.getCellLifecycle(
+						dep.out_point.tx_hash,
+						parseInt(dep.out_point.index, 16),
+						true
+					);
+					return { index: idx, cellData, error: null };
+				} catch (error) {
+					return { index: idx, cellData: null, error: error as Error };
+				}
+			});
+
+			const results = await Promise.all(promises);
+
+			const dataMap = new Map<number, RpcCellWithLifecycle>();
+			const errorMap = new Map<number, Error>();
+
+			results.forEach(result => {
+				if (result.cellData) {
+					dataMap.set(result.index, result.cellData);
+				} else if (result.error) {
+					errorMap.set(result.index, result.error);
+				}
+			});
+
+			setCellDepData(dataMap);
+			setCellDepErrors(errorMap);
+		} catch (error) {
+			console.error('Failed to fetch cell dep data:', error);
+		} finally {
+			setCellDepsLoading(false);
+		}
+	}, [rpc]);
+
 	useEffect(() => {
 		fetchTransaction();
 	}, [fetchTransaction]);
@@ -203,8 +277,9 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 	useEffect(() => {
 		if (txData?.transaction) {
 			fetchInputCellData(txData.transaction.inputs);
+			fetchCellDepData(txData.transaction.cell_deps);
 		}
-	}, [txData, fetchInputCellData]);
+	}, [txData, fetchInputCellData, fetchCellDepData]);
 
 	if (isLoading) {
 		return (
@@ -421,20 +496,17 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 												</span>
 											)}
 											{typeIndicator && (
-												<>
-													<span className="text-gray-300 dark:text-gray-600">•</span>
-													{typeIndicator.isKnown ? (
-														<ScriptIndicatorPill
-															name={typeIndicator.name}
-															resourceId={typeIndicator.resourceId}
-															description={typeIndicator.description}
-														/>
-													) : (
-														<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-															{typeIndicator.name}
-														</span>
-													)}
-												</>
+												typeIndicator.isKnown ? (
+													<ScriptIndicatorPill
+														name={typeIndicator.name}
+														resourceId={typeIndicator.resourceId}
+														description={typeIndicator.description}
+													/>
+												) : (
+													<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
+														{typeIndicator.name}
+													</span>
+												)
 											)}
 										</div>
 									</div>
@@ -514,20 +586,17 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 										</span>
 									)}
 									{typeIndicator && (
-										<>
-											<span className="text-gray-300 dark:text-gray-600">•</span>
-											{typeIndicator.isKnown ? (
-												<ScriptIndicatorPill
-													name={typeIndicator.name}
-													resourceId={typeIndicator.resourceId}
-													description={typeIndicator.description}
-												/>
-											) : (
-												<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-													{typeIndicator.name}
-												</span>
-											)}
-										</>
+										typeIndicator.isKnown ? (
+											<ScriptIndicatorPill
+												name={typeIndicator.name}
+												resourceId={typeIndicator.resourceId}
+												description={typeIndicator.description}
+											/>
+										) : (
+											<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
+												{typeIndicator.name}
+											</span>
+										)
 									)}
 								</div>
 							</div>
@@ -545,22 +614,92 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 						</h2>
 					</div>
 					<div className="divide-y divide-gray-200 dark:divide-gray-700">
-						{transaction.cell_deps.map((dep, index) => (
-							<div key={index} className="p-4">
-								<div className="flex items-center gap-3">
-									<OutPoint
-										txHash={dep.out_point.tx_hash}
-										index={parseInt(dep.out_point.index, 16)}
-									/>
-									<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${DEP_TYPE} rounded`}>
-										{dep.dep_type}
-									</span>
+						{transaction.cell_deps.map((dep, index) => {
+							const cellData = cellDepData.get(index);
+							const depIndex = parseInt(dep.out_point.index, 16);
+
+							// First check if this is a well-known cell by outpoint.
+							// This catches dep_groups and system cells that are identified by their location.
+							const wellKnownCell = lookupWellKnownCell(dep.out_point.tx_hash, depIndex, networkType);
+
+							// If not a well-known cell, check the type script.
+							// The type script identifies what code/data this cell provides.
+							const typeIndicator = !wellKnownCell && cellData?.output?.type_
+								? extractTypeScriptIndicator(cellData.output.type_, networkType)
+								: null;
+
+							// Check if we have any indicator to show on line 2.
+							const hasIndicator = wellKnownCell || typeIndicator;
+
+							return (
+								<div key={index} className="p-4">
+									{/* Line 1: Outpoint and dep type. */}
+									<div className="flex items-center gap-3">
+										<OutPoint
+											txHash={dep.out_point.tx_hash}
+											index={depIndex}
+										/>
+										<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${DEP_TYPE} rounded`}>
+											{dep.dep_type}
+										</span>
+										{cellDepsLoading && !cellData && !wellKnownCell && (
+											<span className="text-xs text-gray-400 dark:text-gray-500">Loading...</span>
+										)}
+									</div>
+
+									{/* Line 2: Script indicator pill (if any). */}
+									{hasIndicator && (
+										<div className="flex flex-wrap gap-2 items-center mt-2">
+											{wellKnownCell && (
+												<ScriptIndicatorPill
+													name={wellKnownCell.name}
+													resourceId={getWellKnownCellResourceId(wellKnownCell.name)}
+													description={wellKnownCell.description}
+												/>
+											)}
+											{typeIndicator && (
+												typeIndicator.isKnown ? (
+													<ScriptIndicatorPill
+														name={typeIndicator.name}
+														resourceId={typeIndicator.resourceId}
+														description={typeIndicator.description}
+													/>
+												) : (
+													<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
+														{typeIndicator.name}
+													</span>
+												)
+											)}
+										</div>
+									)}
 								</div>
-							</div>
-						))}
+							);
+						})}
 					</div>
 				</div>
 			)}
+
+			{/* Header Deps. */}
+			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+				<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+					<h2 className="font-semibold text-gray-900 dark:text-white">
+						Header Dependencies ({transaction.header_deps.length})
+					</h2>
+				</div>
+				{transaction.header_deps.length > 0 ? (
+					<div className="divide-y divide-gray-200 dark:divide-gray-700">
+						{transaction.header_deps.map((headerHash, index) => (
+							<div key={index} className="p-4">
+								<HashDisplay hash={headerHash} linkTo={`/block/${headerHash}`} />
+							</div>
+						))}
+					</div>
+				) : (
+					<div className="p-4 text-sm text-gray-500 dark:text-gray-400">
+						No header dependencies
+					</div>
+				)}
+			</div>
 
 			{/* Witnesses. */}
 			<WitnessSection witnesses={transaction.witnesses} />
