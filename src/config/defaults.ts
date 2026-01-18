@@ -81,6 +81,19 @@ export const PAGE_SIZE_CONFIG = {
 } as const;
 
 /**
+ * Pagination configuration for transaction detail sections (inputs, outputs, cell deps, header deps, witnesses).
+ * Only shows pagination when section has more items than the threshold.
+ */
+export const TRANSACTION_SECTION_PAGINATION = {
+	/** Show pagination if section has more than this many items. */
+	threshold: 10,
+	/** Default items per page. */
+	defaultPageSize: 10,
+	/** Page size options. */
+	options: [10, 20, 50, 100] as const,
+} as const;
+
+/**
  * Default filter values for BlockPage transaction filtering.
  */
 export const DEFAULT_BLOCK_FILTERS = {
