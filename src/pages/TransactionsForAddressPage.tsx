@@ -7,7 +7,7 @@ import { AddressDisplay } from '../components/AddressDisplay';
 import { getDaoTypeScript } from '../lib/wellKnown';
 import { generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
-import { SkeletonDetail } from '../components/Skeleton';
+import { SkeletonDetail, SkeletonTransactionItem } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { InternalLink } from '../components/InternalLink';
 import { ChevronDownIcon } from '../components/CopyButton';
@@ -54,10 +54,12 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	const networkType = currentNetwork?.type ?? 'mainnet';
 	const [script, setScript] = useState<RpcScript | null>(null);
 	const [transactions, setTransactions] = useState<EnrichedTransaction[]>([]);
-	const [transactionCount, setTransactionCount] = useState<bigint | null>(null);
+	const [totalTransactionCount, setTotalTransactionCount] = useState<bigint | null>(null);
+	const [filteredTransactionCount, setFilteredTransactionCount] = useState<bigint | null>(null);
 	const [cursor, setCursor] = useState<string | null>(null);
 	const [hasMore, setHasMore] = useState(false);
-	const [isLoading, setIsLoading] = useState(true);
+	const [isLoadingOverview, setIsLoadingOverview] = useState(true);
+	const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
 	const [error, setError] = useState<Error | null>(null);
 	const [pageSize, setPageSize] = useState(getStoredPageSize);
@@ -82,7 +84,8 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	const [daoLockedCapacity, setDaoLockedCapacity] = useState<bigint | null>(null);
 	const [daoCellCount, setDaoCellCount] = useState<bigint | null>(null);
 
-	const fetchIdRef = useRef(0);
+	const overviewFetchIdRef = useRef(0);
+	const txFetchIdRef = useRef(0);
 	const prevFiltersRef = useRef<string>(JSON.stringify(DEFAULT_ADDRESS_FILTERS));
 	const prevSortRef = useRef<string>(JSON.stringify(DEFAULT_ADDRESS_SORT));
 
@@ -96,7 +99,8 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			setScript(parsed.script);
 		} catch (err) {
 			setError(err instanceof Error ? err : new Error('Invalid address format.'));
-			setIsLoading(false);
+			setIsLoadingOverview(false);
+			setIsLoadingTransactions(false);
 		}
 	}, [address]);
 
@@ -139,14 +143,120 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		});
 	}, [rpc, archiveHeight, networkType]);
 
-	// Fetch transaction count and initial transactions.
-	const fetchData = useCallback(async () => {
+	// Fetch overview data (balance, first/last activity, DAO info).
+	// This data is address-level and does not depend on transaction filters.
+	const fetchOverviewData = useCallback(async () => {
 		if (!script) return;
 
-		const fetchId = ++fetchIdRef.current;
+		const fetchId = ++overviewFetchIdRef.current;
 
-		setIsLoading(true);
+		setIsLoadingOverview(true);
 		setError(null);
+
+		try {
+			// Unfiltered search key for address-level stats.
+			const baseSearchKey: IndexerSearchKey = {
+				script,
+				script_type: 'lock',
+				script_search_mode: 'exact',
+			};
+
+			// Fetch archive block timestamp if in archive mode.
+			let archiveTimestamp: number | undefined;
+			if (archiveHeight !== undefined) {
+				const archiveHeader = await rpc.getHeaderByNumber(BigInt(archiveHeight), archiveHeight);
+				if (archiveHeader) {
+					archiveTimestamp = Number(BigInt(archiveHeader.timestamp));
+				}
+			}
+
+			// Build DAO filter for DAO-specific queries.
+			const daoScript = getDaoTypeScript();
+			const daoSearchKey: IndexerSearchKey = {
+				script,
+				script_type: 'lock',
+				script_search_mode: 'exact',
+				filter: {
+					script: daoScript,
+				},
+			};
+
+			// Fetch overview stats in parallel.
+			const [
+				balanceResult,
+				txCountResult,
+				firstTxResult,
+				lastTxResult,
+				daoCapacityResult,
+				daoCellCountResult,
+			] = await Promise.all([
+				rpc.getCellsCapacity(baseSearchKey, archiveHeight),
+				rpc.getTransactionsCount(baseSearchKey, archiveHeight),
+				rpc.getGroupedTransactions(baseSearchKey, 'asc', 1, undefined, archiveHeight),
+				rpc.getGroupedTransactions(baseSearchKey, 'desc', 1, undefined, archiveHeight),
+				rpc.getCellsCapacity(daoSearchKey, archiveHeight),
+				rpc.getCellsCount(daoSearchKey, archiveHeight),
+			]);
+
+			if (fetchId !== overviewFetchIdRef.current) return;
+
+			// Process first activity.
+			let firstActivityData: typeof firstActivity = null;
+			if (firstTxResult.objects.length > 0) {
+				const firstTx = firstTxResult.objects[0];
+				const firstHeader = await rpc.getHeaderByNumber(BigInt(firstTx.block_number), archiveHeight);
+				firstActivityData = {
+					txHash: firstTx.tx_hash,
+					blockNumber: BigInt(firstTx.block_number),
+					timestamp: firstHeader ? Number(BigInt(firstHeader.timestamp)) : Date.now(),
+				};
+			}
+
+			// Process last activity.
+			let lastActivityData: typeof lastActivity = null;
+			if (lastTxResult.objects.length > 0) {
+				const lastTx = lastTxResult.objects[0];
+				// Only fetch header if different from first activity block.
+				let lastTimestamp: number;
+				if (firstActivityData && firstActivityData.blockNumber === BigInt(lastTx.block_number)) {
+					lastTimestamp = firstActivityData.timestamp;
+				} else {
+					const lastHeader = await rpc.getHeaderByNumber(BigInt(lastTx.block_number), archiveHeight);
+					lastTimestamp = lastHeader ? Number(BigInt(lastHeader.timestamp)) : Date.now();
+				}
+				lastActivityData = {
+					txHash: lastTx.tx_hash,
+					blockNumber: BigInt(lastTx.block_number),
+					timestamp: lastTimestamp,
+				};
+			}
+
+			if (fetchId !== overviewFetchIdRef.current) return;
+
+			setReferenceTimestamp(archiveTimestamp);
+			setBalance(balanceResult);
+			setTotalTransactionCount(BigInt(txCountResult.count));
+			setFirstActivity(firstActivityData);
+			setLastActivity(lastActivityData);
+			setDaoLockedCapacity(daoCapacityResult);
+			setDaoCellCount(BigInt(daoCellCountResult.count));
+		} catch (err) {
+			if (fetchId !== overviewFetchIdRef.current) return;
+			setError(err instanceof Error ? err : new Error('Failed to fetch address overview.'));
+		} finally {
+			if (fetchId === overviewFetchIdRef.current) {
+				setIsLoadingOverview(false);
+			}
+		}
+	}, [rpc, script, archiveHeight]);
+
+	// Fetch filtered transaction count and transactions list.
+	const fetchTransactionData = useCallback(async () => {
+		if (!script) return;
+
+		const fetchId = ++txFetchIdRef.current;
+
+		setIsLoadingTransactions(true);
 
 		try {
 			// Fetch tip header for block range filter presets.
@@ -163,110 +273,50 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				filter: indexerFilter,
 			};
 
-			// Fetch archive block timestamp if in archive mode.
-			let archiveTimestamp: number | undefined;
-			if (archiveHeight !== undefined) {
-				const archiveHeader = await rpc.getHeaderByNumber(BigInt(archiveHeight), archiveHeight);
-				if (archiveHeader) {
-					archiveTimestamp = Number(BigInt(archiveHeader.timestamp));
-				}
-			}
-
-			// Build DAO filter for DAO-specific queries.
-			// Filter by DAO type script (args: '0x' matches all DAO cells).
-			const daoScript = getDaoTypeScript();
-			const daoSearchKey: IndexerSearchKey = {
-				script,
-				script_type: 'lock',
-				script_search_mode: 'exact',
-				filter: {
-					script: daoScript,
-				},
-			};
-
-			// Fetch overview stats in parallel with existing calls.
-			const [
-				txCountResult,
-				groupedTxsResult,
-				balanceResult,
-				firstTxResult,
-				daoCapacityResult,
-				daoCellCountResult,
-			] = await Promise.all([
+			// Fetch transaction count and transactions in parallel.
+			const [txCountResult, groupedTxsResult] = await Promise.all([
 				rpc.getTransactionsCount(searchKey, archiveHeight),
 				rpc.getGroupedTransactions(searchKey, sort.direction, pageSize, undefined, archiveHeight),
-				rpc.getCellsCapacity(searchKey, archiveHeight),
-				rpc.getGroupedTransactions(searchKey, 'asc', 1, undefined, archiveHeight),
-				rpc.getCellsCapacity(daoSearchKey, archiveHeight),
-				rpc.getCellsCount(daoSearchKey, archiveHeight),
 			]);
 
-			if (fetchId !== fetchIdRef.current) return;
+			if (fetchId !== txFetchIdRef.current) return;
 
-			// Process first activity.
-			let firstActivityData: typeof firstActivity = null;
-			if (firstTxResult.objects.length > 0) {
-				const firstTx = firstTxResult.objects[0];
-				const firstHeader = await rpc.getHeaderByNumber(BigInt(firstTx.block_number), archiveHeight);
-				firstActivityData = {
-					txHash: firstTx.tx_hash,
-					blockNumber: BigInt(firstTx.block_number),
-					timestamp: firstHeader ? Number(BigInt(firstHeader.timestamp)) : Date.now(),
-				};
-			}
-
-			// Process last activity (from the first item of desc-ordered results).
-			let lastActivityData: typeof lastActivity = null;
-			if (groupedTxsResult.objects.length > 0) {
-				const lastTx = groupedTxsResult.objects[0];
-				// Only fetch header if different from first activity block.
-				let lastTimestamp: number;
-				if (firstActivityData && firstActivityData.blockNumber === BigInt(lastTx.block_number)) {
-					lastTimestamp = firstActivityData.timestamp;
-				} else {
-					const lastHeader = await rpc.getHeaderByNumber(BigInt(lastTx.block_number), archiveHeight);
-					lastTimestamp = lastHeader ? Number(BigInt(lastHeader.timestamp)) : Date.now();
-				}
-				lastActivityData = {
-					txHash: lastTx.tx_hash,
-					blockNumber: BigInt(lastTx.block_number),
-					timestamp: lastTimestamp,
-				};
-			}
-
-			if (fetchId !== fetchIdRef.current) return;
-
-			setTransactionCount(BigInt(txCountResult.count));
-			setReferenceTimestamp(archiveTimestamp);
-			setBalance(balanceResult);
-			setFirstActivity(firstActivityData);
-			setLastActivity(lastActivityData);
-			setDaoLockedCapacity(daoCapacityResult);
-			setDaoCellCount(BigInt(daoCellCountResult.count));
+			setFilteredTransactionCount(BigInt(txCountResult.count));
 
 			// Enrich transactions with full details.
 			const enriched = await enrichTransactions(groupedTxsResult.objects);
 
-			if (fetchId !== fetchIdRef.current) return;
+			if (fetchId !== txFetchIdRef.current) return;
 
 			setTransactions(enriched);
 			setCursor(groupedTxsResult.last_cursor);
 			setHasMore(groupedTxsResult.objects.length >= pageSize);
 		} catch (err) {
-			if (fetchId !== fetchIdRef.current) return;
-			setError(err instanceof Error ? err : new Error('Failed to fetch transactions.'));
+			if (fetchId !== txFetchIdRef.current) return;
+			// Don't overwrite overview errors with transaction errors.
+			if (!error) {
+				setError(err instanceof Error ? err : new Error('Failed to fetch transactions.'));
+			}
 		} finally {
-			if (fetchId === fetchIdRef.current) {
-				setIsLoading(false);
+			if (fetchId === txFetchIdRef.current) {
+				setIsLoadingTransactions(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, pageSize, enrichTransactions, filters, sort.direction, networkType]);
+	}, [rpc, script, archiveHeight, pageSize, enrichTransactions, filters, sort.direction, networkType, error]);
 
+	// Fetch overview data when script changes.
 	useEffect(() => {
 		if (script) {
-			fetchData();
+			fetchOverviewData();
 		}
-	}, [fetchData, script]);
+	}, [fetchOverviewData, script]);
+
+	// Fetch transaction data when script or filters change.
+	useEffect(() => {
+		if (script) {
+			fetchTransactionData();
+		}
+	}, [fetchTransactionData, script]);
 
 	// Load more transactions.
 	const loadMore = async () => {
@@ -394,7 +444,8 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		setFilters(DEFAULT_ADDRESS_FILTERS);
 	}, []);
 
-	if (isLoading) {
+	// Show full page skeleton only on initial load.
+	if (isLoadingOverview && isLoadingTransactions) {
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
 				<SkeletonDetail />
@@ -403,9 +454,15 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	}
 
 	if (error) {
+		const handleRetry = script
+			? () => {
+				fetchOverviewData();
+				fetchTransactionData();
+			}
+			: undefined;
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
-				<ErrorDisplay error={error} title="Transactions Error" onRetry={script ? fetchData : undefined} />
+				<ErrorDisplay error={error} title="Transactions Error" onRetry={handleRetry} />
 			</div>
 		);
 	}
@@ -451,7 +508,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 
 					<DetailRow label="Transactions">
 						<span className="font-mono text-gray-900 dark:text-white">
-							{transactionCount !== null ? formatNumber(transactionCount) : '...'}
+							{totalTransactionCount !== null ? formatNumber(totalTransactionCount) : '...'}
 						</span>
 					</DetailRow>
 
@@ -543,7 +600,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
 					<h2 className="font-semibold text-gray-900 dark:text-white">
-						Transactions ({transactionCount !== null ? formatNumber(transactionCount) : '...'})
+						Transactions ({filteredTransactionCount !== null ? formatNumber(filteredTransactionCount) : '...'})
 					</h2>
 					<FilterSortButton
 						onClick={() => setFilterModalOpen(true)}
@@ -563,7 +620,14 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				)}
 
 				<div>
-					{transactions.length === 0 ? (
+					{isLoadingTransactions ? (
+						// Show skeleton items while transactions are loading.
+						<>
+							{[...Array(Math.min(pageSize, 5))].map((_, i) => (
+								<SkeletonTransactionItem key={i} />
+							))}
+						</>
+					) : transactions.length === 0 ? (
 						<div className="p-4 text-sm text-gray-500 dark:text-gray-400 italic">
 							{filterChips.length > 0
 								? 'No transactions match the current filters.'
@@ -581,7 +645,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				</div>
 
 				{/* Load more controls. */}
-				{(hasMore || transactions.length > 0) && (
+				{!isLoadingTransactions && (hasMore || transactions.length > 0) && (
 					<div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
 						<div className="flex items-center gap-2">
 							<span className="text-sm text-gray-500 dark:text-gray-400">
