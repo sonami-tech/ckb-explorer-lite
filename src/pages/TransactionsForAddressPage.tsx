@@ -334,12 +334,8 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			});
 		}
 
-		if (filters.typeScript !== null) {
-			chips.push({
-				type: 'typeScript',
-				label: filters.typeScript,
-				value: filters.typeScript,
-			});
+		for (const group of filters.typeScriptGroups) {
+			chips.push({ type: 'typeScript', label: group, value: group });
 		}
 
 		if (filters.blockRange.preset !== 'all') {
@@ -384,7 +380,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				case 'minCkb':
 					return { ...prev, minCellCkb: null };
 				case 'typeScript':
-					return { ...prev, typeScript: null };
+					return { ...prev, typeScriptGroups: prev.typeScriptGroups.filter(g => g !== chip.value) };
 				case 'blockRange':
 					return { ...prev, blockRange: { preset: 'all', customStart: null, customEnd: null } };
 				default:

@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useClickOutside } from '../hooks/ui';
 import { ChevronDownIcon, ChevronButton } from './CopyButton';
-import { TYPE_SCRIPTS, getCodeHashForScript } from '../lib/scriptGroups';
+import { TYPE_SCRIPT_GROUPS, getCodeHashesForGroup } from '../lib/scriptGroups';
 import { KNOWN_TYPE_SCRIPTS } from '../lib/wellKnown';
 import type { NetworkType } from '../config/networks';
 import type { RpcScript } from '../types/rpc';
@@ -21,7 +21,7 @@ export interface BlockRangeFilter {
  */
 export interface AddressPageFilters {
 	minCellCkb: number | null;       // In CKB units
-	typeScript: string | null;       // Individual script name or null
+	typeScriptGroups: string[];      // Script group names (empty = show all)
 	blockRange: BlockRangeFilter;
 }
 
@@ -37,7 +37,7 @@ export interface AddressPageSort {
  */
 export const DEFAULT_ADDRESS_FILTERS: AddressPageFilters = {
 	minCellCkb: null,
-	typeScript: null,
+	typeScriptGroups: [],
 	blockRange: { preset: 'all', customStart: null, customEnd: null },
 };
 
@@ -122,16 +122,13 @@ function resolveBlockRange(
 }
 
 /**
- * Get script info (including hash type) for a type script name.
+ * Get script info (including hash type) for a code hash.
  */
 function getScriptInfo(
-	scriptName: string,
+	codeHash: string,
 	network: NetworkType
 ): { codeHash: string; hashType: 'type' | 'data' | 'data1' | 'data2' } | null {
 	const registryNetwork = network === 'mainnet' ? 'mainnet' : 'testnet';
-	const codeHash = getCodeHashForScript(scriptName, network);
-	if (!codeHash) return null;
-
 	const info = KNOWN_TYPE_SCRIPTS[registryNetwork][codeHash];
 	if (!info) return null;
 
@@ -163,17 +160,21 @@ export function buildIndexerFilter(
 		hasFilter = true;
 	}
 
-	// Type script filter.
-	if (filters.typeScript !== null) {
-		const scriptInfo = getScriptInfo(filters.typeScript, network);
-		if (scriptInfo) {
-			filter.script = {
-				code_hash: scriptInfo.codeHash,
-				hash_type: scriptInfo.hashType,
-				args: '0x',
-			};
-			filter.script_search_mode = 'prefix';  // Match any args
-			hasFilter = true;
+	// Type script filter (uses first group's first script when multiple selected).
+	if (filters.typeScriptGroups.length > 0) {
+		const firstGroup = filters.typeScriptGroups[0];
+		const codeHashes = getCodeHashesForGroup(firstGroup, network);
+		if (codeHashes.length > 0) {
+			const scriptInfo = getScriptInfo(codeHashes[0], network);
+			if (scriptInfo) {
+				filter.script = {
+					code_hash: scriptInfo.codeHash,
+					hash_type: scriptInfo.hashType,
+					args: '0x',
+				};
+				filter.script_search_mode = 'prefix';  // Match any args
+				hasFilter = true;
+			}
 		}
 	}
 
@@ -202,15 +203,12 @@ export function AddressTransactionFilters({
 	onExpandedChange,
 }: AddressTransactionFiltersProps) {
 	const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
-	const [typeScriptDropdownOpen, setTypeScriptDropdownOpen] = useState(false);
 	const [blockRangeDropdownOpen, setBlockRangeDropdownOpen] = useState(false);
 
 	const sortDropdownRef = useRef<HTMLDivElement>(null);
-	const typeScriptDropdownRef = useRef<HTMLDivElement>(null);
 	const blockRangeDropdownRef = useRef<HTMLDivElement>(null);
 
 	useClickOutside(sortDropdownRef, () => setSortDropdownOpen(false));
-	useClickOutside(typeScriptDropdownRef, () => setTypeScriptDropdownOpen(false));
 	useClickOutside(blockRangeDropdownRef, () => setBlockRangeDropdownOpen(false));
 
 	// Update a single filter field.
@@ -231,6 +229,20 @@ export function AddressTransactionFilters({
 				updateFilter('minCellCkb', parsed);
 			}
 		}
+	}, [updateFilter]);
+
+	// Toggle type script group selection.
+	const toggleTypeScriptGroup = useCallback((groupName: string) => {
+		const current = filters.typeScriptGroups;
+		const newSelection = current.includes(groupName)
+			? current.filter(g => g !== groupName)
+			: [...current, groupName];
+		updateFilter('typeScriptGroups', newSelection);
+	}, [filters.typeScriptGroups, updateFilter]);
+
+	// Clear all type script selections (for "Show All" option).
+	const clearTypeScriptGroups = useCallback(() => {
+		updateFilter('typeScriptGroups', []);
 	}, [updateFilter]);
 
 	// Handle block range preset change.
@@ -264,10 +276,12 @@ export function AddressTransactionFilters({
 
 	// Get current labels.
 	const sortLabel = SORT_OPTIONS.find(opt => opt.value === sort.direction)?.label ?? 'Newest First';
-	const typeScriptLabel = filters.typeScript ?? 'None';
 	const blockRangeLabel = BLOCK_RANGE_OPTIONS.find(
 		opt => opt.value === filters.blockRange.preset
 	)?.label ?? 'All blocks';
+
+	// Get all type script groups sorted alphabetically.
+	const allTypeGroups = Object.keys(TYPE_SCRIPT_GROUPS).sort((a, b) => a.localeCompare(b));
 
 	return (
 		<div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
@@ -291,7 +305,7 @@ export function AddressTransactionFilters({
 			{/* Expanded content. */}
 			{isExpanded && (
 				<div className="px-4 pb-4 space-y-4">
-					{/* Row 1: Sort Order and Has Cell >= CKB. */}
+					{/* Row 1: Sort Order. */}
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						{/* Sort Order dropdown. */}
 						<div>
@@ -345,109 +359,47 @@ export function AddressTransactionFilters({
 								)}
 							</div>
 						</div>
+					</div>
 
-						{/* Has Cell >= CKB input. */}
-						<div>
-							<label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-								Has Cell &ge; CKB
-							</label>
-							<div className="relative">
+					{/* Type Scripts checkboxes. */}
+					<div>
+						<label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+							Type Scripts
+						</label>
+						<div className="grid grid-cols-2 gap-x-6 gap-y-1">
+							{/* "Show All" option - checked when no filters are selected. */}
+							<label className="flex items-center gap-2 py-1 cursor-pointer">
 								<input
-									type="number"
-									min="0"
-									step="any"
-									value={filters.minCellCkb ?? ''}
-									onChange={(e) => handleMinCkbInput(e.target.value)}
-									placeholder="0"
-									className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 pr-12 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-nervos focus:border-transparent"
+									type="checkbox"
+									checked={filters.typeScriptGroups.length === 0}
+									onChange={clearTypeScriptGroups}
+									className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-nervos focus:ring-nervos focus:ring-2 bg-white dark:bg-gray-800"
 								/>
-								<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-gray-500 pointer-events-none">
-									CKB
+								<span className="text-sm text-gray-700 dark:text-gray-300">
+									Show All
 								</span>
-							</div>
+							</label>
+							{allTypeGroups.map((groupName) => (
+								<label
+									key={groupName}
+									className="flex items-center gap-2 py-1 cursor-pointer"
+								>
+									<input
+										type="checkbox"
+										checked={filters.typeScriptGroups.includes(groupName)}
+										onChange={() => toggleTypeScriptGroup(groupName)}
+										className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-nervos focus:ring-nervos focus:ring-2 bg-white dark:bg-gray-800"
+									/>
+									<span className="text-sm text-gray-700 dark:text-gray-300">
+										{groupName}
+									</span>
+								</label>
+							))}
 						</div>
 					</div>
 
-					{/* Row 2: Type Script and Block Range. */}
+					{/* Row 2: Block Range and Has Cell >= CKB. */}
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						{/* Type Script dropdown. */}
-						<div>
-							<label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-								Type Script
-							</label>
-							<div ref={typeScriptDropdownRef} className="relative">
-								<button
-									type="button"
-									onClick={() => setTypeScriptDropdownOpen(prev => !prev)}
-									className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 pr-9 bg-white dark:bg-gray-900 text-gray-900 dark:text-white cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-nervos focus:border-transparent"
-									aria-haspopup="listbox"
-									aria-expanded={typeScriptDropdownOpen}
-								>
-									{typeScriptLabel}
-								</button>
-								<ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2" />
-
-								{typeScriptDropdownOpen && (
-									<div
-										className="absolute top-full left-0 mt-1 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg z-20 min-w-full max-h-60 overflow-y-auto"
-										role="listbox"
-									>
-										{/* None option. */}
-										<div
-											role="option"
-											tabIndex={0}
-											aria-selected={filters.typeScript === null}
-											onClick={() => {
-												updateFilter('typeScript', null);
-												setTypeScriptDropdownOpen(false);
-											}}
-											onKeyDown={(e) => {
-												if (e.key === 'Enter' || e.key === ' ') {
-													e.preventDefault();
-													updateFilter('typeScript', null);
-													setTypeScriptDropdownOpen(false);
-												}
-											}}
-											className={`px-3 py-1.5 text-sm cursor-pointer ${
-												filters.typeScript === null
-													? 'bg-nervos/10 text-nervos dark:text-nervos'
-													: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-											}`}
-										>
-											None
-										</div>
-										{/* Type script options. */}
-										{TYPE_SCRIPTS.map((scriptName) => (
-											<div
-												key={scriptName}
-												role="option"
-												tabIndex={0}
-												aria-selected={filters.typeScript === scriptName}
-												onClick={() => {
-													updateFilter('typeScript', scriptName);
-													setTypeScriptDropdownOpen(false);
-												}}
-												onKeyDown={(e) => {
-													if (e.key === 'Enter' || e.key === ' ') {
-														e.preventDefault();
-														updateFilter('typeScript', scriptName);
-														setTypeScriptDropdownOpen(false);
-													}
-												}}
-												className={`px-3 py-1.5 text-sm cursor-pointer ${
-													filters.typeScript === scriptName
-														? 'bg-nervos/10 text-nervos dark:text-nervos'
-														: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-												}`}
-											>
-												{scriptName}
-											</div>
-										))}
-									</div>
-								)}
-							</div>
-						</div>
-
 						{/* Block Range dropdown. */}
 						<div>
 							<label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
@@ -494,6 +446,27 @@ export function AddressTransactionFilters({
 										))}
 									</div>
 								)}
+							</div>
+						</div>
+
+						{/* Has Cell >= CKB input. */}
+						<div>
+							<label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+								Has Cell &ge; CKB
+							</label>
+							<div className="relative">
+								<input
+									type="number"
+									min="0"
+									step="any"
+									value={filters.minCellCkb ?? ''}
+									onChange={(e) => handleMinCkbInput(e.target.value)}
+									placeholder="0"
+									className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 pr-12 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-nervos focus:border-transparent"
+								/>
+								<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-gray-500 pointer-events-none">
+									CKB
+								</span>
 							</div>
 						</div>
 					</div>
