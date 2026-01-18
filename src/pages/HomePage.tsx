@@ -397,9 +397,9 @@ function TransactionListItem({ tx }: { tx: TransactionInfo }) {
 			className="block w-full min-h-[72px] sm:h-[72px] p-4 text-left border-b border-gray-200 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
 		>
 			<div className="flex items-center justify-between mb-1.5">
-				<div className="flex items-center gap-2 min-w-0">
-					<span className="font-mono text-sm font-medium text-nervos truncate">
-						{isMobile ? truncateHex(tx.hash, 8, 8) : tx.hash}
+				<div className="flex items-center gap-2">
+					<span className="font-mono text-sm font-medium text-nervos">
+						{truncateHex(tx.hash, 8, 8)}
 					</span>
 					{tx.isCellbase && (
 						isMobile ? (
