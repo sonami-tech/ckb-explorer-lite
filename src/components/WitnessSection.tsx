@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { HexData, type DecoderRegistry, type DecodedResult } from './HexData';
-import { formatBytes } from '../lib/format';
+import { formatBytes, formatNumber } from '../lib/format';
 import {
 	decodeWitnessArgs,
 	decodeSignature,
@@ -12,6 +12,8 @@ import {
 import { useTruncation } from '../hooks/ui';
 import { CopyButton, DownloadButton, ModalButton, SizeBadge } from './CopyButton';
 import { DataModal } from './DataModal';
+import { TRANSACTION_SECTION_PAGINATION } from '../config/defaults';
+import { Pagination } from './Pagination';
 
 interface WitnessSectionProps {
 	/** Array of witness hex strings. */
@@ -28,6 +30,31 @@ export function WitnessSection({ witnesses }: WitnessSectionProps) {
 	// Calculate total size for header.
 	const totalBytes = witnesses.reduce((sum, w) => sum + (w.length - 2) / 2, 0);
 
+	// Pagination state.
+	const [currentPage, setCurrentPage] = useState(1);
+	const [pageSize, setPageSize] = useState<number>(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
+
+	// Handle page size changes.
+	const handlePageSizeChange = useCallback((newSize: number) => {
+		setPageSize(newSize);
+		setCurrentPage(1);
+	}, []);
+
+	// Reset pagination when witnesses array changes.
+	useEffect(() => {
+		setCurrentPage(1);
+	}, [witnesses.length]);
+
+	// Pagination calculations.
+	const shouldPaginate = witnesses.length > TRANSACTION_SECTION_PAGINATION.threshold;
+	const startIndex = (currentPage - 1) * pageSize;
+	const endIndex = shouldPaginate
+		? Math.min(startIndex + pageSize, witnesses.length)
+		: witnesses.length;
+	const paginatedWitnesses = shouldPaginate
+		? witnesses.slice(startIndex, endIndex)
+		: witnesses;
+
 	return (
 		<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 			<div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -37,10 +64,23 @@ export function WitnessSection({ witnesses }: WitnessSectionProps) {
 			</div>
 
 			<div className="divide-y divide-gray-200 dark:divide-gray-700">
-				{witnesses.map((witness, index) => (
-					<WitnessItem key={index} index={index} data={witness} />
+				{paginatedWitnesses.map((witness, paginatedIndex) => (
+					<WitnessItem key={startIndex + paginatedIndex} index={startIndex + paginatedIndex} data={witness} />
 				))}
 			</div>
+
+			{shouldPaginate && (
+				<div className="p-4 border-t border-gray-200 dark:border-gray-700">
+					<Pagination
+						currentPage={currentPage}
+						totalItems={witnesses.length}
+						pageSize={pageSize}
+						pageSizeOptions={TRANSACTION_SECTION_PAGINATION.options}
+						onPageChange={setCurrentPage}
+						onPageSizeChange={handlePageSizeChange}
+					/>
+				</div>
+			)}
 		</div>
 	);
 }

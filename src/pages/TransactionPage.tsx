@@ -24,13 +24,15 @@ import { WitnessSection } from '../components/WitnessSection';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
 import { ScriptIndicatorPill } from '../components/ScriptIndicatorPill';
 import { Tooltip } from '../components/Tooltip';
-import type { RpcTransaction, RpcTransactionWithStatus, RpcScript, RpcCellInput, RpcCellWithLifecycle, RpcCellOutput } from '../types/rpc';
+import { Pagination } from '../components/Pagination';
+import type { RpcTransaction, RpcTransactionWithStatus, RpcScript, RpcCellInput, RpcCellWithLifecycle } from '../types/rpc';
 import type { NetworkType } from '../config/networks';
 import {
 	BRAND,
 	DEP_TYPE,
 	getStatusStyle,
 } from '../lib/badgeStyles';
+import { TRANSACTION_SECTION_PAGINATION } from '../config/defaults';
 
 interface TransactionPageProps {
 	hash: string;
@@ -129,8 +131,23 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 	// Cell dependency data fetching state.
 	const [cellDepData, setCellDepData] = useState<Map<number, RpcCellWithLifecycle>>(new Map());
-	const [cellDepErrors, setCellDepErrors] = useState<Map<number, Error>>(new Map());
 	const [cellDepsLoading, setCellDepsLoading] = useState(false);
+
+	// Pagination state for inputs.
+	const [inputsPage, setInputsPage] = useState(1);
+	const [inputsPageSize, setInputsPageSize] = useState(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
+
+	// Pagination state for outputs.
+	const [outputsPage, setOutputsPage] = useState(1);
+	const [outputsPageSize, setOutputsPageSize] = useState(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
+
+	// Pagination state for cell dependencies.
+	const [cellDepsPage, setCellDepsPage] = useState(1);
+	const [cellDepsPageSize, setCellDepsPageSize] = useState(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
+
+	// Pagination state for header dependencies.
+	const [headerDepsPage, setHeaderDepsPage] = useState(1);
+	const [headerDepsPageSize, setHeaderDepsPageSize] = useState(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
 
 	const networkType = currentNetwork?.type ?? 'mainnet';
 
@@ -187,46 +204,51 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		}
 	}, [rpc, hash]);
 
-	const fetchInputCellData = useCallback(async (inputs: RpcCellInput[]) => {
+	const fetchInputCellData = useCallback(async (inputs: RpcCellInput[], startIndex: number) => {
 		setInputsLoading(true);
-		setInputErrors(new Map());
-		setInputCellData(new Map());
 
 		try {
-			// Filter out cellbase inputs.
-			const regularInputs = inputs.filter(
-				input => !isNullOutpoint(input.previous_output.tx_hash, input.previous_output.index)
-			);
+			// Fetch only current page inputs in parallel (cellbase inputs are filtered during rendering).
+			const promises = inputs.map(async (input, paginatedIdx) => {
+				const actualIndex = startIndex + paginatedIdx;
+				// Skip cellbase inputs.
+				if (isNullOutpoint(input.previous_output.tx_hash, input.previous_output.index)) {
+					return { index: actualIndex, cellData: null, error: null };
+				}
 
-			// Fetch all inputs in parallel.
-			const promises = regularInputs.map(async (input, idx) => {
 				try {
 					const cellData = await rpc.getCellLifecycle(
 						input.previous_output.tx_hash,
 						parseInt(input.previous_output.index, 16),
 						true
 					);
-					return { index: idx, cellData, error: null };
+					return { index: actualIndex, cellData, error: null };
 				} catch (error) {
-					return { index: idx, cellData: null, error: error as Error };
+					return { index: actualIndex, cellData: null, error: error as Error };
 				}
 			});
 
 			const results = await Promise.all(promises);
 
-			const dataMap = new Map<number, RpcCellWithLifecycle>();
-			const errorMap = new Map<number, Error>();
-
-			results.forEach(result => {
-				if (result.cellData) {
-					dataMap.set(result.index, result.cellData);
-				} else if (result.error) {
-					errorMap.set(result.index, result.error);
-				}
+			setInputCellData(prev => {
+				const dataMap = new Map(prev);
+				results.forEach(result => {
+					if (result.cellData) {
+						dataMap.set(result.index, result.cellData);
+					}
+				});
+				return dataMap;
 			});
 
-			setInputCellData(dataMap);
-			setInputErrors(errorMap);
+			setInputErrors(prev => {
+				const errorMap = new Map(prev);
+				results.forEach(result => {
+					if (result.error) {
+						errorMap.set(result.index, result.error);
+					}
+				});
+				return errorMap;
+			});
 		} catch (error) {
 			console.error('Failed to fetch input cell data:', error);
 		} finally {
@@ -234,41 +256,40 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		}
 	}, [rpc]);
 
-	const fetchCellDepData = useCallback(async (cellDeps: { out_point: { tx_hash: string; index: string }; dep_type: string }[]) => {
+	const fetchCellDepData = useCallback(async (
+		cellDeps: { out_point: { tx_hash: string; index: string }; dep_type: string }[],
+		startIndex: number
+	) => {
 		setCellDepsLoading(true);
-		setCellDepErrors(new Map());
-		setCellDepData(new Map());
 
 		try {
-			// Fetch all cell deps in parallel.
-			const promises = cellDeps.map(async (dep, idx) => {
+			// Fetch only current page cell deps in parallel.
+			const promises = cellDeps.map(async (dep, paginatedIdx) => {
+				const actualIndex = startIndex + paginatedIdx;
 				try {
 					const cellData = await rpc.getCellLifecycle(
 						dep.out_point.tx_hash,
 						parseInt(dep.out_point.index, 16),
 						true
 					);
-					return { index: idx, cellData, error: null };
+					return { index: actualIndex, cellData };
 				} catch (error) {
-					return { index: idx, cellData: null, error: error as Error };
+					console.error(`Failed to fetch cell dep ${actualIndex}:`, error);
+					return { index: actualIndex, cellData: null };
 				}
 			});
 
 			const results = await Promise.all(promises);
 
-			const dataMap = new Map<number, RpcCellWithLifecycle>();
-			const errorMap = new Map<number, Error>();
-
-			results.forEach(result => {
-				if (result.cellData) {
-					dataMap.set(result.index, result.cellData);
-				} else if (result.error) {
-					errorMap.set(result.index, result.error);
-				}
+			setCellDepData(prev => {
+				const dataMap = new Map(prev);
+				results.forEach(result => {
+					if (result.cellData) {
+						dataMap.set(result.index, result.cellData);
+					}
+				});
+				return dataMap;
 			});
-
-			setCellDepData(dataMap);
-			setCellDepErrors(errorMap);
 		} catch (error) {
 			console.error('Failed to fetch cell dep data:', error);
 		} finally {
@@ -276,16 +297,25 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		}
 	}, [rpc]);
 
-	useEffect(() => {
-		fetchTransaction();
-	}, [fetchTransaction]);
+	const handleInputsPageSizeChange = useCallback((newSize: number) => {
+		setInputsPageSize(newSize);
+		setInputsPage(1); // Reset to first page when size changes
+	}, []);
 
-	useEffect(() => {
-		if (txData?.transaction) {
-			fetchInputCellData(txData.transaction.inputs);
-			fetchCellDepData(txData.transaction.cell_deps);
-		}
-	}, [txData, fetchInputCellData, fetchCellDepData]);
+	const handleOutputsPageSizeChange = useCallback((newSize: number) => {
+		setOutputsPageSize(newSize);
+		setOutputsPage(1); // Reset to first page when size changes
+	}, []);
+
+	const handleCellDepsPageSizeChange = useCallback((newSize: number) => {
+		setCellDepsPageSize(newSize);
+		setCellDepsPage(1); // Reset to first page when size changes
+	}, []);
+
+	const handleHeaderDepsPageSizeChange = useCallback((newSize: number) => {
+		setHeaderDepsPageSize(newSize);
+		setHeaderDepsPage(1);
+	}, []);
 
 	// All derived state and hooks must be called before any early returns.
 	// This satisfies React Hooks rules.
@@ -297,6 +327,58 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		transaction.inputs[0].previous_output.tx_hash,
 		transaction.inputs[0].previous_output.index
 	);
+
+	// Pagination for inputs.
+	const shouldPaginateInputs = transaction && transaction.inputs.length > TRANSACTION_SECTION_PAGINATION.threshold;
+	const inputsStartIndex = (inputsPage - 1) * inputsPageSize;
+	const inputsEndIndex = shouldPaginateInputs
+		? Math.min(inputsStartIndex + inputsPageSize, transaction?.inputs.length ?? 0)
+		: transaction?.inputs.length ?? 0;
+	const paginatedInputs = useMemo(() => {
+		if (shouldPaginateInputs && transaction) {
+			return transaction.inputs.slice(inputsStartIndex, inputsEndIndex);
+		}
+		return transaction?.inputs ?? [];
+	}, [shouldPaginateInputs, transaction, inputsStartIndex, inputsEndIndex]);
+
+	// Pagination for outputs.
+	const shouldPaginateOutputs = transaction && transaction.outputs.length > TRANSACTION_SECTION_PAGINATION.threshold;
+	const outputsStartIndex = (outputsPage - 1) * outputsPageSize;
+	const outputsEndIndex = shouldPaginateOutputs
+		? Math.min(outputsStartIndex + outputsPageSize, transaction?.outputs.length ?? 0)
+		: transaction?.outputs.length ?? 0;
+	const paginatedOutputs = useMemo(() => {
+		if (shouldPaginateOutputs && transaction) {
+			return transaction.outputs.slice(outputsStartIndex, outputsEndIndex);
+		}
+		return transaction?.outputs ?? [];
+	}, [shouldPaginateOutputs, transaction, outputsStartIndex, outputsEndIndex]);
+
+	// Pagination for cell dependencies.
+	const shouldPaginateCellDeps = transaction && transaction.cell_deps.length > TRANSACTION_SECTION_PAGINATION.threshold;
+	const cellDepsStartIndex = (cellDepsPage - 1) * cellDepsPageSize;
+	const cellDepsEndIndex = shouldPaginateCellDeps
+		? Math.min(cellDepsStartIndex + cellDepsPageSize, transaction?.cell_deps.length ?? 0)
+		: transaction?.cell_deps.length ?? 0;
+	const paginatedCellDeps = useMemo(() => {
+		if (shouldPaginateCellDeps && transaction) {
+			return transaction.cell_deps.slice(cellDepsStartIndex, cellDepsEndIndex);
+		}
+		return transaction?.cell_deps ?? [];
+	}, [shouldPaginateCellDeps, transaction, cellDepsStartIndex, cellDepsEndIndex]);
+
+	// Pagination for header dependencies.
+	const shouldPaginateHeaderDeps = transaction && transaction.header_deps.length > TRANSACTION_SECTION_PAGINATION.threshold;
+	const headerDepsStartIndex = (headerDepsPage - 1) * headerDepsPageSize;
+	const headerDepsEndIndex = shouldPaginateHeaderDeps
+		? Math.min(headerDepsStartIndex + headerDepsPageSize, transaction?.header_deps.length ?? 0)
+		: transaction?.header_deps.length ?? 0;
+	const paginatedHeaderDeps = useMemo(() => {
+		if (shouldPaginateHeaderDeps && transaction) {
+			return transaction.header_deps.slice(headerDepsStartIndex, headerDepsEndIndex);
+		}
+		return transaction?.header_deps ?? [];
+	}, [shouldPaginateHeaderDeps, transaction, headerDepsStartIndex, headerDepsEndIndex]);
 
 	// Calculate total output amount.
 	const totalOutput = useMemo(() => {
@@ -317,6 +399,31 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 	// Extract cycles from RPC response.
 	const cycles = txData?.cycles ? BigInt(txData.cycles) : null;
+
+	// Effects: Fetch transaction data and cell dependencies.
+	useEffect(() => {
+		fetchTransaction();
+	}, [fetchTransaction]);
+
+	useEffect(() => {
+		if (paginatedInputs.length > 0) {
+			fetchInputCellData(paginatedInputs, inputsStartIndex);
+		}
+	}, [paginatedInputs, inputsStartIndex, fetchInputCellData]);
+
+	useEffect(() => {
+		if (paginatedCellDeps.length > 0) {
+			fetchCellDepData(paginatedCellDeps, cellDepsStartIndex);
+		}
+	}, [paginatedCellDeps, cellDepsStartIndex, fetchCellDepData]);
+
+	// Reset pagination when transaction changes.
+	useEffect(() => {
+		setInputsPage(1);
+		setOutputsPage(1);
+		setCellDepsPage(1);
+		setHeaderDepsPage(1);
+	}, [txData]);
 
 	if (isLoading) {
 		return (
@@ -427,7 +534,8 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							No inputs (Cellbase transaction)
 						</div>
 					) : (
-						transaction.inputs.map((input, index) => {
+						paginatedInputs.map((input, paginatedIndex) => {
+							const index = inputsStartIndex + paginatedIndex;
 							const isCellbase = isNullOutpoint(input.previous_output.tx_hash, input.previous_output.index);
 
 							// Cellbase input.
@@ -598,6 +706,18 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 						})
 					)}
 				</div>
+				{shouldPaginateInputs && (
+					<div className="p-4 border-t border-gray-200 dark:border-gray-700">
+						<Pagination
+							currentPage={inputsPage}
+							totalItems={transaction.inputs.length}
+							pageSize={inputsPageSize}
+							pageSizeOptions={TRANSACTION_SECTION_PAGINATION.options}
+							onPageChange={setInputsPage}
+							onPageSizeChange={handleInputsPageSizeChange}
+						/>
+					</div>
+				)}
 			</div>
 
 			{/* Outputs. */}
@@ -608,7 +728,8 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					</h2>
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
-					{transaction.outputs.map((output, index) => {
+					{paginatedOutputs.map((output, paginatedIndex) => {
+						const index = outputsStartIndex + paginatedIndex;
 						const address = encodeAddress(output.lock, networkType);
 						const lockIndicator = extractLockScriptIndicator(output.lock, networkType);
 						const typeIndicator = output.type ? extractTypeScriptIndicator(output.type, networkType) : null;
@@ -671,6 +792,18 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 						);
 					})}
 				</div>
+				{shouldPaginateOutputs && (
+					<div className="p-4 border-t border-gray-200 dark:border-gray-700">
+						<Pagination
+							currentPage={outputsPage}
+							totalItems={transaction.outputs.length}
+							pageSize={outputsPageSize}
+							pageSizeOptions={TRANSACTION_SECTION_PAGINATION.options}
+							onPageChange={setOutputsPage}
+							onPageSizeChange={handleOutputsPageSizeChange}
+						/>
+					</div>
+				)}
 			</div>
 
 			{/* Cell Deps. */}
@@ -682,7 +815,8 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 						</h2>
 					</div>
 					<div className="divide-y divide-gray-200 dark:divide-gray-700">
-						{transaction.cell_deps.map((dep, index) => {
+						{paginatedCellDeps.map((dep, paginatedIndex) => {
+							const index = cellDepsStartIndex + paginatedIndex;
 							const cellData = cellDepData.get(index);
 							const depIndex = parseInt(dep.out_point.index, 16);
 
@@ -746,6 +880,18 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							);
 						})}
 					</div>
+					{shouldPaginateCellDeps && (
+						<div className="p-4 border-t border-gray-200 dark:border-gray-700">
+							<Pagination
+								currentPage={cellDepsPage}
+								totalItems={transaction.cell_deps.length}
+								pageSize={cellDepsPageSize}
+								pageSizeOptions={TRANSACTION_SECTION_PAGINATION.options}
+								onPageChange={setCellDepsPage}
+								onPageSizeChange={handleCellDepsPageSizeChange}
+							/>
+						</div>
+					)}
 				</div>
 			)}
 
@@ -758,15 +904,30 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 				</div>
 				{transaction.header_deps.length > 0 ? (
 					<div className="divide-y divide-gray-200 dark:divide-gray-700">
-						{transaction.header_deps.map((headerHash, index) => (
-							<div key={index} className="p-4">
-								<HashDisplay hash={headerHash} linkTo={`/block/${headerHash}`} />
-							</div>
-						))}
+						{paginatedHeaderDeps.map((headerHash, paginatedIndex) => {
+							const index = headerDepsStartIndex + paginatedIndex;
+							return (
+								<div key={index} className="p-4">
+									<HashDisplay hash={headerHash} linkTo={`/block/${headerHash}`} />
+								</div>
+							);
+						})}
 					</div>
 				) : (
 					<div className="p-4 text-sm text-gray-500 dark:text-gray-400">
 						No header dependencies
+					</div>
+				)}
+				{shouldPaginateHeaderDeps && (
+					<div className="p-4 border-t border-gray-200 dark:border-gray-700">
+						<Pagination
+							currentPage={headerDepsPage}
+							totalItems={transaction.header_deps.length}
+							pageSize={headerDepsPageSize}
+							pageSizeOptions={TRANSACTION_SECTION_PAGINATION.options}
+							onPageChange={setHeaderDepsPage}
+							onPageSizeChange={handleHeaderDepsPageSizeChange}
+						/>
 					</div>
 				)}
 			</div>
