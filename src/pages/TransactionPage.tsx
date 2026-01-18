@@ -6,8 +6,10 @@ import {
 	formatAbsoluteTime,
 	formatRelativeTime,
 	isValidHex,
+	truncateHex,
 } from '../lib/format';
 import { encodeAddress } from '../lib/address';
+import { lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
 import { navigate, generateLink } from '../lib/router';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
@@ -19,16 +21,64 @@ import { InternalLinkIcon } from '../components/InternalLinkIcon';
 import { InternalLink } from '../components/InternalLink';
 import { WitnessSection } from '../components/WitnessSection';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
-import type { RpcTransaction, RpcTransactionWithStatus } from '../types/rpc';
+import { ScriptIndicatorPill } from '../components/ScriptIndicatorPill';
+import type { RpcTransaction, RpcTransactionWithStatus, RpcScript, RpcCellInput, RpcCellWithLifecycle, RpcCellOutput } from '../types/rpc';
+import type { NetworkType } from '../config/networks';
 import {
 	BRAND,
-	HAS_TYPE,
 	DEP_TYPE,
 	getStatusStyle,
 } from '../lib/badgeStyles';
 
 interface TransactionPageProps {
 	hash: string;
+}
+
+/** Script indicator for display. */
+interface ScriptIndicator {
+	name: string;
+	resourceId?: string;
+	description?: string;
+	isKnown: boolean;
+}
+
+/** Helper to check if outpoint is null (cellbase). */
+function isNullOutpoint(txHash: string, index: string): boolean {
+	return txHash === '0x0000000000000000000000000000000000000000000000000000000000000000' && index === '0xffffffff';
+}
+
+/** Extract lock script indicator from script. */
+function extractLockScriptIndicator(lock: RpcScript, networkType: NetworkType): ScriptIndicator {
+	const info = lookupLockScript(lock.code_hash, lock.hash_type, networkType, lock.args);
+	if (info) {
+		return {
+			name: info.name,
+			resourceId: info.resourceId,
+			description: info.description,
+			isKnown: true,
+		};
+	}
+	return {
+		name: truncateHex(lock.code_hash, 8, 4),
+		isKnown: false,
+	};
+}
+
+/** Extract type script indicator from script. */
+function extractTypeScriptIndicator(typeScript: RpcScript, networkType: NetworkType): ScriptIndicator {
+	const info = lookupTypeScript(typeScript.code_hash, typeScript.hash_type, networkType, typeScript.args);
+	if (info) {
+		return {
+			name: info.name,
+			resourceId: info.resourceId,
+			description: info.description,
+			isKnown: true,
+		};
+	}
+	return {
+		name: truncateHex(typeScript.code_hash, 8, 4),
+		isKnown: false,
+	};
 }
 
 export function TransactionPage({ hash }: TransactionPageProps) {
@@ -38,6 +88,11 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 	const [blockTimestamp, setBlockTimestamp] = useState<bigint | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
+
+	// Input cell data fetching state.
+	const [inputCellData, setInputCellData] = useState<Map<number, RpcCellWithLifecycle>>(new Map());
+	const [inputErrors, setInputErrors] = useState<Map<number, Error>>(new Map());
+	const [inputsLoading, setInputsLoading] = useState(false);
 
 	const networkType = currentNetwork?.type ?? 'mainnet';
 
@@ -94,9 +149,62 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		}
 	}, [rpc, hash]);
 
+	const fetchInputCellData = useCallback(async (inputs: RpcCellInput[]) => {
+		setInputsLoading(true);
+		setInputErrors(new Map());
+		setInputCellData(new Map());
+
+		try {
+			// Filter out cellbase inputs.
+			const regularInputs = inputs.filter(
+				input => !isNullOutpoint(input.previous_output.tx_hash, input.previous_output.index)
+			);
+
+			// Fetch all inputs in parallel.
+			const promises = regularInputs.map(async (input, idx) => {
+				try {
+					const cellData = await rpc.getCellLifecycle(
+						input.previous_output.tx_hash,
+						parseInt(input.previous_output.index, 16),
+						true
+					);
+					return { index: idx, cellData, error: null };
+				} catch (error) {
+					return { index: idx, cellData: null, error: error as Error };
+				}
+			});
+
+			const results = await Promise.all(promises);
+
+			const dataMap = new Map<number, RpcCellWithLifecycle>();
+			const errorMap = new Map<number, Error>();
+
+			results.forEach(result => {
+				if (result.cellData) {
+					dataMap.set(result.index, result.cellData);
+				} else if (result.error) {
+					errorMap.set(result.index, result.error);
+				}
+			});
+
+			setInputCellData(dataMap);
+			setInputErrors(errorMap);
+		} catch (error) {
+			console.error('Failed to fetch input cell data:', error);
+		} finally {
+			setInputsLoading(false);
+		}
+	}, [rpc]);
+
 	useEffect(() => {
 		fetchTransaction();
 	}, [fetchTransaction]);
+
+	useEffect(() => {
+		if (txData?.transaction) {
+			fetchInputCellData(txData.transaction.inputs);
+		}
+	}, [txData, fetchInputCellData]);
 
 	if (isLoading) {
 		return (
@@ -192,17 +300,14 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 						</div>
 					) : (
 						transaction.inputs.map((input, index) => {
-							// Check if this is a cellbase input (null outpoint).
-							// Cellbase inputs have tx_hash of all zeros and index 0xffffffff.
-							const isNullOutpoint =
-								input.previous_output.tx_hash === '0x0000000000000000000000000000000000000000000000000000000000000000' &&
-								input.previous_output.index === '0xffffffff';
+							const isCellbase = isNullOutpoint(input.previous_output.tx_hash, input.previous_output.index);
 
-							if (isNullOutpoint) {
+							// Cellbase input.
+							if (isCellbase) {
 								return (
 									<div key={index} className="p-4">
 										<div className="flex items-center gap-3">
-											<span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-6">
+											<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
 												#{index}
 											</span>
 											<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${BRAND} rounded`}>
@@ -216,10 +321,128 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 								);
 							}
 
+							// Regular input.
+							const cellData = inputCellData.get(index);
+							const fetchError = inputErrors.get(index);
+
+							// Loading state.
+							if (inputsLoading && !cellData && !fetchError) {
+								return (
+									<div key={index} className="p-4">
+										<div className="flex items-center justify-between mb-2">
+											<div className="flex items-center gap-2">
+												<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+													#{index}
+												</span>
+												<OutPoint
+													txHash={input.previous_output.tx_hash}
+													index={parseInt(input.previous_output.index, 16)}
+												/>
+											</div>
+											<div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+										</div>
+										<div className="ml-6 mb-2">
+											<div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+										</div>
+										<div className="ml-6">
+											<div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+										</div>
+									</div>
+								);
+							}
+
+							// Error state.
+							if (fetchError) {
+								return (
+									<div key={index} className="p-4">
+										<div className="flex items-center gap-2 mb-2">
+											<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+												#{index}
+											</span>
+											<OutPoint
+												txHash={input.previous_output.tx_hash}
+												index={parseInt(input.previous_output.index, 16)}
+											/>
+										</div>
+										<div className="ml-6 text-sm text-red-600 dark:text-red-400">
+											Failed to load cell data
+										</div>
+									</div>
+								);
+							}
+
+							// Data loaded.
+							if (cellData) {
+								const address = encodeAddress(cellData.output.lock, networkType);
+								const lockIndicator = extractLockScriptIndicator(cellData.output.lock, networkType);
+								const typeIndicator = cellData.output.type ? extractTypeScriptIndicator(cellData.output.type, networkType) : null;
+
+								return (
+									<div key={index} className="p-4">
+										{/* Line 1: Index, outpoint, icons, capacity. */}
+										<div className="flex items-center justify-between mb-2">
+											<div className="flex items-center gap-2">
+												<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+													#{index}
+												</span>
+												<OutPoint
+													txHash={input.previous_output.tx_hash}
+													index={parseInt(input.previous_output.index, 16)}
+												/>
+												<InternalLinkIcon
+													linkTo={generateLink(`/cell/${input.previous_output.tx_hash}/${parseInt(input.previous_output.index, 16)}`)}
+													tooltip="View cell"
+												/>
+											</div>
+											<span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
+												{formatCkb(cellData.output.capacity)}
+											</span>
+										</div>
+
+										{/* Line 2: Address. */}
+										<div className="ml-6 mb-2">
+											<AddressDisplay
+												address={address}
+												linkTo={generateLink(`/address/${address}`)}
+											/>
+										</div>
+
+										{/* Line 3: Script pills. */}
+										<div className="ml-6 flex flex-wrap gap-1.5">
+											{lockIndicator.isKnown ? (
+												<ScriptIndicatorPill
+													name={lockIndicator.name}
+													resourceId={lockIndicator.resourceId}
+													description={lockIndicator.description}
+												/>
+											) : (
+												<span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+													{lockIndicator.name}
+												</span>
+											)}
+											{typeIndicator && (
+												typeIndicator.isKnown ? (
+													<ScriptIndicatorPill
+														name={typeIndicator.name}
+														resourceId={typeIndicator.resourceId}
+														description={typeIndicator.description}
+													/>
+												) : (
+													<span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+														{typeIndicator.name}
+													</span>
+												)
+											)}
+										</div>
+									</div>
+								);
+							}
+
+							// Fallback: show just outpoint.
 							return (
 								<div key={index} className="p-4">
 									<div className="flex items-center gap-3">
-										<span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-6">
+										<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
 											#{index}
 										</span>
 										<OutPoint
@@ -243,37 +466,63 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
 					{transaction.outputs.map((output, index) => {
-						// Derive address from lock script.
 						const address = encodeAddress(output.lock, networkType);
+						const lockIndicator = extractLockScriptIndicator(output.lock, networkType);
+						const typeIndicator = output.type ? extractTypeScriptIndicator(output.type, networkType) : null;
 
 						return (
 							<div key={index} className="p-4">
-								{/* Top row: index, type badge, capacity. */}
+								{/* Line 1: Index, outpoint, icons, capacity. */}
 								<div className="flex items-center justify-between mb-2">
 									<div className="flex items-center gap-2">
-										<span className="text-xs font-medium text-gray-400 dark:text-gray-500 w-6">
+										<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
 											#{index}
 										</span>
-										{output.type && (
-											<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${HAS_TYPE} rounded`}>
-												Has Type
-											</span>
-										)}
+										<OutPoint txHash={hash} index={index} />
+										<InternalLinkIcon
+											linkTo={generateLink(`/cell/${hash}/${index}`)}
+											tooltip="View cell"
+										/>
 									</div>
-									<span className="font-mono text-sm font-medium">
+									<span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
 										{formatCkb(output.capacity)}
 									</span>
 								</div>
-								{/* Address row with navigation. */}
-								<div className="flex items-center gap-2 ml-8">
+
+								{/* Line 2: Address. */}
+								<div className="ml-6 mb-2">
 									<AddressDisplay
 										address={address}
 										linkTo={generateLink(`/address/${address}`)}
 									/>
-									<InternalLinkIcon
-										linkTo={generateLink(`/cell/${hash}/${index}`)}
-										tooltip="View cell"
-									/>
+								</div>
+
+								{/* Line 3: Script pills. */}
+								<div className="ml-6 flex flex-wrap gap-1.5">
+									{lockIndicator.isKnown ? (
+										<ScriptIndicatorPill
+											name={lockIndicator.name}
+											resourceId={lockIndicator.resourceId}
+											description={lockIndicator.description}
+										/>
+									) : (
+										<span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+											{lockIndicator.name}
+										</span>
+									)}
+									{typeIndicator && (
+										typeIndicator.isKnown ? (
+											<ScriptIndicatorPill
+												name={typeIndicator.name}
+												resourceId={typeIndicator.resourceId}
+												description={typeIndicator.description}
+											/>
+										) : (
+											<span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+												{typeIndicator.name}
+											</span>
+										)
+									)}
 								</div>
 							</div>
 						);
