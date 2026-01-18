@@ -10,7 +10,7 @@ import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail, SkeletonTransactionItem } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { InternalLink } from '../components/InternalLink';
-import { ChevronDownIcon } from '../components/CopyButton';
+import { Pagination } from '../components/Pagination';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import {
 	TransactionRow,
@@ -31,6 +31,9 @@ import { FilterSortButton } from '../components/FilterSortButton';
 import { AddressFilterModal } from '../components/AddressFilterModal';
 import { ActiveFilterChips, type FilterChip } from '../components/ActiveFilterChips';
 import type { RpcScript, RpcGroupedTransactionInfo, IndexerSearchKey } from '../types/rpc';
+
+// Threshold for using large-limit skipping during cursor building.
+const SKIP_THRESHOLD_PAGES = 10;
 
 interface TransactionsForAddressPageProps {
 	address: string;
@@ -56,11 +59,9 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	const [transactions, setTransactions] = useState<EnrichedTransaction[]>([]);
 	const [totalTransactionCount, setTotalTransactionCount] = useState<bigint | null>(null);
 	const [filteredTransactionCount, setFilteredTransactionCount] = useState<bigint | null>(null);
-	const [cursor, setCursor] = useState<string | null>(null);
-	const [hasMore, setHasMore] = useState(false);
+	const [currentPage, setCurrentPage] = useState(1);
 	const [isLoadingOverview, setIsLoadingOverview] = useState(true);
 	const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
-	const [isLoadingMore, setIsLoadingMore] = useState(false);
 	const [error, setError] = useState<Error | null>(null);
 	const [pageSize, setPageSize] = useState(getStoredPageSize);
 	const [referenceTimestamp, setReferenceTimestamp] = useState<number | undefined>(undefined);
@@ -88,6 +89,10 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	const txFetchIdRef = useRef(0);
 	const prevFiltersRef = useRef<string>(JSON.stringify(DEFAULT_ADDRESS_FILTERS));
 	const prevSortRef = useRef<string>(JSON.stringify(DEFAULT_ADDRESS_SORT));
+
+	// Cursor cache: maps item index (0, 100, 200...) to cursor string.
+	// Key 0 = null cursor (start of results).
+	const cursorCacheRef = useRef<Map<number, string | null>>(new Map([[0, null]]));
 
 	// Parse address on mount.
 	useEffect(() => {
@@ -250,13 +255,17 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		}
 	}, [rpc, script, archiveHeight]);
 
-	// Fetch filtered transaction count and transactions list.
+	// Fetch filtered transaction count and first page of transactions.
 	const fetchTransactionData = useCallback(async () => {
 		if (!script) return;
 
 		const fetchId = ++txFetchIdRef.current;
 
 		setIsLoadingTransactions(true);
+		setCurrentPage(1);
+
+		// Reset cursor cache when fetching fresh data.
+		cursorCacheRef.current = new Map([[0, null]]);
 
 		try {
 			// Fetch tip header for block range filter presets.
@@ -273,7 +282,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				filter: indexerFilter,
 			};
 
-			// Fetch transaction count and transactions in parallel.
+			// Fetch transaction count and first page in parallel.
 			const [txCountResult, groupedTxsResult] = await Promise.all([
 				rpc.getTransactionsCount(searchKey, archiveHeight),
 				rpc.getGroupedTransactions(searchKey, sort.direction, pageSize, undefined, archiveHeight),
@@ -283,14 +292,17 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 
 			setFilteredTransactionCount(BigInt(txCountResult.count));
 
+			// Cache the cursor for the next page.
+			if (groupedTxsResult.last_cursor) {
+				cursorCacheRef.current.set(pageSize, groupedTxsResult.last_cursor);
+			}
+
 			// Enrich transactions with full details.
 			const enriched = await enrichTransactions(groupedTxsResult.objects);
 
 			if (fetchId !== txFetchIdRef.current) return;
 
 			setTransactions(enriched);
-			setCursor(groupedTxsResult.last_cursor);
-			setHasMore(groupedTxsResult.objects.length >= pageSize);
 		} catch (err) {
 			if (fetchId !== txFetchIdRef.current) return;
 			// Don't overwrite overview errors with transaction errors.
@@ -318,11 +330,13 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		}
 	}, [fetchTransactionData, script]);
 
-	// Load more transactions.
-	const loadMore = async () => {
-		if (!script || !cursor || isLoadingMore) return;
+	// Fetch a specific page of transactions with hybrid cursor caching.
+	const fetchPage = useCallback(async (targetPage: number) => {
+		if (!script || isLoadingTransactions) return;
 
-		setIsLoadingMore(true);
+		const fetchId = ++txFetchIdRef.current;
+
+		setIsLoadingTransactions(true);
 
 		try {
 			// Build search key with filters.
@@ -334,28 +348,112 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				filter: indexerFilter,
 			};
 
-			const result = await rpc.getGroupedTransactions(searchKey, sort.direction, pageSize, cursor, archiveHeight);
+			// Calculate target start item index (0-indexed).
+			const targetStartIndex = (targetPage - 1) * pageSize;
 
-			// Enrich new transactions.
-			const enriched = await enrichTransactions(result.objects);
+			// Find the nearest cached cursor position at or before target.
+			const cache = cursorCacheRef.current;
+			let nearestCachedIndex = 0;
+			for (const cachedIndex of cache.keys()) {
+				if (cachedIndex <= targetStartIndex && cachedIndex > nearestCachedIndex) {
+					nearestCachedIndex = cachedIndex;
+				}
+			}
 
-			setTransactions((prev) => [...prev, ...enriched]);
-			setCursor(result.last_cursor);
-			setHasMore(result.objects.length >= pageSize);
+			let currentCursor = cache.get(nearestCachedIndex) ?? null;
+			let currentIndex = nearestCachedIndex;
+
+			// Calculate how many pages we need to skip.
+			const itemsToSkip = targetStartIndex - currentIndex;
+			const pagesToSkip = Math.ceil(itemsToSkip / pageSize);
+
+			// Use large limit for skipping if jump is large (> SKIP_THRESHOLD_PAGES).
+			const skipLimit = pagesToSkip > SKIP_THRESHOLD_PAGES ? PAGE_SIZE_CONFIG.max : pageSize;
+
+			// Skip to target position by fetching with appropriate limit.
+			while (currentIndex < targetStartIndex) {
+				if (fetchId !== txFetchIdRef.current) return;
+
+				const remainingToSkip = targetStartIndex - currentIndex;
+				const fetchLimit = Math.min(skipLimit, remainingToSkip);
+
+				const skipResult = await rpc.getGroupedTransactions(
+					searchKey,
+					sort.direction,
+					fetchLimit,
+					currentCursor ?? undefined,
+					archiveHeight
+				);
+
+				// Cache the cursor at the new position.
+				currentIndex += skipResult.objects.length;
+				if (skipResult.last_cursor) {
+					cache.set(currentIndex, skipResult.last_cursor);
+					currentCursor = skipResult.last_cursor;
+				}
+
+				// If we didn't get enough items, we've reached the end.
+				if (skipResult.objects.length < fetchLimit) {
+					break;
+				}
+			}
+
+			if (fetchId !== txFetchIdRef.current) return;
+
+			// Fetch the actual page data.
+			const pageResult = await rpc.getGroupedTransactions(
+				searchKey,
+				sort.direction,
+				pageSize,
+				currentCursor ?? undefined,
+				archiveHeight
+			);
+
+			if (fetchId !== txFetchIdRef.current) return;
+
+			// Cache the cursor for the next page.
+			if (pageResult.last_cursor) {
+				cache.set(targetStartIndex + pageResult.objects.length, pageResult.last_cursor);
+			}
+
+			// Enrich transactions with full details.
+			const enriched = await enrichTransactions(pageResult.objects);
+
+			if (fetchId !== txFetchIdRef.current) return;
+
+			setTransactions(enriched);
+			setCurrentPage(targetPage);
 		} catch (err) {
-			console.error('Failed to load more transactions:', err);
+			if (fetchId !== txFetchIdRef.current) return;
+			console.error('Failed to fetch page:', err);
 		} finally {
-			setIsLoadingMore(false);
+			if (fetchId === txFetchIdRef.current) {
+				setIsLoadingTransactions(false);
+			}
 		}
-	};
+	}, [script, isLoadingTransactions, filters, tipBlockNumber, networkType, pageSize, sort.direction, rpc, archiveHeight, enrichTransactions]);
 
 	// Handle page size change.
-	const handlePageSizeChange = (newSize: number) => {
+	const handlePageSizeChange = useCallback((newSize: number) => {
 		setPageSize(newSize);
 		localStorage.setItem(STORAGE_KEY, newSize.toString());
+		setCurrentPage(1);
 		setTransactions([]);
-		setCursor(null);
-	};
+		cursorCacheRef.current = new Map([[0, null]]);
+	}, []);
+
+	// Handle page change.
+	const handlePageChange = useCallback((page: number) => {
+		if (page !== currentPage) {
+			fetchPage(page);
+		}
+	}, [currentPage, fetchPage]);
+
+	// Calculate total pages.
+	const totalPages = useMemo(() => {
+		if (filteredTransactionCount === null) return 1;
+		return Math.max(1, Math.ceil(Number(filteredTransactionCount) / pageSize));
+	}, [filteredTransactionCount, pageSize]);
 
 	// Reset pagination when filters or sort change.
 	useEffect(() => {
@@ -366,9 +464,10 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			prevFiltersRef.current = currentFilters;
 			prevSortRef.current = currentSort;
 
-			// Reset pagination and reload.
+			// Reset pagination state (data will be refetched by fetchTransactionData effect).
+			setCurrentPage(1);
 			setTransactions([]);
-			setCursor(null);
+			cursorCacheRef.current = new Map([[0, null]]);
 		}
 	}, [filters, sort]);
 
@@ -644,38 +743,17 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 					)}
 				</div>
 
-				{/* Load more controls. */}
-				{!isLoadingTransactions && (hasMore || transactions.length > 0) && (
-					<div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<span className="text-sm text-gray-500 dark:text-gray-400">
-								Results per load:
-							</span>
-							<div className="relative">
-								<select
-									value={pageSize}
-									onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
-									className="text-sm border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 pr-9 bg-white dark:bg-gray-800 text-gray-900 dark:text-white cursor-pointer appearance-none"
-								>
-									{PAGE_SIZE_CONFIG.options.map((size) => (
-										<option key={size} value={size}>
-											{size}
-										</option>
-									))}
-								</select>
-								<ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2" />
-							</div>
-						</div>
-
-						{hasMore && (
-							<button
-								onClick={loadMore}
-								disabled={isLoadingMore}
-								className="px-4 py-2 text-sm font-medium text-white bg-nervos rounded-lg hover:bg-nervos-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-							>
-								{isLoadingMore ? 'Loading...' : 'Load More'}
-							</button>
-						)}
+				{/* Pagination controls. */}
+				{!isLoadingTransactions && filteredTransactionCount !== null && totalPages > 1 && (
+					<div className="p-4 border-t border-gray-200 dark:border-gray-700">
+						<Pagination
+							currentPage={currentPage}
+							totalItems={Number(filteredTransactionCount)}
+							pageSize={pageSize}
+							pageSizeOptions={PAGE_SIZE_CONFIG.options}
+							onPageChange={handlePageChange}
+							onPageSizeChange={handlePageSizeChange}
+						/>
 					</div>
 				)}
 			</div>

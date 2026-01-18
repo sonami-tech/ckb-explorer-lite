@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react';
 import { navigate, generateLink } from '../lib/router';
 import { detectSearchType } from '../lib/format';
+import { useIsMobile } from '../hooks/ui';
 
 export function SearchBar() {
 	const [query, setQuery] = useState('');
 	const [error, setError] = useState<string | null>(null);
+	const isMobile = useIsMobile();
 
 	const handleSubmit = useCallback((e: React.FormEvent) => {
 		e.preventDefault();
@@ -51,7 +53,7 @@ export function SearchBar() {
 						setQuery(e.target.value);
 						setError(null);
 					}}
-					placeholder="Search by block, tx hash, address, or cell outpoint..."
+					placeholder={isMobile ? "Search..." : "Search by block, tx hash, address, or cell outpoint..."}
 					className={`
 						w-full px-4 py-2.5 pr-12 text-sm rounded-lg
 						bg-white dark:bg-gray-900

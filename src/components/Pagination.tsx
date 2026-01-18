@@ -138,8 +138,8 @@ export function Pagination({
 
 	return (
 		<div className={`flex flex-col sm:flex-row items-center justify-between gap-4 ${className}`}>
-			{/* Left: Page size selector. */}
-			<div className="flex items-center gap-2">
+			{/* Left: Page size selector (hidden on mobile). */}
+			<div className="hidden sm:flex items-center gap-2">
 				<label className="text-sm text-gray-500 dark:text-gray-400">
 					Items per page:
 				</label>
@@ -174,7 +174,7 @@ export function Pagination({
 					`}
 					aria-label="Previous page"
 				>
-					← Prev
+					<span className="hidden sm:inline">← </span>Prev
 				</button>
 
 				{/* Page numbers. */}
@@ -219,12 +219,12 @@ export function Pagination({
 					`}
 					aria-label="Next page"
 				>
-					Next →
+					Next<span className="hidden sm:inline"> →</span>
 				</button>
 			</div>
 
-			{/* Right: Go to page input. */}
-			<div className="flex items-center gap-1">
+			{/* Right: Go to page input (hidden on mobile). */}
+			<div className="hidden sm:flex items-center gap-1">
 				<label className="text-sm text-gray-500 dark:text-gray-400">
 					Page:
 				</label>
