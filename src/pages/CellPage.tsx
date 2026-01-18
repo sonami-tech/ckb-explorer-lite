@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import { encodeAddress } from '../lib/address';
-import { formatCkb } from '../lib/format';
+import { formatCkb, calculateCellSize, formatBytes } from '../lib/format';
 import { generateLink } from '../lib/router';
 import { fromHex } from '../lib/rpc';
 import { lookupWellKnownCell } from '../lib/wellKnown';
@@ -82,6 +82,22 @@ export function CellPage({ txHash, index }: CellPageProps) {
 		fetchCell();
 	}, [fetchCell]);
 
+	// Derive block numbers from lifecycle data.
+	// These calculations must happen before any early returns to satisfy React Hooks rules.
+	const createdBlock = cellData ? Number(fromHex(cellData.created_block_number)) : null;
+	const consumedBlock = cellData?.consumed_block_number
+		? Number(fromHex(cellData.consumed_block_number))
+		: null;
+
+	// Derive status based on current state.
+	const status = consumedBlock === null ? 'live' : 'dead';
+
+	// Calculate cell size.
+	const cellSize = useMemo(
+		() => cellData ? calculateCellSize(cellData) : null,
+		[cellData]
+	);
+
 	if (isLoading) {
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
@@ -97,15 +113,6 @@ export function CellPage({ txHash, index }: CellPageProps) {
 			</div>
 		);
 	}
-
-	// Derive block numbers from lifecycle data.
-	const createdBlock = cellData ? Number(fromHex(cellData.created_block_number)) : null;
-	const consumedBlock = cellData?.consumed_block_number
-		? Number(fromHex(cellData.consumed_block_number))
-		: null;
-
-	// Derive status based on current state.
-	const status = consumedBlock === null ? 'live' : 'dead';
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
@@ -177,6 +184,13 @@ export function CellPage({ txHash, index }: CellPageProps) {
 							) : (
 								<span className="text-gray-500 dark:text-gray-400">None</span>
 							)}
+						</DetailRow>
+					)}
+					{cellSize !== null && (
+						<DetailRow label="Cell Size">
+							<span className="text-sm text-gray-700 dark:text-gray-300">
+								{formatBytes(cellSize)}
+							</span>
 						</DetailRow>
 					)}
 					{createdBlock !== null && (

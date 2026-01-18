@@ -5,6 +5,7 @@
 
 import { lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
 import { navigate, generateLink } from '../lib/router';
+import { Tooltip } from './Tooltip';
 import type { NetworkType } from '../config/networks';
 
 interface ScriptLinkProps {
@@ -18,6 +19,8 @@ interface ScriptLinkProps {
 	scriptType: 'lock' | 'type';
 	/** Network type for lookup. */
 	networkType: NetworkType;
+	/** Show code hash with tooltip for unknown scripts. */
+	showHashForUnknown?: boolean;
 	/** Additional CSS classes. */
 	className?: string;
 }
@@ -25,14 +28,24 @@ interface ScriptLinkProps {
 /**
  * Display a script name with optional link to resources page.
  */
-export function ScriptLink({ script, scriptType, networkType, className = '' }: ScriptLinkProps) {
+export function ScriptLink({ script, scriptType, networkType, showHashForUnknown = false, className = '' }: ScriptLinkProps) {
 	// Look up script info.
 	const scriptInfo = scriptType === 'lock'
 		? lookupLockScript(script.code_hash, script.hash_type, networkType, script.args)
 		: lookupTypeScript(script.code_hash, script.hash_type, networkType, script.args);
 
-	// Unknown script - render plain text.
+	// Unknown script - render with code hash if requested.
 	if (!scriptInfo) {
+		if (showHashForUnknown) {
+			const truncatedHash = `${script.code_hash.slice(0, 10)}...${script.code_hash.slice(-4)}`;
+			return (
+				<Tooltip content={script.code_hash}>
+					<span className={`text-gray-500 dark:text-gray-400 font-mono text-sm ${className}`}>
+						{truncatedHash}
+					</span>
+				</Tooltip>
+			);
+		}
 		return <span className={`text-gray-500 dark:text-gray-400 ${className}`}>Unknown</span>;
 	}
 

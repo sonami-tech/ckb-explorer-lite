@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import {
 	formatNumber,
@@ -7,6 +7,7 @@ import {
 	formatRelativeTime,
 	isValidHex,
 	truncateHex,
+	formatSince,
 } from '../lib/format';
 import { encodeAddress } from '../lib/address';
 import { lookupLockScript, lookupTypeScript, lookupWellKnownCell } from '../lib/wellKnown';
@@ -22,6 +23,7 @@ import { InternalLink } from '../components/InternalLink';
 import { WitnessSection } from '../components/WitnessSection';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
 import { ScriptIndicatorPill } from '../components/ScriptIndicatorPill';
+import { Tooltip } from '../components/Tooltip';
 import type { RpcTransaction, RpcTransactionWithStatus, RpcScript, RpcCellInput, RpcCellWithLifecycle, RpcCellOutput } from '../types/rpc';
 import type { NetworkType } from '../config/networks';
 import {
@@ -40,6 +42,8 @@ interface ScriptIndicator {
 	resourceId?: string;
 	description?: string;
 	isKnown: boolean;
+	/** Full hash for unknown scripts (used for tooltip). */
+	fullHash?: string;
 }
 
 /** Helper to check if outpoint is null (cellbase). */
@@ -61,6 +65,7 @@ function extractLockScriptIndicator(lock: RpcScript, networkType: NetworkType): 
 	return {
 		name: truncateHex(lock.code_hash, 8, 4),
 		isKnown: false,
+		fullHash: lock.code_hash,
 	};
 }
 
@@ -78,6 +83,7 @@ function extractTypeScriptIndicator(typeScript: RpcScript, networkType: NetworkT
 	return {
 		name: truncateHex(typeScript.code_hash, 8, 4),
 		isKnown: false,
+		fullHash: typeScript.code_hash,
 	};
 }
 
@@ -281,6 +287,37 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		}
 	}, [txData, fetchInputCellData, fetchCellDepData]);
 
+	// All derived state and hooks must be called before any early returns.
+	// This satisfies React Hooks rules.
+	const transaction = txData?.transaction ?? null;
+	const tx_status = txData?.tx_status;
+
+	// Check if this is a cellbase transaction.
+	const isCellbase = transaction && transaction.inputs.length > 0 && isNullOutpoint(
+		transaction.inputs[0].previous_output.tx_hash,
+		transaction.inputs[0].previous_output.index
+	);
+
+	// Calculate total output amount.
+	const totalOutput = useMemo(() => {
+		if (!transaction) return 0n;
+		return transaction.outputs.reduce((sum, output) => sum + BigInt(output.capacity), 0n);
+	}, [transaction]);
+
+	// Calculate transaction fee (only for non-cellbase transactions).
+	const transactionFee = useMemo(() => {
+		if (!transaction || isCellbase) return null;
+		if (inputsLoading || inputCellData.size !== transaction.inputs.length) {
+			return undefined; // Loading
+		}
+		const inputTotal = Array.from(inputCellData.values())
+			.reduce((sum, cell) => sum + BigInt(cell.output.capacity), 0n);
+		return inputTotal - totalOutput;
+	}, [transaction, inputCellData, inputsLoading, isCellbase, totalOutput]);
+
+	// Extract cycles from RPC response.
+	const cycles = txData?.cycles ? BigInt(txData.cycles) : null;
+
 	if (isLoading) {
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
@@ -297,14 +334,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		);
 	}
 
-	if (!txData) {
-		return null;
-	}
-
-	const { transaction, tx_status } = txData;
-
-	// Guard against null transaction (should not happen after fetch check, but TypeScript needs this).
-	if (!transaction) {
+	if (!txData || !transaction) {
 		return null;
 	}
 
@@ -341,7 +371,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					{tx_status.block_hash && (
 						<DetailRow label="Block">
 							<div className="flex items-center gap-2">
-								<HashDisplay hash={tx_status.block_hash} linkTo={generateLink(`/block/${tx_status.block_hash}`)} />
+								<HashDisplay hash={tx_status.block_hash} linkTo={generateLink(`/block/${tx_status.block_hash}`)} responsive />
 								{tx_status.block_number && (
 									<span className="text-gray-500 dark:text-gray-400">
 										({formatNumber(BigInt(tx_status.block_number))})
@@ -355,6 +385,29 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							<span>{formatAbsoluteTime(blockTimestamp)}</span>
 							<span className="text-gray-500 dark:text-gray-400 ml-2">
 								({formatRelativeTime(blockTimestamp)})
+							</span>
+						</DetailRow>
+					)}
+					<DetailRow label="Total Output">
+						<span className="font-mono text-sm text-gray-900 dark:text-white">
+							{formatCkb(totalOutput)}
+						</span>
+					</DetailRow>
+					{!isCellbase && (
+						<DetailRow label="Transaction Fee">
+							{transactionFee === undefined ? (
+								<div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+							) : (
+								<span className="font-mono text-sm text-gray-900 dark:text-white">
+									{formatCkb(transactionFee)}
+								</span>
+							)}
+						</DetailRow>
+					)}
+					{cycles !== null && (
+						<DetailRow label="Cycles">
+							<span className="font-mono text-sm text-gray-700 dark:text-gray-300">
+								{formatNumber(cycles)}
 							</span>
 						</DetailRow>
 					)}
@@ -482,7 +535,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 											/>
 										</div>
 
-										{/* Line 3: Script pills. */}
+										{/* Line 3: Script pills and since constraint. */}
 										<div className="ml-6 flex flex-wrap gap-2 items-center">
 											{lockIndicator.isKnown ? (
 												<ScriptIndicatorPill
@@ -491,9 +544,11 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 													description={lockIndicator.description}
 												/>
 											) : (
-												<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-													{lockIndicator.name}
-												</span>
+												<Tooltip content={lockIndicator.fullHash || lockIndicator.name}>
+													<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
+														{lockIndicator.name}
+													</span>
+												</Tooltip>
 											)}
 											{typeIndicator && (
 												typeIndicator.isKnown ? (
@@ -503,11 +558,24 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 														description={typeIndicator.description}
 													/>
 												) : (
-													<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-														{typeIndicator.name}
-													</span>
+													<Tooltip content={typeIndicator.fullHash || typeIndicator.name}>
+														<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
+															{typeIndicator.name}
+														</span>
+													</Tooltip>
 												)
 											)}
+											{(() => {
+												const sinceFormatted = formatSince(input.since);
+												if (sinceFormatted) {
+													return (
+														<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+															Since: {sinceFormatted}
+														</span>
+													);
+												}
+												return null;
+											})()}
 										</div>
 									</div>
 								);
@@ -665,9 +733,11 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 														description={typeIndicator.description}
 													/>
 												) : (
-													<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-														{typeIndicator.name}
-													</span>
+													<Tooltip content={typeIndicator.fullHash || typeIndicator.name}>
+														<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
+															{typeIndicator.name}
+														</span>
+													</Tooltip>
 												)
 											)}
 										</div>
