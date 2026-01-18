@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { copyToClipboard } from '../lib/clipboard';
 import { useIsMobile } from '../hooks/ui';
 import { Tooltip } from './Tooltip';
-import { navigate } from '../lib/router';
+import { TooltipLink } from './TooltipLink';
 
 /**
  * Address display with consistent truncation, tooltip, copy, and optional navigation.
@@ -61,28 +61,6 @@ export function AddressDisplay({
 		}
 	}, [handleCopy]);
 
-	// Handle text click: navigate if linkTo is set, otherwise do nothing.
-	const handleTextClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
-		if (!linkTo) return;
-		// Allow modifier keys to open in new tab.
-		if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
-			return;
-		}
-		e.preventDefault();
-		navigate(linkTo);
-	}, [linkTo]);
-
-	const handleTextKeyDown = useCallback((e: React.KeyboardEvent) => {
-		if (!linkTo) return;
-		if (e.key === 'Enter' || e.key === ' ') {
-			e.preventDefault();
-			navigate(linkTo);
-		}
-	}, [linkTo]);
-
-	// Tooltip content: show full address always.
-	const tooltipContent = address;
-
 	// Text styling: nervos color if linkable, default color otherwise.
 	const textClassName = linkTo
 		? 'cursor-pointer text-nervos hover:text-nervos-dark transition-colors'
@@ -103,21 +81,20 @@ export function AddressDisplay({
 		<span
 			className={`inline-flex items-center gap-1 font-mono text-sm min-w-0 max-w-full ${wrapClass} ${className}`}
 		>
-			{/* Address text: link if linkTo is set, otherwise plain text. */}
-			<Tooltip content={tooltipContent}>
-				{linkTo ? (
-					<a
-						href={linkTo}
-						onClick={handleTextClick}
-						onKeyDown={handleTextKeyDown}
-						className={`${textClassName} ${textOverflowClass}`}
-					>
-						{displayAddress}
-					</a>
-				) : (
+			{/* Address text: TooltipLink if linkTo is set, otherwise plain text with tooltip. */}
+			{linkTo ? (
+				<TooltipLink
+					tooltip={address}
+					href={linkTo}
+					className={`${textClassName} ${textOverflowClass}`}
+				>
+					{displayAddress}
+				</TooltipLink>
+			) : (
+				<Tooltip content={address}>
 					<span className={textOverflowClass}>{displayAddress}</span>
-				)}
-			</Tooltip>
+				</Tooltip>
+			)}
 
 			{/* Copy button icon. */}
 			<Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'} interactive>

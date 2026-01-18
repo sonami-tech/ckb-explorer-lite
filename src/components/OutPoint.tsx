@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { navigate, generateLink } from '../lib/router';
+import { generateLink } from '../lib/router';
 import { copyToClipboard } from '../lib/clipboard';
 import { truncateHex } from '../lib/format';
 import { useIsMobile } from '../hooks/ui';
 import { Tooltip } from './Tooltip';
+import { TooltipLink } from './TooltipLink';
 
 interface OutPointProps {
 	/** Transaction hash. */
@@ -56,45 +57,22 @@ export function OutPoint({
 		}
 	}, [handleCopy]);
 
-	// Handle text click: navigate to cell or transaction page.
-	const handleTextClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
-		// Allow modifier keys to open in new tab.
-		if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
-			return;
-		}
-		e.preventDefault();
-		navigate(href);
-	}, [href]);
-
-	const handleTextKeyDown = useCallback((e: React.KeyboardEvent) => {
-		if (e.key === 'Enter' || e.key === ' ') {
-			e.preventDefault();
-			navigate(href);
-		}
-	}, [href]);
-
-	// Tooltip content: show full outpoint always.
-	const tooltipContent = outpoint;
-
 	return (
 		<span
 			className={`inline-flex items-center gap-1.5 whitespace-nowrap max-w-full ${className}`}
 		>
 			{/* Hash and index container - clickable to navigate, with tooltip. */}
-			<Tooltip content={tooltipContent}>
-				<a
-					href={href}
-					onClick={handleTextClick}
-					onKeyDown={handleTextKeyDown}
-					className="inline-flex items-baseline min-w-0 font-mono text-sm cursor-pointer text-nervos hover:text-nervos-dark transition-colors"
-				>
-					<span className="truncate min-w-0">
-						{displayTxHash}
-					</span>
-					<span className="text-gray-500 flex-shrink-0">:</span>
-					<span className="flex-shrink-0">{index}</span>
-				</a>
-			</Tooltip>
+			<TooltipLink
+				tooltip={outpoint}
+				href={href}
+				className="inline-flex items-baseline min-w-0 font-mono text-sm cursor-pointer text-nervos hover:text-nervos-dark transition-colors"
+			>
+				<span className="truncate min-w-0">
+					{displayTxHash}
+				</span>
+				<span className="text-gray-500 flex-shrink-0">:</span>
+				<span className="flex-shrink-0">{index}</span>
+			</TooltipLink>
 
 			{/* Copy button icon. */}
 			<Tooltip content={copied ? 'Copied!' : 'Copy outpoint'} interactive>

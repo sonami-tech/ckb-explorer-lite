@@ -3,7 +3,7 @@ import { copyToClipboard } from '../lib/clipboard';
 import { useIsMobile, useClickOutside } from '../hooks/ui';
 import { formatBytes } from '../lib/format';
 import { Tooltip } from './Tooltip';
-import { navigate } from '../lib/router';
+import { TooltipLink } from './TooltipLink';
 
 interface CopyButtonProps {
 	text: string;
@@ -109,28 +109,6 @@ export function HashDisplay({
 		}
 	}, [handleCopy]);
 
-	// Handle text click: navigate if linkTo is set, otherwise do nothing.
-	const handleTextClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
-		if (!linkTo) return;
-		// Allow modifier keys to open in new tab.
-		if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
-			return;
-		}
-		e.preventDefault();
-		navigate(linkTo);
-	}, [linkTo]);
-
-	const handleTextKeyDown = useCallback((e: React.KeyboardEvent) => {
-		if (!linkTo) return;
-		if (e.key === 'Enter' || e.key === ' ') {
-			e.preventDefault();
-			navigate(linkTo);
-		}
-	}, [linkTo]);
-
-	// Tooltip content: show full hash always.
-	const tooltipContent = hash;
-
 	// Text styling: nervos color if linkable, default color otherwise.
 	const textClassName = linkTo
 		? 'cursor-pointer text-nervos hover:text-nervos-dark transition-colors'
@@ -140,21 +118,16 @@ export function HashDisplay({
 		<span
 			className={`inline-flex items-center gap-1 font-mono text-sm whitespace-nowrap ${className}`}
 		>
-			{/* Hash text: link if linkTo is set, otherwise plain text. */}
-			<Tooltip content={tooltipContent}>
-				{linkTo ? (
-					<a
-						href={linkTo}
-						onClick={handleTextClick}
-						onKeyDown={handleTextKeyDown}
-						className={textClassName}
-					>
-						{displayHash}
-					</a>
-				) : (
+			{/* Hash text: TooltipLink if linkTo is set, otherwise plain text with tooltip. */}
+			{linkTo ? (
+				<TooltipLink tooltip={hash} href={linkTo} className={textClassName}>
+					{displayHash}
+				</TooltipLink>
+			) : (
+				<Tooltip content={hash}>
 					<span>{displayHash}</span>
-				)}
-			</Tooltip>
+				</Tooltip>
+			)}
 
 			{/* Copy button icon. */}
 			<Tooltip content={copied ? 'Copied!' : 'Copy to clipboard'} interactive>

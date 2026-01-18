@@ -3,9 +3,9 @@
  * Uses category-based colors for visual differentiation between script types.
  */
 
-import { navigate, generateLink } from '../lib/router';
+import { generateLink } from '../lib/router';
 import { getScriptCategoryStyle } from '../lib/badgeStyles';
-import { Tooltip } from './Tooltip';
+import { TooltipLink } from './TooltipLink';
 
 interface ScriptIndicatorPillProps {
 	/** Script name to display. */
@@ -41,41 +41,30 @@ export function ScriptIndicatorPill({
 		? 'text-sm px-2.5 py-0.5'
 		: 'text-xs px-2 py-0.5';
 
-	const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-		if (!resourceUrl) return;
-		// Allow modifier keys to open in new tab.
-		if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
-			return;
-		}
-		e.preventDefault();
-		navigate(resourceUrl);
-	};
+	const pillClasses = `inline-flex items-center rounded-full font-medium ${sizeClasses} ${categoryStyle} ${hasLink ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'} ${className}`;
 
-	const pill = (
-		<span
-			className={`inline-flex items-center rounded-full font-medium ${sizeClasses} ${categoryStyle} ${hasLink ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'} ${className}`}
-		>
-			{name}
-		</span>
-	);
-
-	// Wrap in link if resourceId is provided.
-	const linkedPill = hasLink ? (
-		<a href={resourceUrl} onClick={handleClick}>
-			{pill}
-		</a>
-	) : (
-		pill
-	);
-
-	// Wrap in tooltip if description is provided.
-	if (description) {
+	// If has link and description, use TooltipLink for touch-aware behavior.
+	if (hasLink && resourceUrl && description) {
 		return (
-			<Tooltip content={description} placement="bottom" interactive={hasLink}>
-				{linkedPill}
-			</Tooltip>
+			<TooltipLink tooltip={description} href={resourceUrl} placement="bottom" className={pillClasses}>
+				{name}
+			</TooltipLink>
 		);
 	}
 
-	return linkedPill;
+	// If has link but no description, use plain link.
+	if (hasLink && resourceUrl) {
+		return (
+			<a href={resourceUrl} className={pillClasses}>
+				{name}
+			</a>
+		);
+	}
+
+	// No link, just plain pill.
+	return (
+		<span className={pillClasses}>
+			{name}
+		</span>
+	);
 }
