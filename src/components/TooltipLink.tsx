@@ -214,6 +214,7 @@ export function TooltipLink({
 			{isTooltipOpen &&
 				createPortal(
 					<div
+						// eslint-disable-next-line react-hooks/refs -- floating-ui's refs.setFloating is a callback setter, not a ref value access
 						ref={refs.setFloating}
 						style={floatingStyles}
 						role="tooltip"

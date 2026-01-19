@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { HexData, type DecoderRegistry, type DecodedResult } from './HexData';
 import { formatBytes, formatNumber } from '../lib/format';
 import {
@@ -25,12 +25,7 @@ interface WitnessSectionProps {
  * Displays witnesses with decode options (Raw, WitnessArgs, Signature).
  */
 export function WitnessSection({ witnesses }: WitnessSectionProps) {
-	if (witnesses.length === 0) return null;
-
-	// Calculate total size for header.
-	const totalBytes = witnesses.reduce((sum, w) => sum + (w.length - 2) / 2, 0);
-
-	// Pagination state.
+	// Pagination state (hooks must be called unconditionally).
 	const [currentPage, setCurrentPage] = useState(1);
 	const [pageSize, setPageSize] = useState<number>(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
 
@@ -40,20 +35,29 @@ export function WitnessSection({ witnesses }: WitnessSectionProps) {
 		setCurrentPage(1);
 	}, []);
 
-	// Reset pagination when witnesses array changes.
-	useEffect(() => {
-		setCurrentPage(1);
-	}, [witnesses.length]);
+	// Calculate pagination with automatic bounds clamping when witnesses array changes.
+	const paginationData = useMemo(() => {
+		const shouldPaginate = witnesses.length > TRANSACTION_SECTION_PAGINATION.threshold;
+		const totalPages = Math.max(1, Math.ceil(witnesses.length / pageSize));
+		// Clamp current page to valid range (handles case where witnesses array shrinks).
+		const effectivePage = Math.min(Math.max(1, currentPage), totalPages);
+		const startIndex = (effectivePage - 1) * pageSize;
+		const endIndex = shouldPaginate
+			? Math.min(startIndex + pageSize, witnesses.length)
+			: witnesses.length;
+		const paginatedWitnesses = shouldPaginate
+			? witnesses.slice(startIndex, endIndex)
+			: witnesses;
+		return { shouldPaginate, effectivePage, startIndex, paginatedWitnesses };
+	}, [witnesses, pageSize, currentPage]);
 
-	// Pagination calculations.
-	const shouldPaginate = witnesses.length > TRANSACTION_SECTION_PAGINATION.threshold;
-	const startIndex = (currentPage - 1) * pageSize;
-	const endIndex = shouldPaginate
-		? Math.min(startIndex + pageSize, witnesses.length)
-		: witnesses.length;
-	const paginatedWitnesses = shouldPaginate
-		? witnesses.slice(startIndex, endIndex)
-		: witnesses;
+	// Early return after all hooks are called.
+	if (witnesses.length === 0) return null;
+
+	// Calculate total size for header.
+	const totalBytes = witnesses.reduce((sum, w) => sum + (w.length - 2) / 2, 0);
+
+	const { shouldPaginate, effectivePage, startIndex, paginatedWitnesses } = paginationData;
 
 	return (
 		<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -72,7 +76,7 @@ export function WitnessSection({ witnesses }: WitnessSectionProps) {
 			{shouldPaginate && (
 				<div className="p-4 border-t border-gray-200 dark:border-gray-700">
 					<Pagination
-						currentPage={currentPage}
+						currentPage={effectivePage}
 						totalItems={witnesses.length}
 						pageSize={pageSize}
 						pageSizeOptions={TRANSACTION_SECTION_PAGINATION.options}

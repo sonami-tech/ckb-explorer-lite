@@ -94,6 +94,19 @@ export const TRANSACTION_SECTION_PAGINATION = {
 } as const;
 
 /**
+ * Maximum number of inputs for automatic fee calculation.
+ * Transactions with more inputs will show "N/A" instead of calculating fee.
+ */
+export const FEE_CALCULATION_MAX_INPUTS = 20;
+
+/**
+ * Block number of the Mirana hardfork on mainnet.
+ * Cycles are not available for transactions before this block.
+ * Source: src/config/events.ts (mirana event)
+ */
+export const MIRANA_HARDFORK_BLOCK = 7087867n;
+
+/**
  * Default filter values for BlockPage transaction filtering.
  */
 export const DEFAULT_BLOCK_FILTERS = {

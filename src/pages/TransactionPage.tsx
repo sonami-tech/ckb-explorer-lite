@@ -25,13 +25,14 @@ import { ScriptIndicatorPill } from '../components/ScriptIndicatorPill';
 import { Tooltip } from '../components/Tooltip';
 import { Pagination } from '../components/Pagination';
 import { TransactionStatusIndicator } from '../components/OptionIndicator';
+import { InfoIcon } from '../components/InfoIcon';
 import type { RpcTransaction, RpcTransactionWithStatus, RpcScript, RpcCellInput, RpcCellWithLifecycle } from '../types/rpc';
 import type { NetworkType } from '../config/networks';
 import {
 	BRAND,
 	DEP_TYPE,
 } from '../lib/badgeStyles';
-import { TRANSACTION_SECTION_PAGINATION } from '../config/defaults';
+import { TRANSACTION_SECTION_PAGINATION, FEE_CALCULATION_MAX_INPUTS, MIRANA_HARDFORK_BLOCK } from '../config/defaults';
 
 interface TransactionPageProps {
 	hash: string;
@@ -386,8 +387,15 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 	}, [transaction]);
 
 	// Calculate transaction fee (only for non-cellbase transactions).
+	// Returns: bigint (calculated), null (cellbase), 'unavailable' (too many inputs), undefined (loading).
 	const transactionFee = useMemo(() => {
 		if (!transaction || isCellbase) return null;
+
+		// Check input count FIRST to avoid skeleton flash for large transactions.
+		if (transaction.inputs.length > FEE_CALCULATION_MAX_INPUTS) {
+			return 'unavailable';
+		}
+
 		if (inputsLoading || inputCellData.size !== transaction.inputs.length) {
 			return undefined; // Loading
 		}
@@ -398,6 +406,22 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 	// Extract cycles from RPC response.
 	const cycles = txData?.cycles ? BigInt(txData.cycles) : null;
+
+	// Determine reason why cycles is unavailable.
+	const cyclesUnavailableReason = useMemo(() => {
+		if (cycles !== null) return null;
+
+		if (isCellbase) {
+			return 'Cellbase transactions do not execute scripts.';
+		}
+
+		const blockNumber = tx_status?.block_number ? BigInt(tx_status.block_number) : null;
+		if (blockNumber !== null && blockNumber < MIRANA_HARDFORK_BLOCK) {
+			return 'Cycles were not recorded before the Mirana (CKB2021) hardfork.';
+		}
+
+		return 'Cycles unavailable.';
+	}, [cycles, isCellbase, tx_status?.block_number]);
 
 	// Effects: Fetch transaction data and cell dependencies.
 	useEffect(() => {
@@ -503,6 +527,11 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 						<DetailRow label="Transaction Fee">
 							{transactionFee === undefined ? (
 								<div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+							) : transactionFee === 'unavailable' ? (
+								<span className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+									N/A
+									<InfoIcon tooltip={`Fee calculation unavailable for transactions with more than ${FEE_CALCULATION_MAX_INPUTS} inputs.`} />
+								</span>
 							) : (
 								<span className="font-mono text-sm text-gray-900 dark:text-white">
 									{formatCkb(transactionFee)}
@@ -510,13 +539,18 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							)}
 						</DetailRow>
 					)}
-					{cycles !== null && (
-						<DetailRow label="Cycles">
+					<DetailRow label="Cycles">
+						{cycles !== null ? (
 							<span className="font-mono text-sm text-gray-700 dark:text-gray-300">
 								{formatNumber(cycles)}
 							</span>
-						</DetailRow>
-					)}
+						) : (
+							<span className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+								N/A
+								<InfoIcon tooltip={cyclesUnavailableReason!} />
+							</span>
+						)}
+					</DetailRow>
 				</div>
 			</div>
 
