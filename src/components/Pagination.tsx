@@ -159,13 +159,14 @@ export function Pagination({
 				</div>
 			</div>
 
-			{/* Mobile: Compact pagination with "Page X of Y". */}
-			<div className="flex sm:hidden items-center gap-2">
+			{/* Mobile: Compact pagination with first, current, last page numbers. */}
+			<div className="flex sm:hidden items-center gap-1">
+				{/* Previous button. */}
 				<button
 					onClick={handlePrevPage}
 					disabled={!canGoPrev}
 					className={`
-						px-3 py-1.5 text-sm rounded transition-colors
+						px-2 py-1.5 text-sm rounded transition-colors
 						${canGoPrev
 							? 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
 							: 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
@@ -173,18 +174,74 @@ export function Pagination({
 					`}
 					aria-label="Previous page"
 				>
-					‹ Prev
+					← Prev
 				</button>
 
-				<span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-					{currentPage.toLocaleString()} / {totalPages.toLocaleString()}
-				</span>
+				{/* First page. */}
+				<button
+					onClick={() => onPageChange(1)}
+					className={`
+						min-w-[32px] px-2 py-1.5 text-sm rounded transition-colors
+						${currentPage === 1
+							? 'bg-nervos text-white font-medium'
+							: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+						}
+					`}
+					aria-label="Page 1"
+					aria-current={currentPage === 1 ? 'page' : undefined}
+				>
+					1
+				</button>
 
+				{/* Ellipsis before current (if current > 2). */}
+				{currentPage > 2 && (
+					<span className="px-1 py-1.5 text-sm text-gray-400 dark:text-gray-500">
+						...
+					</span>
+				)}
+
+				{/* Current page (if not first or last). */}
+				{currentPage !== 1 && currentPage !== totalPages && (
+					<button
+						className="min-w-[32px] px-2 py-1.5 text-sm rounded bg-nervos text-white font-medium"
+						aria-label={`Page ${currentPage}`}
+						aria-current="page"
+					>
+						{currentPage}
+					</button>
+				)}
+
+				{/* Ellipsis after current (if current < totalPages - 1). */}
+				{currentPage < totalPages - 1 && (
+					<span className="px-1 py-1.5 text-sm text-gray-400 dark:text-gray-500">
+						...
+					</span>
+				)}
+
+				{/* Last page (if more than one page). */}
+				{totalPages > 1 && (
+					<button
+						onClick={() => onPageChange(totalPages)}
+						className={`
+							min-w-[32px] px-2 py-1.5 text-sm rounded transition-colors
+							${currentPage === totalPages
+								? 'bg-nervos text-white font-medium'
+								: 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+							}
+						`}
+						aria-label={`Page ${totalPages}`}
+						aria-current={currentPage === totalPages ? 'page' : undefined}
+					>
+						{totalPages}
+					</button>
+				)}
+
+				{/* Next button. */}
 				<button
 					onClick={handleNextPage}
 					disabled={!canGoNext}
 					className={`
-						px-3 py-1.5 text-sm rounded transition-colors
+						px-2 py-1.5 text-sm rounded transition-colors
 						${canGoNext
 							? 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
 							: 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
@@ -192,7 +249,7 @@ export function Pagination({
 					`}
 					aria-label="Next page"
 				>
-					Next ›
+					Next →
 				</button>
 			</div>
 
