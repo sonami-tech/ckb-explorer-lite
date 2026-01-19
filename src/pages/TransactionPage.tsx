@@ -6,114 +6,29 @@ import {
 	formatAbsoluteTime,
 	formatRelativeTime,
 	isValidHex,
-	truncateHex,
-	formatSince,
 } from '../lib/format';
-import { encodeAddress } from '../lib/address';
-import { lookupLockScript, lookupTypeScript, lookupWellKnownCell } from '../lib/wellKnown';
 import { navigate, generateLink } from '../lib/router';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay } from '../components/CopyButton';
-import { OutPoint } from '../components/OutPoint';
 import { DetailRow } from '../components/DetailRow';
-import { AddressDisplay } from '../components/AddressDisplay';
 import { InternalLink } from '../components/InternalLink';
 import { WitnessSection } from '../components/WitnessSection';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
-import { ScriptIndicatorPill } from '../components/ScriptIndicatorPill';
-import { Tooltip } from '../components/Tooltip';
 import { Pagination } from '../components/Pagination';
 import { TransactionStatusIndicator } from '../components/OptionIndicator';
 import { InfoIcon } from '../components/InfoIcon';
-import type { RpcTransaction, RpcTransactionWithStatus, RpcScript, RpcCellInput, RpcCellWithLifecycle } from '../types/rpc';
-import type { NetworkType } from '../config/networks';
-import {
-	BRAND,
-	DEP_TYPE,
-} from '../lib/badgeStyles';
+import { TransactionInput, TransactionOutput, CellDepItem } from '../components/transaction';
+import type { RpcTransaction, RpcTransactionWithStatus, RpcCellInput, RpcCellWithLifecycle } from '../types/rpc';
 import { TRANSACTION_SECTION_PAGINATION, FEE_CALCULATION_MAX_INPUTS, MIRANA_HARDFORK_BLOCK } from '../config/defaults';
 
 interface TransactionPageProps {
 	hash: string;
 }
 
-/** Script indicator for display. */
-interface ScriptIndicator {
-	name: string;
-	resourceId?: string;
-	description?: string;
-	isKnown: boolean;
-	/** Full hash for unknown scripts (used for tooltip). */
-	fullHash?: string;
-}
-
 /** Helper to check if outpoint is null (cellbase). */
 function isNullOutpoint(txHash: string, index: string): boolean {
 	return txHash === '0x0000000000000000000000000000000000000000000000000000000000000000' && index === '0xffffffff';
-}
-
-/** Extract lock script indicator from script. */
-function extractLockScriptIndicator(lock: RpcScript, networkType: NetworkType): ScriptIndicator {
-	const info = lookupLockScript(lock.code_hash, lock.hash_type, networkType, lock.args);
-	if (info) {
-		return {
-			name: info.name,
-			resourceId: info.resourceId,
-			description: info.description,
-			isKnown: true,
-		};
-	}
-	return {
-		name: truncateHex(lock.code_hash, 8, 4),
-		isKnown: false,
-		fullHash: lock.code_hash,
-	};
-}
-
-/** Extract type script indicator from script. */
-function extractTypeScriptIndicator(typeScript: RpcScript, networkType: NetworkType): ScriptIndicator {
-	const info = lookupTypeScript(typeScript.code_hash, typeScript.hash_type, networkType, typeScript.args);
-	if (info) {
-		return {
-			name: info.name,
-			resourceId: info.resourceId,
-			description: info.description,
-			isKnown: true,
-		};
-	}
-	return {
-		name: truncateHex(typeScript.code_hash, 8, 4),
-		isKnown: false,
-		fullHash: typeScript.code_hash,
-	};
-}
-
-/** Map well-known cell names to resource page IDs. */
-function getWellKnownCellResourceId(name: string): string | undefined {
-	// Map dep group and system cell names to their related script resource IDs.
-	const resourceIdMap: Record<string, string> = {
-		'SECP256K1/blake160 Dep Group': 'secp256k1',
-		'SECP256K1/blake160 Lock Binary': 'secp256k1',
-		'Multisig Dep Group': 'multisig',
-		'Multisig Lock Binary': 'multisig',
-		'NervosDAO Binary': 'dao',
-		'secp256k1_data': 'secp256k1',
-		'Anyone-Can-Pay Dep Group': 'acp',
-		'SUDT Binary': 'sudt',
-		'xUDT Binary': 'xudt',
-		'Omnilock Binary': 'omnilock',
-		'Spore Binary': 'spore',
-		'Spore Cluster Binary': 'spore',
-		'JoyID Dep Group': 'joyid',
-		'CoTA Dep Group': 'cota',
-		'NostrLock Binary': 'nostr',
-		'RGB++ Lock Binary': 'rgbpp',
-		'BTC Time Lock Binary': 'rgbpp',
-		'CKBFS Dep Group': 'ckbfs',
-		'iCKB Dep Group': 'ickb',
-	};
-	return resourceIdMap[name];
 }
 
 export function TransactionPage({ hash }: TransactionPageProps) {
@@ -580,177 +495,16 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					) : (
 						paginatedInputs.map((input, paginatedIndex) => {
 							const index = inputsStartIndex + paginatedIndex;
-							const isCellbase = isNullOutpoint(input.previous_output.tx_hash, input.previous_output.index);
-
-							// Cellbase input.
-							if (isCellbase) {
-								return (
-									<div key={index} className="p-4">
-										{/* Index on its own line. */}
-										<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-											#{index}
-										</div>
-										{/* Cellbase badge and description. */}
-										<div className="flex items-center gap-2">
-											<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${BRAND} rounded`}>
-												Cellbase
-											</span>
-											<span className="text-sm text-gray-500 dark:text-gray-400">
-												Mining reward
-											</span>
-										</div>
-									</div>
-								);
-							}
-
-							// Regular input.
-							const cellData = inputCellData.get(index);
-							const fetchError = inputErrors.get(index);
-
-							// Loading state.
-							if (inputsLoading && !cellData && !fetchError) {
-								return (
-									<div key={index} className="p-4">
-										{/* Index on its own line. */}
-										<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-											#{index}
-										</div>
-										{/* Outpoint and capacity. */}
-										<div className="flex items-center justify-between mb-2">
-											<OutPoint
-												txHash={input.previous_output.tx_hash}
-												index={parseInt(input.previous_output.index, 16)}
-											/>
-											<div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-										</div>
-										{/* Address skeleton. */}
-										<div className="mb-2">
-											<div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-										</div>
-										{/* Script pills skeleton. */}
-										<div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-									</div>
-								);
-							}
-
-							// Error state.
-							if (fetchError) {
-								return (
-									<div key={index} className="p-4">
-										{/* Index on its own line. */}
-										<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-											#{index}
-										</div>
-										{/* Outpoint. */}
-										<div className="mb-2">
-											<OutPoint
-												txHash={input.previous_output.tx_hash}
-												index={parseInt(input.previous_output.index, 16)}
-											/>
-										</div>
-										{/* Error message. */}
-										<div className="text-sm text-red-600 dark:text-red-400">
-											Failed to load cell data
-										</div>
-									</div>
-								);
-							}
-
-							// Data loaded.
-							if (cellData) {
-								const address = encodeAddress(cellData.output.lock, networkType);
-								const lockIndicator = extractLockScriptIndicator(cellData.output.lock, networkType);
-								const typeIndicator = cellData.output.type ? extractTypeScriptIndicator(cellData.output.type, networkType) : null;
-
-								return (
-									<div key={index} className="p-4">
-										{/* Index on its own line. */}
-										<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-											#{index}
-										</div>
-
-										{/* Outpoint. */}
-										<div className="mb-2">
-											<OutPoint
-												txHash={input.previous_output.tx_hash}
-												index={parseInt(input.previous_output.index, 16)}
-											/>
-										</div>
-
-										{/* Address. */}
-										<div className="mb-2">
-											<AddressDisplay
-												address={address}
-												linkTo={generateLink(`/address/${address}`)}
-											/>
-										</div>
-
-										{/* Capacity. */}
-										<div className="mb-2">
-											<span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-												{formatCkb(cellData.output.capacity)}
-											</span>
-										</div>
-
-										{/* Script pills and since constraint. */}
-										<div className="flex flex-wrap gap-2 items-center">
-											{lockIndicator.isKnown ? (
-												<ScriptIndicatorPill
-													name={lockIndicator.name}
-													resourceId={lockIndicator.resourceId}
-													description={lockIndicator.description}
-												/>
-											) : (
-												<Tooltip content={lockIndicator.fullHash || lockIndicator.name}>
-													<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-														{lockIndicator.name}
-													</span>
-												</Tooltip>
-											)}
-											{typeIndicator && (
-												typeIndicator.isKnown ? (
-													<ScriptIndicatorPill
-														name={typeIndicator.name}
-														resourceId={typeIndicator.resourceId}
-														description={typeIndicator.description}
-													/>
-												) : (
-													<Tooltip content={typeIndicator.fullHash || typeIndicator.name}>
-														<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-															{typeIndicator.name}
-														</span>
-													</Tooltip>
-												)
-											)}
-											{(() => {
-												const sinceFormatted = formatSince(input.since);
-												if (sinceFormatted) {
-													return (
-														<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-															Since: {sinceFormatted}
-														</span>
-													);
-												}
-												return null;
-											})()}
-										</div>
-									</div>
-								);
-							}
-
-							// Fallback: show just outpoint.
 							return (
-								<div key={index} className="p-4">
-									{/* Index on its own line. */}
-									<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-										#{index}
-									</div>
-									{/* Outpoint. */}
-									<OutPoint
-										txHash={input.previous_output.tx_hash}
-										index={parseInt(input.previous_output.index, 16)}
-									/>
-								</div>
+								<TransactionInput
+									key={index}
+									input={input}
+									index={index}
+									cellData={inputCellData.get(index)}
+									fetchError={inputErrors.get(index)}
+									isLoading={inputsLoading}
+									networkType={networkType}
+								/>
 							);
 						})
 					)}
@@ -779,65 +533,14 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
 					{paginatedOutputs.map((output, paginatedIndex) => {
 						const index = outputsStartIndex + paginatedIndex;
-						const address = encodeAddress(output.lock, networkType);
-						const lockIndicator = extractLockScriptIndicator(output.lock, networkType);
-						const typeIndicator = output.type ? extractTypeScriptIndicator(output.type, networkType) : null;
-
 						return (
-							<div key={index} className="p-4">
-								{/* Index on its own line. */}
-								<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-									#{index}
-								</div>
-
-								{/* Outpoint. */}
-								<div className="mb-2">
-									<OutPoint txHash={hash} index={index} />
-								</div>
-
-								{/* Address. */}
-								<div className="mb-2">
-									<AddressDisplay
-										address={address}
-										linkTo={generateLink(`/address/${address}`)}
-									/>
-								</div>
-
-								{/* Capacity. */}
-								<div className="mb-2">
-									<span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-										{formatCkb(output.capacity)}
-									</span>
-								</div>
-
-								{/* Script pills. */}
-								<div className="flex flex-wrap gap-2 items-center">
-									{lockIndicator.isKnown ? (
-										<ScriptIndicatorPill
-											name={lockIndicator.name}
-											resourceId={lockIndicator.resourceId}
-											description={lockIndicator.description}
-										/>
-									) : (
-										<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-											{lockIndicator.name}
-										</span>
-									)}
-									{typeIndicator && (
-										typeIndicator.isKnown ? (
-											<ScriptIndicatorPill
-												name={typeIndicator.name}
-												resourceId={typeIndicator.resourceId}
-												description={typeIndicator.description}
-											/>
-										) : (
-											<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-												{typeIndicator.name}
-											</span>
-										)
-									)}
-								</div>
-							</div>
+							<TransactionOutput
+								key={index}
+								output={output}
+								index={index}
+								txHash={hash}
+								networkType={networkType}
+							/>
 						);
 					})}
 				</div>
@@ -866,66 +569,14 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					<div className="divide-y divide-gray-200 dark:divide-gray-700">
 						{paginatedCellDeps.map((dep, paginatedIndex) => {
 							const index = cellDepsStartIndex + paginatedIndex;
-							const cellData = cellDepData.get(index);
-							const depIndex = parseInt(dep.out_point.index, 16);
-
-							// First check if this is a well-known cell by outpoint.
-							// This catches dep_groups and system cells that are identified by their location.
-							const wellKnownCell = lookupWellKnownCell(dep.out_point.tx_hash, depIndex, networkType);
-
-							// If not a well-known cell, check the type script.
-							// The type script identifies what code/data this cell provides.
-							const typeIndicator = !wellKnownCell && cellData?.output?.type_
-								? extractTypeScriptIndicator(cellData.output.type_, networkType)
-								: null;
-
-							// Check if we have any indicator to show on line 2.
-							const hasIndicator = wellKnownCell || typeIndicator;
-
 							return (
-								<div key={index} className="p-4">
-									{/* Line 1: Outpoint and dep type. */}
-									<div className="flex items-center gap-3">
-										<OutPoint
-											txHash={dep.out_point.tx_hash}
-											index={depIndex}
-										/>
-										<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${DEP_TYPE} rounded`}>
-											{dep.dep_type}
-										</span>
-										{cellDepsLoading && !cellData && !wellKnownCell && (
-											<span className="text-xs text-gray-400 dark:text-gray-500">Loading...</span>
-										)}
-									</div>
-
-									{/* Line 2: Script indicator pill (if any). */}
-									{hasIndicator && (
-										<div className="flex flex-wrap gap-2 items-center mt-2">
-											{wellKnownCell && (
-												<ScriptIndicatorPill
-													name={wellKnownCell.name}
-													resourceId={getWellKnownCellResourceId(wellKnownCell.name)}
-													description={wellKnownCell.description}
-												/>
-											)}
-											{typeIndicator && (
-												typeIndicator.isKnown ? (
-													<ScriptIndicatorPill
-														name={typeIndicator.name}
-														resourceId={typeIndicator.resourceId}
-														description={typeIndicator.description}
-													/>
-												) : (
-													<Tooltip content={typeIndicator.fullHash || typeIndicator.name}>
-														<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-															{typeIndicator.name}
-														</span>
-													</Tooltip>
-												)
-											)}
-										</div>
-									)}
-								</div>
+								<CellDepItem
+									key={index}
+									dep={dep}
+									cellData={cellDepData.get(index)}
+									isLoading={cellDepsLoading}
+									networkType={networkType}
+								/>
 							);
 						})}
 					</div>

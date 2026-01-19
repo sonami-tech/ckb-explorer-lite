@@ -167,44 +167,6 @@ export function getScriptTypeStyle(isLockScript: boolean): string {
 }
 
 /**
- * Get the appropriate cell category style.
- */
-export function getCellCategoryStyle(category: string): string {
-	switch (category) {
-		case 'system':
-			return CELL_BINARY;
-		case 'dep_group':
-			return CELL_DEP_GROUP;
-		case 'protocol':
-			return CELL_PROTOCOL;
-		default:
-			return STATUS_NEUTRAL;
-	}
-}
-
-/**
- * Get the appropriate status style.
- */
-export function getStatusStyle(status: string): string {
-	switch (status) {
-		case 'live':
-		case 'committed':
-		case 'deposit':
-			return STATUS_SUCCESS;
-		case 'dead':
-		case 'rejected':
-			return STATUS_ERROR;
-		case 'unknown':
-		case 'pending':
-			return STATUS_WARNING;
-		case 'proposed':
-			return STATUS_INFO;
-		default:
-			return STATUS_NEUTRAL;
-	}
-}
-
-/**
  * Get the appropriate category style for a well-known script by name.
  */
 export function getScriptCategoryStyle(scriptName: string): string {

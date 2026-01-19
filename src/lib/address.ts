@@ -2,6 +2,7 @@ import { addressPayloadFromString } from '@ckb-ccc/core/advanced';
 import { bech32, bech32m } from 'bech32';
 import type { RpcScript } from '../types/rpc';
 import type { NetworkType } from '../config/networks';
+import { hexToBytes } from './bytes';
 
 /**
  * Short format code_hash_index to code_hash mapping per RFC 0021.
@@ -181,18 +182,6 @@ function hashTypeToByte(hashType: RpcScript['hash_type']): number {
 		case 'data2': return 0x04;
 		default: return 0x00;
 	}
-}
-
-/**
- * Convert a hex string to Uint8Array.
- */
-function hexToBytes(hex: string): Uint8Array {
-	const cleanHex = hex.startsWith('0x') ? hex.slice(2) : hex;
-	const bytes = new Uint8Array(cleanHex.length / 2);
-	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = parseInt(cleanHex.substr(i * 2, 2), 16);
-	}
-	return bytes;
 }
 
 /**

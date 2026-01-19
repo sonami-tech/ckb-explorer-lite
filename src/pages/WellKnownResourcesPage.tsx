@@ -14,6 +14,7 @@ import {
 	KNOWN_LOCK_SCRIPTS,
 	KNOWN_TYPE_SCRIPTS,
 	WELL_KNOWN_CELLS,
+	toRegistryNetwork,
 	type WellKnownCellCategory,
 } from '../lib/wellKnown';
 import {
@@ -26,15 +27,6 @@ import {
 	STATUS_NEUTRAL,
 	getHashTypeStyle,
 } from '../lib/badgeStyles';
-
-type RegistryNetwork = 'mainnet' | 'testnet';
-
-/**
- * Convert network type to registry network.
- */
-function toRegistryNetwork(network: string): RegistryNetwork {
-	return network === 'mainnet' ? 'mainnet' : 'testnet';
-}
 
 /**
  * Resource definition for grouping related scripts and cells.

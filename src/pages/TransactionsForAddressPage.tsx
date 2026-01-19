@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
-import { parseAddress } from '../lib/address';
 import { formatNumber, formatActivitySpan, formatCkb } from '../lib/format';
 import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
@@ -12,14 +11,10 @@ import { ErrorDisplay } from '../components/ErrorDisplay';
 import { InternalLink } from '../components/InternalLink';
 import { Pagination } from '../components/Pagination';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
-import {
-	TransactionRow,
-	calculateTotalOutputCapacity,
-	extractLockScripts,
-	extractTypeScripts,
-	isCellbaseTransaction,
-	type EnrichedTransaction,
-} from '../components/TransactionRow';
+import { TransactionRow, type EnrichedTransaction } from '../components/TransactionRow';
+import { useAddressScript } from '../hooks/useAddressScript';
+import { useEnrichTransactions } from '../hooks/useEnrichTransactions';
+import { getStoredPageSize, setStoredPageSize } from '../lib/localStorage';
 import {
 	DEFAULT_ADDRESS_FILTERS,
 	DEFAULT_ADDRESS_SORT,
@@ -30,7 +25,7 @@ import {
 import { FilterSortButton } from '../components/FilterSortButton';
 import { AddressFilterModal } from '../components/AddressFilterModal';
 import { ActiveFilterChips, type FilterChip } from '../components/ActiveFilterChips';
-import type { RpcScript, RpcGroupedTransactionInfo, IndexerSearchKey } from '../types/rpc';
+import type { IndexerSearchKey } from '../types/rpc';
 
 // Threshold for using large-limit skipping during cursor building.
 const SKIP_THRESHOLD_PAGES = 10;
@@ -41,29 +36,21 @@ interface TransactionsForAddressPageProps {
 
 const STORAGE_KEY = 'ckb-explorer-txs-page-size';
 
-function getStoredPageSize(): number {
-	const stored = localStorage.getItem(STORAGE_KEY);
-	const parsed = parseInt(stored ?? '', 10);
-	if (PAGE_SIZE_CONFIG.options.includes(parsed as 5 | 10 | 20 | 50 | 100)) {
-		return parsed;
-	}
-	return PAGE_SIZE_CONFIG.default;
-}
-
 export function TransactionsForAddressPage({ address }: TransactionsForAddressPageProps) {
 	const rpc = useRpc();
 	const { currentNetwork } = useNetwork();
 	const { archiveHeight } = useArchive();
 	const networkType = currentNetwork?.type ?? 'mainnet';
-	const [script, setScript] = useState<RpcScript | null>(null);
+	const { script, error: parseError, isReady } = useAddressScript(address);
+	const enrichTransactions = useEnrichTransactions(networkType);
 	const [transactions, setTransactions] = useState<EnrichedTransaction[]>([]);
 	const [totalTransactionCount, setTotalTransactionCount] = useState<bigint | null>(null);
 	const [filteredTransactionCount, setFilteredTransactionCount] = useState<bigint | null>(null);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [isLoadingOverview, setIsLoadingOverview] = useState(true);
 	const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
-	const [error, setError] = useState<Error | null>(null);
-	const [pageSize, setPageSize] = useState(getStoredPageSize);
+	const [fetchError, setFetchError] = useState<Error | null>(null);
+	const [pageSize, setPageSize] = useState(() => getStoredPageSize(STORAGE_KEY));
 	const [referenceTimestamp, setReferenceTimestamp] = useState<number | undefined>(undefined);
 	const [filters, setFilters] = useState<AddressPageFilters>(DEFAULT_ADDRESS_FILTERS);
 	const [sort, setSort] = useState<AddressPageSort>(DEFAULT_ADDRESS_SORT);
@@ -94,59 +81,8 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	// Key 0 = null cursor (start of results).
 	const cursorCacheRef = useRef<Map<number, string | null>>(new Map([[0, null]]));
 
-	// Parse address on mount.
-	useEffect(() => {
-		try {
-			const parsed = parseAddress(address);
-			if (!parsed.script) {
-				throw new Error('Short format addresses are not supported. Please use the full format address.');
-			}
-			setScript(parsed.script);
-		} catch (err) {
-			setError(err instanceof Error ? err : new Error('Invalid address format.'));
-			setIsLoadingOverview(false);
-			setIsLoadingTransactions(false);
-		}
-	}, [address]);
-
-	// Enrich grouped transactions with full details.
-	const enrichTransactions = useCallback(async (
-		groupedTxs: RpcGroupedTransactionInfo[],
-	): Promise<EnrichedTransaction[]> => {
-		// Fetch full transactions in parallel.
-		const fullTxPromises = groupedTxs.map(async (gtx) => {
-			const txWithStatus = await rpc.getTransaction(gtx.tx_hash, archiveHeight);
-			return { grouped: gtx, full: txWithStatus };
-		});
-
-		const results = await Promise.all(fullTxPromises);
-
-		// Fetch block headers for timestamps.
-		const uniqueBlocks = [...new Set(groupedTxs.map(tx => tx.block_number))];
-		const headerPromises = uniqueBlocks.map(async (blockNum) => {
-			const header = await rpc.getHeaderByNumber(BigInt(blockNum), archiveHeight);
-			return { blockNumber: blockNum, timestamp: header ? Number(BigInt(header.timestamp)) : Date.now() };
-		});
-		const headers = await Promise.all(headerPromises);
-		const timestampMap = new Map(headers.map(h => [h.blockNumber, h.timestamp]));
-
-		// Build enriched transactions.
-		return results.map(({ grouped, full }) => {
-			const timestamp = timestampMap.get(grouped.block_number) ?? Date.now();
-
-			return {
-				txHash: grouped.tx_hash,
-				blockNumber: BigInt(grouped.block_number),
-				timestamp,
-				totalCapacity: full?.transaction ? calculateTotalOutputCapacity(full.transaction) : 0n,
-				lockScripts: full?.transaction ? extractLockScripts(full.transaction, networkType) : [],
-				typeScripts: full?.transaction ? extractTypeScripts(full.transaction, networkType) : [],
-				inputCount: full?.transaction?.inputs.length ?? 0,
-				outputCount: full?.transaction?.outputs.length ?? 0,
-				isCellbase: full?.transaction ? isCellbaseTransaction(full.transaction) : false,
-			};
-		});
-	}, [rpc, archiveHeight, networkType]);
+	// Combine parseError and fetchError for display.
+	const error = parseError ?? fetchError;
 
 	// Fetch overview data (balance, first/last activity, DAO info).
 	// This data is address-level and does not depend on transaction filters.
@@ -156,7 +92,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		const fetchId = ++overviewFetchIdRef.current;
 
 		setIsLoadingOverview(true);
-		setError(null);
+		setFetchError(null);
 
 		try {
 			// Unfiltered search key for address-level stats.
@@ -247,7 +183,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			setDaoCellCount(BigInt(daoCellCountResult.count));
 		} catch (err) {
 			if (fetchId !== overviewFetchIdRef.current) return;
-			setError(err instanceof Error ? err : new Error('Failed to fetch address overview.'));
+			setFetchError(err instanceof Error ? err : new Error('Failed to fetch address overview.'));
 		} finally {
 			if (fetchId === overviewFetchIdRef.current) {
 				setIsLoadingOverview(false);
@@ -306,15 +242,15 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		} catch (err) {
 			if (fetchId !== txFetchIdRef.current) return;
 			// Don't overwrite overview errors with transaction errors.
-			if (!error) {
-				setError(err instanceof Error ? err : new Error('Failed to fetch transactions.'));
+			if (!fetchError) {
+				setFetchError(err instanceof Error ? err : new Error('Failed to fetch transactions.'));
 			}
 		} finally {
 			if (fetchId === txFetchIdRef.current) {
 				setIsLoadingTransactions(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, pageSize, enrichTransactions, filters, sort.direction, networkType, error]);
+	}, [rpc, script, archiveHeight, pageSize, enrichTransactions, filters, sort.direction, networkType, fetchError]);
 
 	// Fetch overview data when script changes.
 	useEffect(() => {
@@ -436,7 +372,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	// Handle page size change.
 	const handlePageSizeChange = useCallback((newSize: number) => {
 		setPageSize(newSize);
-		localStorage.setItem(STORAGE_KEY, newSize.toString());
+		setStoredPageSize(STORAGE_KEY, newSize);
 		setCurrentPage(1);
 		setTransactions([]);
 		cursorCacheRef.current = new Map([[0, null]]);
@@ -543,15 +479,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		setFilters(DEFAULT_ADDRESS_FILTERS);
 	}, []);
 
-	// Show full page skeleton only on initial load.
-	if (isLoadingOverview && isLoadingTransactions) {
-		return (
-			<div className="max-w-7xl mx-auto px-4 py-6">
-				<SkeletonDetail />
-			</div>
-		);
-	}
-
+	// Show error if address parsing or fetch failed.
 	if (error) {
 		const handleRetry = script
 			? () => {
@@ -562,6 +490,15 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
 				<ErrorDisplay error={error} title="Transactions Error" onRetry={handleRetry} />
+			</div>
+		);
+	}
+
+	// Show full page skeleton while waiting for address parsing or initial load.
+	if (!isReady || (isLoadingOverview && isLoadingTransactions)) {
+		return (
+			<div className="max-w-7xl mx-auto px-4 py-6">
+				<SkeletonDetail />
 			</div>
 		);
 	}

@@ -11,18 +11,13 @@
  */
 
 import type { NetworkType } from '../config/networks';
-import { KNOWN_TYPE_SCRIPTS, KNOWN_LOCK_SCRIPTS, type ScriptInfo } from './wellKnown';
-
-// Internal type for the registry (mainnet and testnet only).
-type RegistryNetwork = 'mainnet' | 'testnet';
-
-/**
- * Map network type to registry network.
- * Devnet uses testnet scripts.
- */
-function toRegistryNetwork(network: NetworkType): RegistryNetwork {
-	return network === 'mainnet' ? 'mainnet' : 'testnet';
-}
+import {
+	KNOWN_TYPE_SCRIPTS,
+	KNOWN_LOCK_SCRIPTS,
+	toRegistryNetwork,
+	type ScriptInfo,
+	type RegistryNetwork,
+} from './wellKnown';
 
 /**
  * Derive script groups from a script registry.
@@ -125,19 +120,9 @@ export const FILTERABLE_LOCK_SCRIPTS: string[] = [
 	'PW Lock',
 ];
 
-/**
- * Build reverse lookup map from code hash to ScriptInfo for a network.
- */
-function buildCodeHashToInfo(
-	scripts: Record<RegistryNetwork, Record<string, ScriptInfo>>,
-): Record<RegistryNetwork, Record<string, ScriptInfo>> {
-	// The scripts are already keyed by code hash, so just return as-is.
-	return scripts;
-}
-
 // Direct access to type scripts by code hash.
-const TYPE_SCRIPT_INFO = buildCodeHashToInfo(KNOWN_TYPE_SCRIPTS);
-const LOCK_SCRIPT_INFO = buildCodeHashToInfo(KNOWN_LOCK_SCRIPTS);
+const TYPE_SCRIPT_INFO = KNOWN_TYPE_SCRIPTS;
+const LOCK_SCRIPT_INFO = KNOWN_LOCK_SCRIPTS;
 
 /**
  * Get the type script groups for a code hash.

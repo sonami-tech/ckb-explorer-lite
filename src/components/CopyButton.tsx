@@ -4,6 +4,7 @@ import { useIsMobile, useClickOutside } from '../hooks/ui';
 import { formatBytes } from '../lib/format';
 import { Tooltip } from './Tooltip';
 import { TooltipLink } from './TooltipLink';
+import { hexToBytes } from '../lib/bytes';
 
 interface CopyButtonProps {
 	text: string;
@@ -186,18 +187,6 @@ export function SizeBadge({ bytes, className = '', parens = true }: SizeBadgePro
 }
 
 /**
- * Convert hex string to binary Uint8Array.
- */
-function hexToBytes(hexString: string): Uint8Array {
-	const hex = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
-	const bytes = new Uint8Array(hex.length / 2);
-	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
-	}
-	return bytes;
-}
-
-/**
  * Trigger file download.
  */
 function downloadBlob(blob: Blob, filename: string): void {
@@ -318,9 +307,6 @@ export function ModalButton({ onClick, className = '' }: ModalButtonProps) {
 		</Tooltip>
 	);
 }
-
-/** Legacy alias for backwards compatibility. */
-export const ExpandButton = ModalButton;
 
 /**
  * Chevron button for inline expand/collapse.

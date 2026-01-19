@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRpc } from '../contexts/NetworkContext';
-import { parseAddress } from '../lib/address';
 import { formatNumber, formatCkb, truncateHex } from '../lib/format';
 import { navigate, generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
@@ -9,8 +8,10 @@ import { ErrorDisplay } from '../components/ErrorDisplay';
 import { InternalLink } from '../components/InternalLink';
 import { ChevronDownIcon } from '../components/CopyButton';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
-import type { RpcCell, RpcScript, IndexerSearchKey } from '../types/rpc';
+import type { RpcCell, IndexerSearchKey } from '../types/rpc';
 import { HAS_TYPE, HASH_DATA } from '../lib/badgeStyles';
+import { useAddressScript } from '../hooks/useAddressScript';
+import { getStoredPageSize, setStoredPageSize } from '../lib/localStorage';
 
 interface CellsForAddressPageProps {
 	address: string;
@@ -18,43 +19,20 @@ interface CellsForAddressPageProps {
 
 const STORAGE_KEY = 'ckb-explorer-cells-page-size';
 
-function getStoredPageSize(): number {
-	const stored = localStorage.getItem(STORAGE_KEY);
-	const parsed = parseInt(stored ?? '', 10);
-	if (PAGE_SIZE_CONFIG.options.includes(parsed as 5 | 10 | 20 | 50 | 100)) {
-		return parsed;
-	}
-	return PAGE_SIZE_CONFIG.default;
-}
-
 export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 	const rpc = useRpc();
 	const { archiveHeight } = useArchive();
-	const [script, setScript] = useState<RpcScript | null>(null);
+	const { script, error: parseError, isReady } = useAddressScript(address);
 	const [cells, setCells] = useState<RpcCell[]>([]);
 	const [cellCount, setCellCount] = useState<bigint | null>(null);
 	const [cursor, setCursor] = useState<string | null>(null);
 	const [hasMore, setHasMore] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
-	const [error, setError] = useState<Error | null>(null);
-	const [pageSize, setPageSize] = useState(getStoredPageSize);
+	const [fetchError, setFetchError] = useState<Error | null>(null);
+	const [pageSize, setPageSize] = useState(() => getStoredPageSize(STORAGE_KEY));
 
 	const fetchIdRef = useRef(0);
-
-	// Parse address on mount.
-	useEffect(() => {
-		try {
-			const parsed = parseAddress(address);
-			if (!parsed.script) {
-				throw new Error('Short format addresses are not supported. Please use the full format address.');
-			}
-			setScript(parsed.script);
-		} catch (err) {
-			setError(err instanceof Error ? err : new Error('Invalid address format.'));
-			setIsLoading(false);
-		}
-	}, [address]);
 
 	// Fetch cell count and initial cells.
 	const fetchData = useCallback(async () => {
@@ -63,7 +41,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 		const fetchId = ++fetchIdRef.current;
 
 		setIsLoading(true);
-		setError(null);
+		setFetchError(null);
 
 		try {
 			const searchKey: IndexerSearchKey = {
@@ -86,7 +64,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 			setHasMore(cellsResult.objects.length >= pageSize);
 		} catch (err) {
 			if (fetchId !== fetchIdRef.current) return;
-			setError(err instanceof Error ? err : new Error('Failed to fetch cells.'));
+			setFetchError(err instanceof Error ? err : new Error('Failed to fetch cells.'));
 		} finally {
 			if (fetchId === fetchIdRef.current) {
 				setIsLoading(false);
@@ -128,7 +106,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 	// Handle page size change.
 	const handlePageSizeChange = (newSize: number) => {
 		setPageSize(newSize);
-		localStorage.setItem(STORAGE_KEY, newSize.toString());
+		setStoredPageSize(STORAGE_KEY, newSize);
 		setCells([]);
 		setCursor(null);
 	};
@@ -138,7 +116,9 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 		? `${address.slice(0, 12)}...${address.slice(-8)}`
 		: address;
 
-	if (isLoading) {
+	const error = parseError || fetchError;
+
+	if (!isReady || isLoading) {
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
 				<SkeletonDetail />

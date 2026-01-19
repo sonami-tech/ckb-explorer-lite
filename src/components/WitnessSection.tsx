@@ -77,7 +77,7 @@ export function WitnessSection({ witnesses }: WitnessSectionProps) {
 	// Calculate total size for header.
 	const totalBytes = witnesses.reduce((sum, w) => sum + (w.length - 2) / 2, 0);
 
-	const { shouldPaginate, effectivePage, startIndex, paginatedWitnesses } = paginationData;
+	const { shouldPaginate, effectivePage, paginatedWitnesses } = paginationData;
 
 	return (
 		<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">

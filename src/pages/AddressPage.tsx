@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import {
-	parseAddress,
 	getNetworkFromPrefix,
 	getFormatDescription,
 	getAlternateAddress,
@@ -18,15 +17,10 @@ import { InternalLink } from '../components/InternalLink';
 import { ScriptSection } from '../components/ScriptSection';
 import { ScriptLink } from '../components/ScriptLink';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
-import {
-	TransactionRow,
-	calculateTotalOutputCapacity,
-	extractLockScripts,
-	extractTypeScripts,
-	isCellbaseTransaction,
-	type EnrichedTransaction,
-} from '../components/TransactionRow';
-import type { RpcScript, RpcGroupedTransactionInfo, IndexerSearchKey } from '../types/rpc';
+import { TransactionRow, type EnrichedTransaction } from '../components/TransactionRow';
+import { useAddressScript } from '../hooks/useAddressScript';
+import { useEnrichTransactions } from '../hooks/useEnrichTransactions';
+import type { IndexerSearchKey } from '../types/rpc';
 
 interface AddressPageProps {
 	address: string;
@@ -38,10 +32,11 @@ export function AddressPage({ address }: AddressPageProps) {
 	const { archiveHeight } = useArchive();
 	const networkType = currentNetwork?.type ?? 'mainnet';
 
-	// Parsed address state.
-	const [script, setScript] = useState<RpcScript | null>(null);
-	const [addressFormat, setAddressFormat] = useState<AddressFormat>(AddressFormat.Full);
-	const [networkPrefix, setNetworkPrefix] = useState<string>('');
+	// Parse address using hook.
+	const { script, format: addressFormat, prefix: networkPrefix, error: parseError, isReady } = useAddressScript(address);
+
+	// Transaction enrichment callback.
+	const enrichTransactions = useEnrichTransactions(networkType);
 
 	// Data state.
 	const [balance, setBalance] = useState<bigint | null>(null);
@@ -55,63 +50,6 @@ export function AddressPage({ address }: AddressPageProps) {
 	const [error, setError] = useState<Error | null>(null);
 
 	const fetchIdRef = useRef(0);
-
-	// Parse address on mount.
-	useEffect(() => {
-		try {
-			const parsed = parseAddress(address);
-			if (!parsed.script) {
-				throw new Error('Short format addresses are not supported. Please use the full format address.');
-			}
-			setScript(parsed.script);
-			setAddressFormat(parsed.format);
-			setNetworkPrefix(parsed.prefix);
-		} catch (err) {
-			setError(err instanceof Error ? err : new Error('Invalid address format.'));
-			setIsLoading(false);
-		}
-	}, [address]);
-
-	// Enrich grouped transactions with full details.
-	const enrichTransactions = useCallback(async (
-		groupedTxs: RpcGroupedTransactionInfo[],
-	): Promise<EnrichedTransaction[]> => {
-		if (groupedTxs.length === 0) return [];
-
-		// Fetch full transactions in parallel.
-		const fullTxPromises = groupedTxs.map(async (gtx) => {
-			const txWithStatus = await rpc.getTransaction(gtx.tx_hash, archiveHeight);
-			return { grouped: gtx, full: txWithStatus };
-		});
-
-		const results = await Promise.all(fullTxPromises);
-
-		// Fetch block headers for timestamps.
-		const uniqueBlocks = [...new Set(groupedTxs.map(tx => tx.block_number))];
-		const headerPromises = uniqueBlocks.map(async (blockNum) => {
-			const header = await rpc.getHeaderByNumber(BigInt(blockNum), archiveHeight);
-			return { blockNumber: blockNum, timestamp: header ? Number(BigInt(header.timestamp)) : Date.now() };
-		});
-		const headers = await Promise.all(headerPromises);
-		const timestampMap = new Map(headers.map(h => [h.blockNumber, h.timestamp]));
-
-		// Build enriched transactions.
-		return results.map(({ grouped, full }) => {
-			const timestamp = timestampMap.get(grouped.block_number) ?? Date.now();
-
-			return {
-				txHash: grouped.tx_hash,
-				blockNumber: BigInt(grouped.block_number),
-				timestamp,
-				totalCapacity: full?.transaction ? calculateTotalOutputCapacity(full.transaction) : 0n,
-				lockScripts: full?.transaction ? extractLockScripts(full.transaction, networkType) : [],
-				typeScripts: full?.transaction ? extractTypeScripts(full.transaction, networkType) : [],
-				inputCount: full?.transaction?.inputs.length ?? 0,
-				outputCount: full?.transaction?.outputs.length ?? 0,
-				isCellbase: full?.transaction ? isCellbaseTransaction(full.transaction) : false,
-			};
-		});
-	}, [rpc, archiveHeight, networkType]);
 
 	// Fetch all data.
 	const fetchData = useCallback(async () => {
@@ -185,7 +123,11 @@ export function AddressPage({ address }: AddressPageProps) {
 		? getAlternateAddress(address, script, networkType)
 		: null;
 
-	if (isLoading) {
+	// Combine parse error with fetch error.
+	const displayError = parseError ?? error;
+
+	// Show loading while parsing or fetching.
+	if (!isReady || (isReady && !parseError && isLoading)) {
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
 				<SkeletonDetail />
@@ -193,10 +135,10 @@ export function AddressPage({ address }: AddressPageProps) {
 		);
 	}
 
-	if (error) {
+	if (displayError) {
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
-				<ErrorDisplay error={error} title="Address Error" onRetry={script ? fetchData : undefined} />
+				<ErrorDisplay error={displayError} title="Address Error" onRetry={script ? fetchData : undefined} />
 			</div>
 		);
 	}

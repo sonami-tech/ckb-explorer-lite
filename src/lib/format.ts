@@ -74,19 +74,6 @@ export function truncateAddress(address: string, prefixLen = 8, suffixLen = 4): 
 }
 
 /**
- * Truncate variable-length data (args, cell data, witnesses) for display.
- * Shows first N characters + "..." if longer than limit.
- * @param data - The hex data to truncate.
- * @param limit - Maximum characters to show before truncating. Default 128.
- */
-export function truncateData(data: string, limit = 128): string {
-	if (data.length <= limit) {
-		return data;
-	}
-	return `${data.slice(0, limit)}...`;
-}
-
-/**
  * Format a Unix timestamp (in milliseconds) to a relative time string.
  */
 export function formatRelativeTime(timestamp: bigint | number): string {

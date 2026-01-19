@@ -6,6 +6,7 @@
 import type { NetworkType } from '../config/networks';
 import type { ScriptInfo } from './wellKnown';
 import { lookupTypeScript } from './wellKnown';
+import { hexToBytes, bytesToHex } from './bytes';
 
 /**
  * Decoded UDT data (covers both SUDT and xUDT formats).
@@ -92,18 +93,6 @@ export interface TextData {
  * Union of all decoded data types.
  */
 export type DecodedData = UdtData | DaoData | DepGroupData | IntegerData | TextData | ErrorData | RawData;
-
-/**
- * Convert hex string to byte array.
- */
-function hexToBytes(hex: string): Uint8Array {
-	const cleanHex = hex.startsWith('0x') ? hex.slice(2) : hex;
-	const bytes = new Uint8Array(cleanHex.length / 2);
-	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = parseInt(cleanHex.slice(i * 2, i * 2 + 2), 16);
-	}
-	return bytes;
-}
 
 /**
  * Read uint128 little-endian from bytes.
@@ -230,13 +219,6 @@ export function decodeDepGroup(data: string): DepGroupData | null {
 	};
 }
 
-/**
- * Convert bytes to hex string.
- */
-function bytesToHex(bytes: Uint8Array): string {
-	if (bytes.length === 0) return '0x';
-	return '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 /**
  * Read int64 little-endian from bytes (signed).

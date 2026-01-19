@@ -83,8 +83,8 @@ const RGBPP_CONSTANTS = 'https://github.com/ckb-cell/rgbpp-sdk/blob/main/package
 const CKBFS_README = 'https://github.com/nervape/ckbfs/blob/master/README.md';
 const CKB_SYSTEM_SCRIPTS = 'https://github.com/nervosnetwork/ckb-system-scripts';
 
-// Internal type for the registry (mainnet and testnet only).
-type RegistryNetwork = 'mainnet' | 'testnet';
+/** Network type for script registries (mainnet or testnet). */
+export type RegistryNetwork = 'mainnet' | 'testnet';
 
 /** All-zeros code hash used for permanently locked cells. */
 const ALWAYS_FAIL_CODE_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
@@ -1101,7 +1101,7 @@ export const KNOWN_LOCK_SCRIPTS_BY_ARGS: Record<RegistryNetwork, Record<string, 
  * Map network type to registry network.
  * Devnet uses testnet scripts.
  */
-function toRegistryNetwork(network: NetworkType): RegistryNetwork {
+export function toRegistryNetwork(network: NetworkType): RegistryNetwork {
 	return network === 'mainnet' ? 'mainnet' : 'testnet';
 }
 
