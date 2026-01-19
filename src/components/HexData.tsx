@@ -37,8 +37,8 @@ interface HexDataProps {
 	/** Decoder registry for format options. If not provided, only raw hex is shown. */
 	registry?: DecoderRegistry;
 
-	/** Context for styling: 'inline' for compact, 'section' for full card. */
-	context?: 'inline' | 'section';
+	/** Context for styling: 'inline' for compact, 'section' for full card, 'flat' for no card wrapper. */
+	context?: 'inline' | 'section' | 'flat';
 
 	/** Optional label for the data. */
 	label?: string;
@@ -165,6 +165,28 @@ export function HexData({
 		);
 	}
 
+	// Flat context - no card wrapper, just toolbar and content.
+	if (context === 'flat') {
+		return (
+			<FlatHexData
+				data={data}
+				displayData={displayData}
+				isTruncated={isTruncated}
+				byteCount={byteCount}
+				viewMode={viewMode}
+				decoded={decoded}
+				format={format}
+				formatOptions={formatOptions}
+				showSize={showSize}
+				allowModal={allowModal}
+				onOpenModal={handleOpenModal}
+				onCloseModal={handleCloseModal}
+				onFormatChange={handleFormatChange}
+				className={className}
+			/>
+		);
+	}
+
 	// Section context - full card.
 	return (
 		<SectionHexData
@@ -272,6 +294,85 @@ function InlineHexData({
 
 				{/* Desktop (>=1024px): Buttons inline. */}
 				{!isMobile && actionButtons}
+			</div>
+
+			{/* Chevron opens modal for full view. */}
+			{showChevron && (
+				<div className="mt-2 flex justify-center">
+					<ChevronButton isExpanded={false} onClick={onOpenModal} />
+				</div>
+			)}
+
+			{/* Modal. */}
+			<DataModal
+				isOpen={viewMode === 'modal'}
+				onClose={onCloseModal}
+				title={decoded.label}
+				byteCount={byteCount}
+				data={data}
+			>
+				{decoded.content || <RawHexDisplay data={data} />}
+			</DataModal>
+		</div>
+	);
+}
+
+/**
+ * Flat variant - no card wrapper, just toolbar row and content.
+ * Used for witnesses to avoid nested backgrounds.
+ */
+function FlatHexData({
+	data,
+	displayData,
+	isTruncated,
+	byteCount,
+	viewMode,
+	decoded,
+	format,
+	formatOptions,
+	showSize,
+	allowModal,
+	onOpenModal,
+	onCloseModal,
+	onFormatChange,
+	className,
+}: HexDataVariantProps) {
+	const showChevron = isTruncated && !decoded.content && allowModal;
+
+	return (
+		<div className={className}>
+			{/* Toolbar row with size and action buttons. */}
+			<div className="flex items-center justify-between mb-2">
+				<div className="flex items-center gap-2">
+					{showSize && (
+						<span className="text-size-meta">
+							{byteCount.toLocaleString()} bytes
+						</span>
+					)}
+				</div>
+				<div className="flex items-center gap-2">
+					{formatOptions.length > 1 && (
+						<FormatDropdown
+							current={format}
+							options={formatOptions}
+							detected={decoded.format}
+							onChange={onFormatChange}
+						/>
+					)}
+					<CopyButton text={data} />
+					<DownloadButton data={data} />
+				</div>
+			</div>
+
+			{/* Content. */}
+			<div>
+				{decoded.content ? (
+					decoded.content
+				) : (
+					<code className="font-mono text-sm break-all block">
+						{displayData}
+					</code>
+				)}
 			</div>
 
 			{/* Chevron opens modal for full view. */}

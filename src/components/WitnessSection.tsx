@@ -92,6 +92,7 @@ interface WitnessItemProps {
 
 /**
  * Individual witness item with decode options.
+ * Follows the same layout as inputs/outputs: index on its own line, then content below.
  */
 function WitnessItem({ index, data }: WitnessItemProps) {
 	// Build decoder registry for this witness.
@@ -99,12 +100,16 @@ function WitnessItem({ index, data }: WitnessItemProps) {
 
 	return (
 		<div className="p-4">
-			{/* Witness content with decode options. Index and size are in the HexData header. */}
+			{/* Index on its own line. */}
+			<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+				#{index}
+			</div>
+
+			{/* Witness content with decode options. */}
 			<HexData
 				data={data}
 				registry={registry}
-				context="section"
-				index={index}
+				context="flat"
 				showSize={true}
 			/>
 		</div>
@@ -251,20 +256,17 @@ function WitnessArgsField({ label, value }: { label: string; value: string | nul
 	if (signatureData) {
 		return (
 			<div>
-				<div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-					{label}
+				<div className="flex items-center justify-between mb-1">
+					<span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+						{label} <SizeBadge bytes={byteCount} /> · SECP256K1 Signature
+					</span>
 				</div>
-				<div className="bg-gray-100 dark:bg-gray-800 rounded p-2">
-					<div className="text-size-meta mb-1">
-						SECP256K1 Signature <SizeBadge bytes={byteCount} />
-					</div>
-					<SignatureView data={signatureData} />
-				</div>
+				<SignatureView data={signatureData} />
 			</div>
 		);
 	}
 
-	// Raw hex display following SubDataSection pattern.
+	// Raw hex display.
 	return (
 		<div>
 			{/* Label row with size and action buttons. */}
@@ -279,11 +281,9 @@ function WitnessArgsField({ label, value }: { label: string; value: string | nul
 				</div>
 			</div>
 			{/* Content row. */}
-			<div className="bg-gray-100 dark:bg-gray-800 rounded p-2">
-				<code className="font-mono text-xs break-all block">
-					{displayData}
-				</code>
-			</div>
+			<code className="font-mono text-xs break-all block">
+				{displayData}
+			</code>
 			{/* Modal for full data view. */}
 			<DataModal
 				isOpen={isModalOpen}
