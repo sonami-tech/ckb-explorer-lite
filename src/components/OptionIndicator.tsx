@@ -27,20 +27,28 @@ interface OptionIndicatorProps {
 	activeValue: string;
 	/** Additional CSS classes for the container. */
 	className?: string;
+	/** Hide inactive options on mobile (below sm breakpoint). */
+	hideInactiveOnMobile?: boolean;
 }
 
 /**
  * Displays a group of option pills where one is active (full color) and others are dimmed.
  * Each option has a tooltip that appears on hover.
  */
-export function OptionIndicator({ options, activeValue, className = '' }: OptionIndicatorProps) {
+export function OptionIndicator({
+	options,
+	activeValue,
+	className = '',
+	hideInactiveOnMobile = false,
+}: OptionIndicatorProps) {
 	return (
-		<div className={`inline-flex items-center gap-1.5 ${className}`}>
+		<div className={`inline-flex flex-nowrap items-center gap-1.5 ${className}`}>
 			{options.map((option) => (
 				<OptionPill
 					key={option.value}
 					option={option}
 					isActive={option.value === activeValue}
+					hideOnMobile={hideInactiveOnMobile && option.value !== activeValue}
 				/>
 			))}
 		</div>
@@ -50,12 +58,17 @@ export function OptionIndicator({ options, activeValue, className = '' }: Option
 interface OptionPillProps {
 	option: OptionConfig;
 	isActive: boolean;
+	/** Hide this pill on mobile (below sm breakpoint). */
+	hideOnMobile?: boolean;
 }
 
-function OptionPill({ option, isActive }: OptionPillProps) {
+function OptionPill({ option, isActive, hideOnMobile = false }: OptionPillProps) {
 	// Default styling for active/inactive states.
 	const activeClass = option.activeClass || 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200';
 	const inactiveClass = INACTIVE;
+
+	// Hide inactive pills on mobile when hideOnMobile is true.
+	const visibilityClass = hideOnMobile ? 'hidden sm:inline' : '';
 
 	return (
 		<Tooltip content={option.tooltip} placement="bottom">
@@ -64,6 +77,7 @@ function OptionPill({ option, isActive }: OptionPillProps) {
 					px-2 py-0.5 text-xs font-medium rounded cursor-help
 					transition-colors duration-150
 					${isActive ? activeClass : inactiveClass}
+					${visibilityClass}
 				`}
 			>
 				{option.label}
@@ -164,5 +178,5 @@ const TRANSACTION_STATUS_OPTIONS: OptionConfig[] = [
 
 /** Convenience component for transaction status. */
 export function TransactionStatusIndicator({ status }: { status: string }) {
-	return <OptionIndicator options={TRANSACTION_STATUS_OPTIONS} activeValue={status} />;
+	return <OptionIndicator options={TRANSACTION_STATUS_OPTIONS} activeValue={status} hideInactiveOnMobile />;
 }

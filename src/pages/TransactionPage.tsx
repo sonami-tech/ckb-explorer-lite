@@ -18,7 +18,6 @@ import { HashDisplay } from '../components/CopyButton';
 import { OutPoint } from '../components/OutPoint';
 import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
-import { InternalLinkIcon } from '../components/InternalLinkIcon';
 import { InternalLink } from '../components/InternalLink';
 import { WitnessSection } from '../components/WitnessSection';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
@@ -625,21 +624,12 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 											#{index}
 										</div>
 
-										{/* Outpoint, cell link icon, capacity. */}
-										<div className="flex items-center justify-between mb-2">
-											<div className="flex items-center gap-2">
-												<OutPoint
-													txHash={input.previous_output.tx_hash}
-													index={parseInt(input.previous_output.index, 16)}
-												/>
-												<InternalLinkIcon
-													linkTo={generateLink(`/cell/${input.previous_output.tx_hash}/${parseInt(input.previous_output.index, 16)}`)}
-													tooltip="View cell"
-												/>
-											</div>
-											<span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-												{formatCkb(cellData.output.capacity)}
-											</span>
+										{/* Outpoint. */}
+										<div className="mb-2">
+											<OutPoint
+												txHash={input.previous_output.tx_hash}
+												index={parseInt(input.previous_output.index, 16)}
+											/>
 										</div>
 
 										{/* Address. */}
@@ -648,6 +638,13 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 												address={address}
 												linkTo={generateLink(`/address/${address}`)}
 											/>
+										</div>
+
+										{/* Capacity. */}
+										<div className="mb-2">
+											<span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
+												{formatCkb(cellData.output.capacity)}
+											</span>
 										</div>
 
 										{/* Script pills and since constraint. */}
@@ -748,18 +745,9 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 									#{index}
 								</div>
 
-								{/* Outpoint, cell link icon, capacity. */}
-								<div className="flex items-center justify-between mb-2">
-									<div className="flex items-center gap-2">
-										<OutPoint txHash={hash} index={index} />
-										<InternalLinkIcon
-											linkTo={generateLink(`/cell/${hash}/${index}`)}
-											tooltip="View cell"
-										/>
-									</div>
-									<span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-										{formatCkb(output.capacity)}
-									</span>
+								{/* Outpoint. */}
+								<div className="mb-2">
+									<OutPoint txHash={hash} index={index} />
 								</div>
 
 								{/* Address. */}
@@ -768,6 +756,13 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 										address={address}
 										linkTo={generateLink(`/address/${address}`)}
 									/>
+								</div>
+
+								{/* Capacity. */}
+								<div className="mb-2">
+									<span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
+										{formatCkb(output.capacity)}
+									</span>
 								</div>
 
 								{/* Script pills. */}
