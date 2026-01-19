@@ -159,8 +159,45 @@ export function Pagination({
 				</div>
 			</div>
 
-			{/* Center: Page numbers with prev/next. */}
-			<div className="flex items-center gap-1">
+			{/* Mobile: Compact pagination with "Page X of Y". */}
+			<div className="flex sm:hidden items-center gap-2">
+				<button
+					onClick={handlePrevPage}
+					disabled={!canGoPrev}
+					className={`
+						px-3 py-1.5 text-sm rounded transition-colors
+						${canGoPrev
+							? 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+							: 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+						}
+					`}
+					aria-label="Previous page"
+				>
+					‹ Prev
+				</button>
+
+				<span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+					{currentPage.toLocaleString()} / {totalPages.toLocaleString()}
+				</span>
+
+				<button
+					onClick={handleNextPage}
+					disabled={!canGoNext}
+					className={`
+						px-3 py-1.5 text-sm rounded transition-colors
+						${canGoNext
+							? 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+							: 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+						}
+					`}
+					aria-label="Next page"
+				>
+					Next ›
+				</button>
+			</div>
+
+			{/* Desktop: Page numbers with prev/next. */}
+			<div className="hidden sm:flex items-center gap-1">
 				{/* Previous button. */}
 				<button
 					onClick={handlePrevPage}
@@ -174,7 +211,7 @@ export function Pagination({
 					`}
 					aria-label="Previous page"
 				>
-					<span className="hidden sm:inline">← </span>Prev
+					← Prev
 				</button>
 
 				{/* Page numbers. */}
@@ -219,7 +256,7 @@ export function Pagination({
 					`}
 					aria-label="Next page"
 				>
-					Next<span className="hidden sm:inline"> →</span>
+					Next →
 				</button>
 			</div>
 
