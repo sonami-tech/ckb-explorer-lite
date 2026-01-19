@@ -917,7 +917,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							const index = headerDepsStartIndex + paginatedIndex;
 							return (
 								<div key={index} className="p-4">
-									<HashDisplay hash={headerHash} linkTo={`/block/${headerHash}`} />
+									<HashDisplay hash={headerHash} linkTo={generateLink(`/block/${headerHash}`)} responsive />
 								</div>
 							);
 						})}
