@@ -92,7 +92,6 @@ interface WitnessItemProps {
 
 /**
  * Individual witness item with decode options.
- * Follows the same layout as inputs/outputs: index on its own line, then content below.
  */
 function WitnessItem({ index, data }: WitnessItemProps) {
 	// Build decoder registry for this witness.
@@ -100,16 +99,12 @@ function WitnessItem({ index, data }: WitnessItemProps) {
 
 	return (
 		<div className="p-4">
-			{/* Index on its own line. */}
-			<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-				#{index}
-			</div>
-
-			{/* Witness content with decode options. */}
+			{/* Witness content with index, size, and decode options in header. */}
 			<HexData
 				data={data}
 				registry={registry}
 				context="flat"
+				index={index}
 				showSize={true}
 			/>
 		</div>

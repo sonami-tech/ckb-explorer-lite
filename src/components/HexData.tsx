@@ -177,6 +177,7 @@ export function HexData({
 				decoded={decoded}
 				format={format}
 				formatOptions={formatOptions}
+				index={index}
 				showSize={showSize}
 				allowModal={allowModal}
 				onOpenModal={handleOpenModal}
@@ -330,23 +331,29 @@ function FlatHexData({
 	decoded,
 	format,
 	formatOptions,
+	index,
 	showSize,
 	allowModal,
 	onOpenModal,
 	onCloseModal,
 	onFormatChange,
 	className,
-}: HexDataVariantProps) {
+}: HexDataVariantProps & { index?: number }) {
 	const showChevron = isTruncated && !decoded.content && allowModal;
 
 	return (
 		<div className={className}>
-			{/* Toolbar row with size and action buttons. */}
+			{/* Header row with index, size, and action buttons. */}
 			<div className="flex items-center justify-between mb-2">
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-1">
+					{index !== undefined && (
+						<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+							#{index}
+						</span>
+					)}
 					{showSize && (
 						<span className="text-size-meta">
-							{byteCount.toLocaleString()} bytes
+							({byteCount.toLocaleString()} bytes)
 						</span>
 					)}
 				</div>
