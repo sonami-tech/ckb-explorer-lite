@@ -1,4 +1,4 @@
-import type { Hex } from '../types/rpc';
+import type { Hex, RpcCellWithLifecycle, RpcScript } from '../types/rpc';
 
 /**
  * 1 CKB = 100,000,000 Shannons.
@@ -169,6 +169,45 @@ export function parseEpoch(epoch: bigint | string): {
 		index: (value >> 24n) & 0xFFFFn,
 		length: value >> 40n,
 	};
+}
+
+/**
+ * Calculate the size of a script in bytes.
+ * Script size = 32 (code_hash) + 1 (hash_type) + args.length
+ */
+function calculateScriptSize(script: RpcScript): number {
+	// code_hash is 32 bytes (0x + 64 hex chars).
+	const codeHashSize = 32;
+	// hash_type is 1 byte.
+	const hashTypeSize = 1;
+	// args is a hex string, divide by 2 to get byte length (subtract 2 for '0x' prefix).
+	const argsSize = script.args.length > 2 ? (script.args.length - 2) / 2 : 0;
+	return codeHashSize + hashTypeSize + argsSize;
+}
+
+/**
+ * Calculate the total size of a cell in bytes.
+ * Cell size = 8 (capacity) + lock_script_size + type_script_size + output_data_size
+ *
+ * @param cellData - The cell data from get_cell_lifecycle.
+ * @returns The total cell size in bytes.
+ */
+export function calculateCellSize(cellData: RpcCellWithLifecycle): number {
+	// Capacity field is 8 bytes.
+	const capacitySize = 8;
+
+	// Lock script size.
+	const lockSize = calculateScriptSize(cellData.output.lock);
+
+	// Type script size (if present).
+	const typeSize = cellData.output.type ? calculateScriptSize(cellData.output.type) : 0;
+
+	// Output data size (hex string, divide by 2 for byte length, subtract 2 for '0x' prefix).
+	const dataSize = cellData.output_data && cellData.output_data.length > 2
+		? (cellData.output_data.length - 2) / 2
+		: 0;
+
+	return capacitySize + lockSize + typeSize + dataSize;
 }
 
 /**
@@ -384,6 +423,84 @@ export function formatActivitySpan(
 	const durationStr = parts.length > 0 ? parts.join(', ') : 'Less than a day';
 
 	return `${durationStr} (${formatNumber(blockSpan)} blocks)`;
+}
+
+/**
+ * Format a "since" field value from a transaction input.
+ * The since field is a 64-bit value that can represent lock-time constraints.
+ *
+ * RFC-0017 specification:
+ * - 0x0: No lock constraint
+ * - Bit 63: 0 = Absolute, 1 = Relative
+ * - Bits 62-61: Metric type (00 = block number, 01 = epoch, 10 = timestamp)
+ * - Bits 60-56: Reserved (must be zero)
+ * - Bits 55-0: Value (56 bits)
+ *
+ * Returns null if there's no lock constraint.
+ * Returns a human-readable string describing the lock constraint.
+ */
+export function formatSince(since: string): string | null {
+	const value = BigInt(since);
+
+	// No lock constraint.
+	if (value === 0n) {
+		return null;
+	}
+
+	// Extract flag bits (highest 8 bits).
+	const flags = (value >> 56n) & 0xFFn;
+
+	// Bit 63: Relative flag.
+	const isRelative = (flags & 0x80n) !== 0n;
+
+	// Bits 62-61: Metric type.
+	const metricType = (flags >> 5n) & 0x3n;
+
+	// Bits 60-56: Reserved (should be zero).
+	const reserved = flags & 0x1Fn;
+	if (reserved !== 0n) {
+		// Invalid encoding - show raw hex.
+		return `0x${value.toString(16)}`;
+	}
+
+	// Extract the actual value (lower 56 bits).
+	const actualValue = value & ((1n << 56n) - 1n);
+
+	// Format based on metric type.
+	let metricName: string;
+	let formattedValue: string;
+
+	switch (Number(metricType)) {
+		case 0: // Block number.
+			metricName = isRelative ? 'blocks' : 'block';
+			formattedValue = formatNumber(actualValue);
+			break;
+
+		case 1: // Epoch number with fraction.
+			metricName = isRelative ? 'epochs' : 'epoch';
+			formattedValue = formatEpoch(actualValue);
+			break;
+
+		case 2: // Timestamp (median of previous 37 blocks).
+			metricName = isRelative ? 'seconds' : 'timestamp';
+			if (isRelative) {
+				formattedValue = formatNumber(actualValue);
+			} else {
+				// Absolute timestamp - format as date.
+				formattedValue = formatAbsoluteTime(Number(actualValue));
+			}
+			break;
+
+		case 3: // Invalid metric type.
+		default:
+			return `0x${value.toString(16)}`;
+	}
+
+	// Build the human-readable string.
+	if (isRelative) {
+		return `+${formattedValue} ${metricName}`;
+	}
+	return `${formattedValue} ${metricName}`;
 }
 
 /**
