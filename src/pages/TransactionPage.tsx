@@ -407,6 +407,19 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 	// Extract cycles from RPC response.
 	const cycles = txData?.cycles ? BigInt(txData.cycles) : null;
 
+	// Determine reason why fee is unavailable.
+	const feeUnavailableReason = useMemo(() => {
+		if (isCellbase) {
+			return 'Cellbase transactions have no inputs and therefore no fee.';
+		}
+
+		if (transaction && transaction.inputs.length > FEE_CALCULATION_MAX_INPUTS) {
+			return `Fee calculation unavailable for transactions with more than ${FEE_CALCULATION_MAX_INPUTS} inputs.`;
+		}
+
+		return null;
+	}, [isCellbase, transaction]);
+
 	// Determine reason why cycles is unavailable.
 	const cyclesUnavailableReason = useMemo(() => {
 		if (cycles !== null) return null;
@@ -523,22 +536,20 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							{formatCkb(totalOutput)}
 						</span>
 					</DetailRow>
-					{!isCellbase && (
-						<DetailRow label="Transaction Fee">
-							{transactionFee === undefined ? (
-								<div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-							) : transactionFee === 'unavailable' ? (
-								<span className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
-									N/A
-									<InfoIcon tooltip={`Fee calculation unavailable for transactions with more than ${FEE_CALCULATION_MAX_INPUTS} inputs.`} />
-								</span>
-							) : (
-								<span className="font-mono text-sm text-gray-900 dark:text-white">
-									{formatCkb(transactionFee)}
-								</span>
-							)}
-						</DetailRow>
-					)}
+					<DetailRow label="Transaction Fee">
+						{feeUnavailableReason ? (
+							<span className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+								N/A
+								<InfoIcon tooltip={feeUnavailableReason} />
+							</span>
+						) : transactionFee === undefined ? (
+							<div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+						) : (
+							<span className="font-mono text-sm text-gray-900 dark:text-white">
+								{formatCkb(transactionFee as bigint)}
+							</span>
+						)}
+					</DetailRow>
 					<DetailRow label="Cycles">
 						{cycles !== null ? (
 							<span className="font-mono text-sm text-gray-700 dark:text-gray-300">
