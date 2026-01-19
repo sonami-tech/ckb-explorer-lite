@@ -25,12 +25,12 @@ import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
 import { ScriptIndicatorPill } from '../components/ScriptIndicatorPill';
 import { Tooltip } from '../components/Tooltip';
 import { Pagination } from '../components/Pagination';
+import { TransactionStatusIndicator } from '../components/OptionIndicator';
 import type { RpcTransaction, RpcTransactionWithStatus, RpcScript, RpcCellInput, RpcCellWithLifecycle } from '../types/rpc';
 import type { NetworkType } from '../config/networks';
 import {
 	BRAND,
 	DEP_TYPE,
-	getStatusStyle,
 } from '../lib/badgeStyles';
 import { TRANSACTION_SECTION_PAGINATION } from '../config/defaults';
 
@@ -473,7 +473,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 						<HashDisplay hash={hash} responsive />
 					</DetailRow>
 					<DetailRow label="Status">
-						<StatusBadge status={tx_status.status} />
+						<TransactionStatusIndicator status={tx_status.status} />
 					</DetailRow>
 					{tx_status.block_hash && (
 						<DetailRow label="Block">
@@ -947,10 +947,3 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 	);
 }
 
-function StatusBadge({ status }: { status: string }) {
-	return (
-		<span className={`px-2 py-1 rounded text-xs font-medium ${getStatusStyle(status)}`}>
-			{status.charAt(0).toUpperCase() + status.slice(1)}
-		</span>
-	);
-}

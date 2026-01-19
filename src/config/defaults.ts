@@ -90,7 +90,7 @@ export const TRANSACTION_SECTION_PAGINATION = {
 	/** Default items per page. */
 	defaultPageSize: 10,
 	/** Page size options. */
-	options: [10, 20, 50, 100] as const,
+	options: [5, 10, 20, 50, 100] as const,
 } as const;
 
 /**

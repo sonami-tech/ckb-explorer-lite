@@ -2,6 +2,8 @@ import { Tooltip } from './Tooltip';
 import {
 	STATUS_SUCCESS,
 	STATUS_ERROR,
+	STATUS_WARNING,
+	STATUS_INFO,
 	HASH_TYPE,
 	HASH_DATA,
 	INACTIVE,
@@ -124,4 +126,43 @@ export function CellStatusIndicator({ status }: { status: 'live' | 'dead' }) {
 /** Convenience component for hash type. */
 export function HashTypeIndicator({ hashType }: { hashType: string }) {
 	return <OptionIndicator options={HASH_TYPE_OPTIONS} activeValue={hashType} />;
+}
+
+/** Transaction status options. */
+const TRANSACTION_STATUS_OPTIONS: OptionConfig[] = [
+	{
+		value: 'committed',
+		label: 'Committed',
+		tooltip: 'Transaction is confirmed in a block.',
+		activeClass: STATUS_SUCCESS,
+	},
+	{
+		value: 'proposed',
+		label: 'Proposed',
+		tooltip: 'Transaction has been proposed by a miner.',
+		activeClass: STATUS_INFO,
+	},
+	{
+		value: 'pending',
+		label: 'Pending',
+		tooltip: 'Transaction is in the mempool, waiting to be proposed.',
+		activeClass: STATUS_WARNING,
+	},
+	{
+		value: 'rejected',
+		label: 'Rejected',
+		tooltip: 'Transaction was rejected by the node.',
+		activeClass: STATUS_ERROR,
+	},
+	{
+		value: 'unknown',
+		label: 'Unknown',
+		tooltip: 'Transaction status is unknown.',
+		activeClass: STATUS_WARNING,
+	},
+];
+
+/** Convenience component for transaction status. */
+export function TransactionStatusIndicator({ status }: { status: string }) {
+	return <OptionIndicator options={TRANSACTION_STATUS_OPTIONS} activeValue={status} />;
 }
