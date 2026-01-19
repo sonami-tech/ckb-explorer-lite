@@ -625,7 +625,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 								{formatCkb(daoLockedCapacity)}
 								{daoLockedCapacity > 0n && balance > 0n && (
 									<span className="text-gray-500 dark:text-gray-400 ml-2">
-										({((Number(daoLockedCapacity) / Number(balance)) * 100).toFixed(1)}% of balance)
+										({(Math.floor(Number((daoLockedCapacity * 100000n) / balance)) / 1000).toFixed(2)}% of balance)
 									</span>
 								)}
 							</span>
