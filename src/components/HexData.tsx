@@ -43,6 +43,9 @@ interface HexDataProps {
 	/** Optional label for the data. */
 	label?: string;
 
+	/** Optional index number to display in header (e.g., for witnesses). */
+	index?: number;
+
 	/** Show size badge. Default: true. */
 	showSize?: boolean;
 
@@ -76,6 +79,7 @@ export function HexData({
 	registry,
 	context = 'section',
 	label,
+	index,
 	showSize = true,
 	allowModal = true,
 	charLimits,
@@ -173,6 +177,7 @@ export function HexData({
 			format={format}
 			formatOptions={formatOptions}
 			label={label}
+			index={index}
 			showSize={showSize}
 			allowModal={allowModal}
 			onOpenModal={handleOpenModal}
@@ -304,13 +309,14 @@ function SectionHexData({
 	format,
 	formatOptions,
 	label,
+	index,
 	showSize,
 	allowModal,
 	onOpenModal,
 	onCloseModal,
 	onFormatChange,
 	className,
-}: HexDataVariantProps & { label?: string }) {
+}: HexDataVariantProps & { label?: string; index?: number }) {
 	const showChevron = isTruncated && !decoded.content && allowModal;
 
 	return (
@@ -318,12 +324,21 @@ function SectionHexData({
 			{/* Header. */}
 			<div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
 				<div className="flex items-center gap-2">
+					{index !== undefined && (
+						<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+							#{index}
+						</span>
+					)}
+					{showSize && (
+						<span className="text-size-meta">
+							({byteCount.toLocaleString()} bytes)
+						</span>
+					)}
 					{label && (
 						<span className="text-sm font-medium text-gray-700 dark:text-gray-300">
 							{label}
 						</span>
 					)}
-					{showSize && <SizeBadge bytes={byteCount} />}
 				</div>
 
 				<div className="flex items-center gap-2">

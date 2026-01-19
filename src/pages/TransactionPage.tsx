@@ -542,10 +542,12 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							if (isCellbase) {
 								return (
 									<div key={index} className="p-4">
-										<div className="flex items-center gap-3">
-											<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-												#{index}
-											</span>
+										{/* Index on its own line. */}
+										<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+											#{index}
+										</div>
+										{/* Cellbase badge and description. */}
+										<div className="flex items-center gap-2">
 											<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${BRAND} rounded`}>
 												Cellbase
 											</span>
@@ -565,24 +567,24 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							if (inputsLoading && !cellData && !fetchError) {
 								return (
 									<div key={index} className="p-4">
+										{/* Index on its own line. */}
+										<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+											#{index}
+										</div>
+										{/* Outpoint and capacity. */}
 										<div className="flex items-center justify-between mb-2">
-											<div className="flex items-center gap-2">
-												<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-													#{index}
-												</span>
-												<OutPoint
-													txHash={input.previous_output.tx_hash}
-													index={parseInt(input.previous_output.index, 16)}
-												/>
-											</div>
+											<OutPoint
+												txHash={input.previous_output.tx_hash}
+												index={parseInt(input.previous_output.index, 16)}
+											/>
 											<div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
 										</div>
-										<div className="ml-6 mb-2">
+										{/* Address skeleton. */}
+										<div className="mb-2">
 											<div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
 										</div>
-										<div className="ml-6">
-											<div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-										</div>
+										{/* Script pills skeleton. */}
+										<div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
 									</div>
 								);
 							}
@@ -591,16 +593,19 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							if (fetchError) {
 								return (
 									<div key={index} className="p-4">
-										<div className="flex items-center gap-2 mb-2">
-											<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-												#{index}
-											</span>
+										{/* Index on its own line. */}
+										<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+											#{index}
+										</div>
+										{/* Outpoint. */}
+										<div className="mb-2">
 											<OutPoint
 												txHash={input.previous_output.tx_hash}
 												index={parseInt(input.previous_output.index, 16)}
 											/>
 										</div>
-										<div className="ml-6 text-sm text-red-600 dark:text-red-400">
+										{/* Error message. */}
+										<div className="text-sm text-red-600 dark:text-red-400">
 											Failed to load cell data
 										</div>
 									</div>
@@ -615,12 +620,14 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 								return (
 									<div key={index} className="p-4">
-										{/* Line 1: Index, outpoint, icons, capacity. */}
+										{/* Index on its own line. */}
+										<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+											#{index}
+										</div>
+
+										{/* Outpoint, cell link icon, capacity. */}
 										<div className="flex items-center justify-between mb-2">
 											<div className="flex items-center gap-2">
-												<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-													#{index}
-												</span>
 												<OutPoint
 													txHash={input.previous_output.tx_hash}
 													index={parseInt(input.previous_output.index, 16)}
@@ -635,16 +642,16 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 											</span>
 										</div>
 
-										{/* Line 2: Address. */}
-										<div className="ml-6 mb-2">
+										{/* Address. */}
+										<div className="mb-2">
 											<AddressDisplay
 												address={address}
 												linkTo={generateLink(`/address/${address}`)}
 											/>
 										</div>
 
-										{/* Line 3: Script pills and since constraint. */}
-										<div className="ml-6 flex flex-wrap gap-2 items-center">
+										{/* Script pills and since constraint. */}
+										<div className="flex flex-wrap gap-2 items-center">
 											{lockIndicator.isKnown ? (
 												<ScriptIndicatorPill
 													name={lockIndicator.name}
@@ -692,15 +699,15 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 							// Fallback: show just outpoint.
 							return (
 								<div key={index} className="p-4">
-									<div className="flex items-center gap-3">
-										<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-											#{index}
-										</span>
-										<OutPoint
-											txHash={input.previous_output.tx_hash}
-											index={parseInt(input.previous_output.index, 16)}
-										/>
+									{/* Index on its own line. */}
+									<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+										#{index}
 									</div>
+									{/* Outpoint. */}
+									<OutPoint
+										txHash={input.previous_output.tx_hash}
+										index={parseInt(input.previous_output.index, 16)}
+									/>
 								</div>
 							);
 						})
@@ -736,12 +743,14 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 						return (
 							<div key={index} className="p-4">
-								{/* Line 1: Index, outpoint, icons, capacity. */}
+								{/* Index on its own line. */}
+								<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+									#{index}
+								</div>
+
+								{/* Outpoint, cell link icon, capacity. */}
 								<div className="flex items-center justify-between mb-2">
 									<div className="flex items-center gap-2">
-										<span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-											#{index}
-										</span>
 										<OutPoint txHash={hash} index={index} />
 										<InternalLinkIcon
 											linkTo={generateLink(`/cell/${hash}/${index}`)}
@@ -753,16 +762,16 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 									</span>
 								</div>
 
-								{/* Line 2: Address. */}
-								<div className="ml-6 mb-2">
+								{/* Address. */}
+								<div className="mb-2">
 									<AddressDisplay
 										address={address}
 										linkTo={generateLink(`/address/${address}`)}
 									/>
 								</div>
 
-								{/* Line 3: Script pills. */}
-								<div className="ml-6 flex flex-wrap gap-2 items-center">
+								{/* Script pills. */}
+								<div className="flex flex-wrap gap-2 items-center">
 									{lockIndicator.isKnown ? (
 										<ScriptIndicatorPill
 											name={lockIndicator.name}

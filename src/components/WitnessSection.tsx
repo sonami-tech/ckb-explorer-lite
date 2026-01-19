@@ -94,29 +94,18 @@ interface WitnessItemProps {
  * Individual witness item with decode options.
  */
 function WitnessItem({ index, data }: WitnessItemProps) {
-	const byteCount = (data.length - 2) / 2;
-
 	// Build decoder registry for this witness.
 	const registry = useMemo(() => createWitnessRegistry(), []);
 
 	return (
 		<div className="p-4">
-			{/* Header with index and size. */}
-			<div className="flex items-center justify-between mb-3">
-				<span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-					#{index}
-				</span>
-				<span className="text-size-meta">
-					{formatBytes(byteCount)}
-				</span>
-			</div>
-
-			{/* Witness content with decode options. */}
+			{/* Witness content with decode options. Index and size are in the HexData header. */}
 			<HexData
 				data={data}
 				registry={registry}
 				context="section"
-				showSize={false}
+				index={index}
+				showSize={true}
 			/>
 		</div>
 	);
