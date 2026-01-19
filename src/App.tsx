@@ -14,6 +14,7 @@ import { TransactionsForAddressPage } from './pages/TransactionsForAddressPage';
 import { CellsForAddressPage } from './pages/CellsForAddressPage';
 import { CellPage } from './pages/CellPage';
 import { WellKnownResourcesPage } from './pages/WellKnownResourcesPage';
+import { TestLinksPage } from './pages/TestLinksPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 function Router() {
@@ -36,6 +37,8 @@ function Router() {
 			return <CellPage txHash={route.txHash} index={route.index} />;
 		case 'resources':
 			return <WellKnownResourcesPage />;
+		case 'test-links':
+			return <TestLinksPage />;
 		case 'not-found':
 		default:
 			return <NotFoundPage />;

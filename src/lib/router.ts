@@ -12,6 +12,7 @@ export type RouteState =
 	| { view: 'address-cells'; address: string }
 	| { view: 'cell'; txHash: string; index: number }
 	| { view: 'resources' }
+	| { view: 'test-links' }
 	| { view: 'not-found' };
 
 export type RouteChangeCallback = (state: RouteState) => void;
@@ -52,6 +53,9 @@ router
 	})
 	.on('/resources', () => {
 		routeChangeCallback?.({ view: 'resources' });
+	})
+	.on('/test-links', () => {
+		routeChangeCallback?.({ view: 'test-links' });
 	})
 	.notFound(() => {
 		routeChangeCallback?.({ view: 'not-found' });
