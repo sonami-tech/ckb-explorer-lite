@@ -198,6 +198,43 @@ export function calculateCellSize(cellData: RpcCellWithLifecycle): number {
 }
 
 /**
+ * Format Shannon amount to a short CKB string (~5 characters).
+ * Uses SI prefixes (K, M, B, T) for large values.
+ * @param shannons - Amount in shannons.
+ * @returns Short formatted string like "1.5K", "234M", "1.2B".
+ */
+export function formatCkbShort(shannons: bigint | string): string {
+	const value = typeof shannons === 'string' ? BigInt(shannons) : shannons;
+	const ckb = Number(value) / Number(SHANNONS_PER_CKB);
+
+	if (ckb < 1000) {
+		// Under 1K: show as integer or 1 decimal.
+		if (ckb < 10) {
+			return ckb.toFixed(1).replace(/\.0$/, '');
+		}
+		return Math.round(ckb).toString();
+	}
+
+	const units = ['', 'K', 'M', 'B', 'T'];
+	let unitIndex = 0;
+	let scaled = ckb;
+
+	while (scaled >= 1000 && unitIndex < units.length - 1) {
+		scaled /= 1000;
+		unitIndex++;
+	}
+
+	// Format to keep total ~5 chars: "1.23K", "12.3M", "123B".
+	if (scaled >= 100) {
+		return Math.round(scaled) + units[unitIndex];
+	}
+	if (scaled >= 10) {
+		return scaled.toFixed(1).replace(/\.0$/, '') + units[unitIndex];
+	}
+	return scaled.toFixed(2).replace(/\.?0+$/, '') + units[unitIndex];
+}
+
+/**
  * Format byte size to human-readable string (B, KB, MB, GB).
  * @param bytes - Number of bytes.
  * @param decimals - Number of decimal places. Default 1.

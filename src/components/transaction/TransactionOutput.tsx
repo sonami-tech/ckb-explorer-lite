@@ -3,7 +3,7 @@ import { AddressDisplay } from '../AddressDisplay';
 import { ScriptIndicatorPill } from '../ScriptIndicatorPill';
 import { Tooltip } from '../Tooltip';
 import { generateLink } from '../../lib/router';
-import { formatCkb } from '../../lib/format';
+import { formatCkb, formatCkbShort } from '../../lib/format';
 import { encodeAddress } from '../../lib/address';
 import { extractLockScriptIndicator, extractTypeScriptIndicator } from '../../lib/scriptIndicators';
 import type { RpcCellOutput } from '../../types/rpc';
@@ -41,8 +41,14 @@ export function TransactionOutput({
 				#{index}
 			</div>
 
-			<div className="mb-2">
+			<div className="flex items-center justify-between mb-2">
 				<OutPoint txHash={txHash} index={index} />
+				<span className="font-mono text-sm font-medium text-gray-900 dark:text-white ml-2">
+					<Tooltip content={formatCkb(output.capacity)}>
+						<span className="lg:hidden">{formatCkbShort(output.capacity)} CKB</span>
+					</Tooltip>
+					<span className="hidden lg:inline">{formatCkb(output.capacity)}</span>
+				</span>
 			</div>
 
 			<div className="mb-2">
@@ -50,12 +56,6 @@ export function TransactionOutput({
 					address={address}
 					linkTo={generateLink(`/address/${address}`)}
 				/>
-			</div>
-
-			<div className="mb-2">
-				<span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-					{formatCkb(output.capacity)}
-				</span>
 			</div>
 
 			<div className="flex flex-wrap gap-2 items-center">

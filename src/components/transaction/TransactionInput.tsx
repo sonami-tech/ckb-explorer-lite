@@ -3,7 +3,7 @@ import { AddressDisplay } from '../AddressDisplay';
 import { ScriptIndicatorPill } from '../ScriptIndicatorPill';
 import { Tooltip } from '../Tooltip';
 import { generateLink } from '../../lib/router';
-import { formatCkb, formatSince } from '../../lib/format';
+import { formatCkb, formatCkbShort, formatSince } from '../../lib/format';
 import { encodeAddress } from '../../lib/address';
 import { extractLockScriptIndicator, extractTypeScriptIndicator } from '../../lib/scriptIndicators';
 import { BRAND } from '../../lib/badgeStyles';
@@ -134,11 +134,17 @@ export function TransactionInput({
 					#{index}
 				</div>
 
-				<div className="mb-2">
+				<div className="flex items-center justify-between mb-2">
 					<OutPoint
 						txHash={input.previous_output.tx_hash}
 						index={parseInt(input.previous_output.index, 16)}
 					/>
+					<span className="font-mono text-sm font-medium text-gray-900 dark:text-white ml-2">
+						<Tooltip content={formatCkb(cellData.output.capacity)}>
+							<span className="lg:hidden">{formatCkbShort(cellData.output.capacity)} CKB</span>
+						</Tooltip>
+						<span className="hidden lg:inline">{formatCkb(cellData.output.capacity)}</span>
+					</span>
 				</div>
 
 				<div className="mb-2">
@@ -146,12 +152,6 @@ export function TransactionInput({
 						address={address}
 						linkTo={generateLink(`/address/${address}`)}
 					/>
-				</div>
-
-				<div className="mb-2">
-					<span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-						{formatCkb(cellData.output.capacity)}
-					</span>
 				</div>
 
 				<div className="flex flex-wrap gap-2 items-center">
