@@ -445,6 +445,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 						}
 					`}
 				>
+					Latest
 					{/* Latest indicator dot. */}
 					{isLive && !isDragging && (
 						<span className="relative flex h-2 w-2">
@@ -452,7 +453,6 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 							<span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
 						</span>
 					)}
-					Latest
 				</button>
 			</div>
 
