@@ -56,17 +56,25 @@ export function ScriptSection({ title, script }: ScriptSectionProps) {
 
 	return (
 		<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
-			{/* Header with optional known script badge. */}
+			{/* Header with script badge (known or Other). */}
 			<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
 				<h2 className="font-semibold text-gray-900 dark:text-white">{title}</h2>
-				{scriptInfo && (
-				<ScriptIndicatorPill
-					name={scriptInfo.name}
-					resourceId={scriptInfo.resourceId}
-					description={scriptInfo.description}
-					size="sm"
-				/>
-			)}
+				{scriptInfo ? (
+					<ScriptIndicatorPill
+						name={scriptInfo.name}
+						resourceId={scriptInfo.resourceId}
+						description={scriptInfo.description}
+						size="sm"
+					/>
+				) : (
+					<ScriptIndicatorPill
+						name="Other"
+						isOther
+						scriptType={title === 'Lock Script' ? 'lock' : 'type'}
+						codeHash={script.code_hash}
+						size="sm"
+					/>
+				)}
 			</div>
 
 			{/* Script details. */}

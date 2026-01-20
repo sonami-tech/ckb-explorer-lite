@@ -8,7 +8,7 @@
  * - Present scripts interface for smart counts
  */
 
-import { getCodeHashesForGroup, getLockScriptGroups } from '../lib/scriptGroups';
+import { getCodeHashesForGroup, getLockScriptGroups, isOtherLockScript, isOtherTypeScript, OTHER_SCRIPTS_GROUP, NO_TYPE_SCRIPT_GROUP } from '../lib/scriptGroups';
 import { KNOWN_TYPE_SCRIPTS } from '../lib/wellKnown';
 import type { NetworkType } from '../config/networks';
 import type { RpcScript, RpcCell } from '../types/rpc';
@@ -215,6 +215,7 @@ export function buildCellIndexerFilter(
 /**
  * Filter cells by lock script groups (client-side).
  * The indexer doesn't support lock script filtering, so this is done after fetching.
+ * Supports the special "Other" group for non-well-known scripts.
  *
  * @param cells - The cells to filter.
  * @param lockScriptGroups - The lock script groups to match (empty = no filter).
@@ -228,9 +229,74 @@ export function filterCellsByLockScript(
 ): RpcCell[] {
 	if (lockScriptGroups.length === 0) return cells;
 
+	const includeOther = lockScriptGroups.includes(OTHER_SCRIPTS_GROUP);
+	const otherGroups = lockScriptGroups.filter(g => g !== OTHER_SCRIPTS_GROUP);
+
 	return cells.filter(cell => {
-		const cellLockGroups = getLockScriptGroups(cell.output.lock.code_hash, networkType);
-		return cellLockGroups?.some(group => lockScriptGroups.includes(group)) ?? false;
+		const codeHash = cell.output.lock.code_hash;
+
+		// Check if this is an "Other" (non-well-known) script.
+		if (includeOther && isOtherLockScript(codeHash, networkType)) {
+			return true;
+		}
+
+		// Check if it matches any of the selected groups.
+		if (otherGroups.length > 0) {
+			const cellLockGroups = getLockScriptGroups(codeHash, networkType);
+			if (cellLockGroups?.some(group => otherGroups.includes(group))) {
+				return true;
+			}
+		}
+
+		return false;
+	});
+}
+
+/**
+ * Filter cells by type script groups (client-side).
+ * Supports the special "Other" group for non-well-known scripts.
+ *
+ * @param cells - The cells to filter.
+ * @param typeScriptGroups - The type script groups to match (empty = no filter).
+ * @param networkType - The network type.
+ * @returns Filtered cells.
+ */
+export function filterCellsByTypeScript(
+	cells: RpcCell[],
+	typeScriptGroups: string[],
+	networkType: NetworkType
+): RpcCell[] {
+	if (typeScriptGroups.length === 0) return cells;
+
+	const includeNone = typeScriptGroups.includes(NO_TYPE_SCRIPT_GROUP);
+	const includeOther = typeScriptGroups.includes(OTHER_SCRIPTS_GROUP);
+	const knownGroups = typeScriptGroups.filter(g => g !== OTHER_SCRIPTS_GROUP && g !== NO_TYPE_SCRIPT_GROUP);
+
+	return cells.filter(cell => {
+		const typeScript = cell.output.type;
+
+		// Cell has no type script.
+		if (!typeScript) {
+			return includeNone;
+		}
+
+		const codeHash = typeScript.code_hash;
+
+		// Check if this is an "Other" (non-well-known) script.
+		if (includeOther && isOtherTypeScript(codeHash, networkType)) {
+			return true;
+		}
+
+		// Check if it matches any of the selected groups.
+		if (knownGroups.length > 0) {
+			// Use the existing getTypeScriptGroup logic.
+			const info = KNOWN_TYPE_SCRIPTS[networkType === 'mainnet' ? 'mainnet' : 'testnet'][codeHash];
+			if (info?.groups?.some(group => knownGroups.includes(group))) {
+				return true;
+			}
+		}
+
+		return false;
 	});
 }
 

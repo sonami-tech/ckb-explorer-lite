@@ -6,6 +6,7 @@
  * - Individual type scripts for single-select filtering (AddressPage)
  * - Filterable lock scripts (excluding default SECP256K1/blake160)
  * - Utility functions for code hash lookup
+ * - "Other" filter for non-well-known scripts
  *
  * All data is derived from wellKnown.ts to avoid duplication.
  */
@@ -18,6 +19,18 @@ import {
 	type ScriptInfo,
 	type RegistryNetwork,
 } from './wellKnown';
+
+/**
+ * Special group name for non-well-known scripts.
+ * Used in filters to show scripts that don't match any known code hash.
+ */
+export const OTHER_SCRIPTS_GROUP = 'Other';
+
+/**
+ * Special group name for cells/outputs with no type script.
+ * Only applicable to type script filters (all cells must have a lock script).
+ */
+export const NO_TYPE_SCRIPT_GROUP = 'None';
 
 /**
  * Derive script groups from a script registry.
@@ -217,4 +230,22 @@ export function getCodeHashForLockScript(scriptName: string, network: NetworkTyp
 	}
 
 	return null;
+}
+
+/**
+ * Check if a type script code hash is "Other" (not in the known registry).
+ * Returns true if the code hash is not found in KNOWN_TYPE_SCRIPTS.
+ */
+export function isOtherTypeScript(codeHash: string, network: NetworkType): boolean {
+	const registryNetwork = toRegistryNetwork(network);
+	return !(codeHash in TYPE_SCRIPT_INFO[registryNetwork]);
+}
+
+/**
+ * Check if a lock script code hash is "Other" (not in the known registry).
+ * Returns true if the code hash is not found in KNOWN_LOCK_SCRIPTS.
+ */
+export function isOtherLockScript(codeHash: string, network: NetworkType): boolean {
+	const registryNetwork = toRegistryNetwork(network);
+	return !(codeHash in LOCK_SCRIPT_INFO[registryNetwork]);
 }

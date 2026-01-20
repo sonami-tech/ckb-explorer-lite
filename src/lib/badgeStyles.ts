@@ -79,6 +79,9 @@ export const SCRIPT_CAT_BITCOIN = 'bg-orange-100 dark:bg-orange-900/40 text-oran
 /** Special access: Anyone-Can-Pay. */
 export const SCRIPT_CAT_SPECIAL = 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300';
 
+/** Other/Unknown: scripts not in the well-known registry. */
+export const SCRIPT_CAT_OTHER = 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400';
+
 // =============================================================================
 // CELL CATEGORY BADGES - Well-known cell classification
 // =============================================================================

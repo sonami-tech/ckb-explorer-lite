@@ -391,6 +391,13 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		return Math.max(1, Math.ceil(Number(filteredTransactionCount) / pageSize));
 	}, [filteredTransactionCount, pageSize]);
 
+	// Calculate pagination range for display.
+	const startIndex = (currentPage - 1) * pageSize;
+	const endIndex = filteredTransactionCount !== null
+		? Math.min(startIndex + pageSize, Number(filteredTransactionCount))
+		: startIndex + pageSize;
+	const isFiltered = totalTransactionCount !== null && filteredTransactionCount !== null && filteredTransactionCount !== totalTransactionCount;
+
 	// Reset pagination when filters or sort change.
 	useEffect(() => {
 		const currentFilters = JSON.stringify(filters);
@@ -639,7 +646,15 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
 					<h2 className="font-semibold text-gray-900 dark:text-white">
-						Transactions ({filteredTransactionCount !== null ? formatNumber(filteredTransactionCount) : '...'})
+						Transactions {filteredTransactionCount !== null ? (
+							(totalPages > 1 || isFiltered) ? (
+								isFiltered
+									? `(${Number(filteredTransactionCount) === 0 ? 0 : startIndex + 1}-${endIndex} of ${formatNumber(filteredTransactionCount)}, ${formatNumber(totalTransactionCount!)} total)`
+									: `(${startIndex + 1}-${endIndex} of ${formatNumber(filteredTransactionCount)})`
+							) : (
+								`(${formatNumber(filteredTransactionCount)})`
+							)
+						) : '(...)'}
 					</h2>
 					<FilterSortButton
 						onClick={() => setFilterModalOpen(true)}

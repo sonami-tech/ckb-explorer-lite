@@ -155,33 +155,23 @@ export function TransactionInput({
 				</div>
 
 				<div className="flex flex-wrap gap-2 items-center">
-					{lockIndicator.isKnown ? (
-						<ScriptIndicatorPill
-							name={lockIndicator.name}
-							resourceId={lockIndicator.resourceId}
-							description={lockIndicator.description}
-						/>
-					) : (
-						<Tooltip content={lockIndicator.fullHash || lockIndicator.name}>
-							<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-								{lockIndicator.name}
-							</span>
-						</Tooltip>
-					)}
+					<ScriptIndicatorPill
+						name={lockIndicator.name}
+						resourceId={lockIndicator.resourceId}
+						description={lockIndicator.description}
+						isOther={!lockIndicator.isKnown}
+						scriptType="lock"
+						codeHash={lockIndicator.fullHash}
+					/>
 					{typeIndicator && (
-						typeIndicator.isKnown ? (
-							<ScriptIndicatorPill
-								name={typeIndicator.name}
-								resourceId={typeIndicator.resourceId}
-								description={typeIndicator.description}
-							/>
-						) : (
-							<Tooltip content={typeIndicator.fullHash || typeIndicator.name}>
-								<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-									{typeIndicator.name}
-								</span>
-							</Tooltip>
-						)
+						<ScriptIndicatorPill
+							name={typeIndicator.name}
+							resourceId={typeIndicator.resourceId}
+							description={typeIndicator.description}
+							isOther={!typeIndicator.isKnown}
+							scriptType="type"
+							codeHash={typeIndicator.fullHash}
+						/>
 					)}
 					{(() => {
 						const sinceFormatted = formatSince(input.since);

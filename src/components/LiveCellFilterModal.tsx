@@ -2,7 +2,7 @@ import { useCallback, useState, useRef } from 'react';
 import { useClickOutside } from '../hooks/ui';
 import { ChevronDownIcon } from './CopyButton';
 import { FilterModalShell } from './FilterModalShell';
-import { TYPE_SCRIPT_GROUPS, LOCK_SCRIPT_GROUPS } from '../lib/scriptGroups';
+import { TYPE_SCRIPT_GROUPS, LOCK_SCRIPT_GROUPS, OTHER_SCRIPTS_GROUP, NO_TYPE_SCRIPT_GROUP } from '../lib/scriptGroups';
 import {
 	DEFAULT_LIVE_CELL_FILTERS,
 	DEFAULT_LIVE_CELL_SORT,
@@ -266,6 +266,23 @@ export function LiveCellFilterModal({
 							)}
 						</label>
 					))}
+					{/* "Other" option for non-well-known scripts. */}
+					<label className="flex items-center gap-3 py-1 cursor-pointer">
+						<input
+							type="checkbox"
+							checked={pendingFilters.lockScriptGroups.includes(OTHER_SCRIPTS_GROUP)}
+							onChange={() => toggleLockScriptGroup(OTHER_SCRIPTS_GROUP)}
+							className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-nervos focus:ring-nervos focus:ring-2 bg-white dark:bg-gray-800"
+						/>
+						<span className="text-sm text-gray-700 dark:text-gray-300">
+							{OTHER_SCRIPTS_GROUP}
+						</span>
+						{presentScripts?.lockGroups.get(OTHER_SCRIPTS_GROUP) !== undefined && (
+							<span className="text-xs text-gray-400 dark:text-gray-500">
+								({presentScripts.lockGroups.get(OTHER_SCRIPTS_GROUP)})
+							</span>
+						)}
+					</label>
 				</div>
 			</section>
 
@@ -309,6 +326,40 @@ export function LiveCellFilterModal({
 							)}
 						</label>
 					))}
+					{/* "Other" option for non-well-known scripts. */}
+					<label className="flex items-center gap-3 py-1 cursor-pointer">
+						<input
+							type="checkbox"
+							checked={pendingFilters.typeScriptGroups.includes(OTHER_SCRIPTS_GROUP)}
+							onChange={() => toggleTypeScriptGroup(OTHER_SCRIPTS_GROUP)}
+							className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-nervos focus:ring-nervos focus:ring-2 bg-white dark:bg-gray-800"
+						/>
+						<span className="text-sm text-gray-700 dark:text-gray-300">
+							{OTHER_SCRIPTS_GROUP}
+						</span>
+						{presentScripts?.typeGroups.get(OTHER_SCRIPTS_GROUP) !== undefined && (
+							<span className="text-xs text-gray-400 dark:text-gray-500">
+								({presentScripts.typeGroups.get(OTHER_SCRIPTS_GROUP)})
+							</span>
+						)}
+					</label>
+					{/* "None" option for cells with no type script. */}
+					<label className="flex items-center gap-3 py-1 cursor-pointer">
+						<input
+							type="checkbox"
+							checked={pendingFilters.typeScriptGroups.includes(NO_TYPE_SCRIPT_GROUP)}
+							onChange={() => toggleTypeScriptGroup(NO_TYPE_SCRIPT_GROUP)}
+							className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-nervos focus:ring-nervos focus:ring-2 bg-white dark:bg-gray-800"
+						/>
+						<span className="text-sm text-gray-700 dark:text-gray-300">
+							{NO_TYPE_SCRIPT_GROUP}
+						</span>
+						{presentScripts?.typeGroups.get(NO_TYPE_SCRIPT_GROUP) !== undefined && (
+							<span className="text-xs text-gray-400 dark:text-gray-500">
+								({presentScripts.typeGroups.get(NO_TYPE_SCRIPT_GROUP)})
+							</span>
+						)}
+					</label>
 				</div>
 			</section>
 

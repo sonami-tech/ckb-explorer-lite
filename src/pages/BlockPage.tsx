@@ -38,7 +38,7 @@ import {
 import { FilterSortButton } from '../components/FilterSortButton';
 import { ActiveFilterChips, type FilterChip } from '../components/ActiveFilterChips';
 import { BlockFilterModal } from '../components/BlockFilterModal';
-import { getTypeScriptGroup, getLockScriptGroups } from '../lib/scriptGroups';
+import { getTypeScriptGroup, getLockScriptGroups, isOtherTypeScript, isOtherLockScript, OTHER_SCRIPTS_GROUP, NO_TYPE_SCRIPT_GROUP } from '../lib/scriptGroups';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import type { RpcBlock, RpcCellOutput, RpcTransaction } from '../types/rpc';
 import type { NetworkType } from '../config/networks';
@@ -120,19 +120,58 @@ function filterTransactions(
 
 		// Type script groups filter (OR logic within groups).
 		if (filters.typeScriptGroups.length > 0) {
+			const includeNone = filters.typeScriptGroups.includes(NO_TYPE_SCRIPT_GROUP);
+			const includeOther = filters.typeScriptGroups.includes(OTHER_SCRIPTS_GROUP);
+			const knownGroups = filters.typeScriptGroups.filter(g => g !== OTHER_SCRIPTS_GROUP && g !== NO_TYPE_SCRIPT_GROUP);
+
 			const hasMatchingType = rawTx.outputs.some((output: RpcCellOutput) => {
-				if (!output.type) return false;
-				const groups = getTypeScriptGroup(output.type.code_hash, network);
-				return groups && groups.some(g => filters.typeScriptGroups.includes(g));
+				// Check if this output has no type script.
+				if (!output.type) {
+					return includeNone;
+				}
+
+				const codeHash = output.type.code_hash;
+
+				// Check if this is an "Other" (non-well-known) script.
+				if (includeOther && isOtherTypeScript(codeHash, network)) {
+					return true;
+				}
+
+				// Check if it matches any of the selected known groups.
+				if (knownGroups.length > 0) {
+					const groups = getTypeScriptGroup(codeHash, network);
+					if (groups?.some(g => knownGroups.includes(g))) {
+						return true;
+					}
+				}
+
+				return false;
 			});
 			if (!hasMatchingType) return false;
 		}
 
 		// Lock script groups filter (OR logic within groups).
 		if (filters.lockScriptGroups.length > 0) {
+			const includeOther = filters.lockScriptGroups.includes(OTHER_SCRIPTS_GROUP);
+			const knownGroups = filters.lockScriptGroups.filter(g => g !== OTHER_SCRIPTS_GROUP);
+
 			const hasMatchingLock = rawTx.outputs.some((output: RpcCellOutput) => {
-				const groups = getLockScriptGroups(output.lock.code_hash, network);
-				return groups && groups.some(g => filters.lockScriptGroups.includes(g));
+				const codeHash = output.lock.code_hash;
+
+				// Check if this is an "Other" (non-well-known) script.
+				if (includeOther && isOtherLockScript(codeHash, network)) {
+					return true;
+				}
+
+				// Check if it matches any of the selected known groups.
+				if (knownGroups.length > 0) {
+					const groups = getLockScriptGroups(codeHash, network);
+					if (groups?.some(g => knownGroups.includes(g))) {
+						return true;
+					}
+				}
+
+				return false;
 			});
 			if (!hasMatchingLock) return false;
 		}
@@ -295,20 +334,29 @@ export function BlockPage({ id }: BlockPageProps) {
 			for (const output of tx.outputs) {
 				// Check type script groups.
 				if (output.type) {
-					const groups = getTypeScriptGroup(output.type.code_hash, networkType);
+					const codeHash = output.type.code_hash;
+					const groups = getTypeScriptGroup(codeHash, networkType);
 					if (groups) {
 						for (const group of groups) {
 							seenTypeGroups.add(group);
 						}
+					} else if (isOtherTypeScript(codeHash, networkType)) {
+						seenTypeGroups.add(OTHER_SCRIPTS_GROUP);
 					}
+				} else {
+					// Output has no type script.
+					seenTypeGroups.add(NO_TYPE_SCRIPT_GROUP);
 				}
 
 				// Check lock script groups.
-				const lockGroupsList = getLockScriptGroups(output.lock.code_hash, networkType);
+				const lockCodeHash = output.lock.code_hash;
+				const lockGroupsList = getLockScriptGroups(lockCodeHash, networkType);
 				if (lockGroupsList) {
 					for (const group of lockGroupsList) {
 						seenLockGroups.add(group);
 					}
+				} else if (isOtherLockScript(lockCodeHash, networkType)) {
+					seenLockGroups.add(OTHER_SCRIPTS_GROUP);
 				}
 			}
 

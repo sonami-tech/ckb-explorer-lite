@@ -12,7 +12,7 @@
 import { generateLink, navigate } from '../lib/router';
 import { formatCkb, formatCkbShort, formatNumber } from '../lib/format';
 import { Tooltip } from './Tooltip';
-import { getTypeScriptGroup, getLockScriptGroups, FILTERABLE_LOCK_SCRIPTS } from '../lib/scriptGroups';
+import { getTypeScriptGroup, getLockScriptGroups, FILTERABLE_LOCK_SCRIPTS, isOtherLockScript, isOtherTypeScript } from '../lib/scriptGroups';
 import { ScriptIndicatorPill } from './ScriptIndicatorPill';
 import { HashDisplay } from './CopyButton';
 import type { NetworkType } from '../config/networks';
@@ -37,17 +37,19 @@ export function CellRow({ cell, networkType }: CellRowProps) {
 	const hasData = cell.output_data !== '0x' && cell.output_data.length > 2;
 	const dataSize = hasData ? (cell.output_data.length - 2) / 2 : 0;
 
-	// Get type script group names.
+	// Get type script group names and check for "Other".
 	const typeGroups = cell.output.type
 		? getTypeScriptGroup(cell.output.type.code_hash, networkType)
 		: null;
+	const hasOtherTypeScript = cell.output.type && isOtherTypeScript(cell.output.type.code_hash, networkType);
 
-	// Get lock script group names (only show non-default locks).
+	// Get lock script group names (only show non-default locks) and check for "Other".
 	const lockGroups = getLockScriptGroups(cell.output.lock.code_hash, networkType);
 	// Filter to only show filterable lock scripts (exclude SECP256K1/blake160).
 	const displayLockGroups = lockGroups?.filter(g =>
 		FILTERABLE_LOCK_SCRIPTS.some(name => g.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(g.toLowerCase()))
 	) ?? [];
+	const hasOtherLockScript = isOtherLockScript(cell.output.lock.code_hash, networkType);
 
 	// Cell link.
 	const cellLink = generateLink(`/cell/${txHash}/${index}`);
@@ -69,10 +71,36 @@ export function CellRow({ cell, networkType }: CellRowProps) {
 	const outPointDisplay = `${txHash}:${index}`;
 
 	// Combine all script badges.
-	const allBadges = [
+	interface Badge {
+		key: string;
+		name: string;
+		isOther?: boolean;
+		scriptType?: 'lock' | 'type';
+		codeHash?: string;
+	}
+	const allBadges: Badge[] = [
 		...displayLockGroups.map(group => ({ key: `lock-${group}`, name: group })),
 		...(typeGroups?.map(group => ({ key: `type-${group}`, name: group })) ?? []),
 	];
+	// Add "Other" badges for unknown scripts.
+	if (hasOtherLockScript) {
+		allBadges.push({
+			key: 'other-lock',
+			name: 'Other',
+			isOther: true,
+			scriptType: 'lock',
+			codeHash: cell.output.lock.code_hash,
+		});
+	}
+	if (hasOtherTypeScript && cell.output.type) {
+		allBadges.push({
+			key: 'other-type',
+			name: 'Other',
+			isOther: true,
+			scriptType: 'type',
+			codeHash: cell.output.type.code_hash,
+		});
+	}
 
 	return (
 		<div
@@ -118,6 +146,9 @@ export function CellRow({ cell, networkType }: CellRowProps) {
 						<ScriptIndicatorPill
 							key={badge.key}
 							name={badge.name}
+							isOther={badge.isOther}
+							scriptType={badge.scriptType}
+							codeHash={badge.codeHash}
 							size="xs"
 						/>
 					))}

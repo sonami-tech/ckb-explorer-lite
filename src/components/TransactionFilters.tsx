@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useClickOutside } from '../hooks/ui';
 import { ChevronDownIcon, ChevronButton } from './CopyButton';
-import { TYPE_SCRIPT_GROUPS, LOCK_SCRIPT_GROUPS } from '../lib/scriptGroups';
+import { TYPE_SCRIPT_GROUPS, LOCK_SCRIPT_GROUPS, OTHER_SCRIPTS_GROUP, NO_TYPE_SCRIPT_GROUP } from '../lib/scriptGroups';
 import { DEFAULT_BLOCK_FILTERS as _DEFAULT_BLOCK_FILTERS } from '../config/defaults';
 
 /**
@@ -107,15 +107,27 @@ export function TransactionFilters({
 	// Get current cellbase label.
 	const cellbaseLabel = CELLBASE_OPTIONS.find(opt => opt.value === filters.cellbase)?.label ?? 'All';
 
-	// Get type script groups that are present in the block.
+	// Get type script groups that are present in the block (including "Other" and "None").
 	const presentTypeGroups = Array.from(presentScripts.typeGroups.entries())
-		.filter(([groupName]) => Object.keys(TYPE_SCRIPT_GROUPS).includes(groupName))
-		.sort((a, b) => a[0].localeCompare(b[0]));
+		.filter(([groupName]) => Object.keys(TYPE_SCRIPT_GROUPS).includes(groupName) || groupName === OTHER_SCRIPTS_GROUP || groupName === NO_TYPE_SCRIPT_GROUP)
+		.sort((a, b) => {
+			// Sort "None" to the very end, "Other" before it.
+			if (a[0] === NO_TYPE_SCRIPT_GROUP) return 1;
+			if (b[0] === NO_TYPE_SCRIPT_GROUP) return -1;
+			if (a[0] === OTHER_SCRIPTS_GROUP) return 1;
+			if (b[0] === OTHER_SCRIPTS_GROUP) return -1;
+			return a[0].localeCompare(b[0]);
+		});
 
-	// Get lock script groups that are present in the block.
+	// Get lock script groups that are present in the block (including "Other").
 	const presentLockGroups = Array.from(presentScripts.lockGroups.entries())
-		.filter(([groupName]) => Object.keys(LOCK_SCRIPT_GROUPS).includes(groupName))
-		.sort((a, b) => a[0].localeCompare(b[0]));
+		.filter(([groupName]) => Object.keys(LOCK_SCRIPT_GROUPS).includes(groupName) || groupName === OTHER_SCRIPTS_GROUP)
+		.sort((a, b) => {
+			// Sort "Other" to the end.
+			if (a[0] === OTHER_SCRIPTS_GROUP) return 1;
+			if (b[0] === OTHER_SCRIPTS_GROUP) return -1;
+			return a[0].localeCompare(b[0]);
+		});
 
 	const hasScriptFilters = presentTypeGroups.length > 0 || presentLockGroups.length > 0;
 

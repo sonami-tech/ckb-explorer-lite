@@ -1,6 +1,5 @@
 import { OutPoint } from '../OutPoint';
 import { ScriptIndicatorPill } from '../ScriptIndicatorPill';
-import { Tooltip } from '../Tooltip';
 import { lookupWellKnownCell } from '../../lib/wellKnown';
 import { extractTypeScriptIndicator, getWellKnownCellResourceId } from '../../lib/scriptIndicators';
 import { DEP_TYPE } from '../../lib/badgeStyles';
@@ -70,19 +69,14 @@ export function CellDepItem({
 						/>
 					)}
 					{typeIndicator && (
-						typeIndicator.isKnown ? (
-							<ScriptIndicatorPill
-								name={typeIndicator.name}
-								resourceId={typeIndicator.resourceId}
-								description={typeIndicator.description}
-							/>
-						) : (
-							<Tooltip content={typeIndicator.fullHash || typeIndicator.name}>
-								<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-mono">
-									{typeIndicator.name}
-								</span>
-							</Tooltip>
-						)
+						<ScriptIndicatorPill
+							name={typeIndicator.name}
+							resourceId={typeIndicator.resourceId}
+							description={typeIndicator.description}
+							isOther={!typeIndicator.isKnown}
+							scriptType="type"
+							codeHash={typeIndicator.fullHash}
+						/>
 					)}
 				</div>
 			)}

@@ -18,7 +18,7 @@ import { LiveCellFilterModal } from '../components/LiveCellFilterModal';
 import { ActiveFilterChips, type FilterChip } from '../components/ActiveFilterChips';
 import { CellRow } from '../components/CellRow';
 import { InfoIcon } from '../components/InfoIcon';
-import { getTypeScriptGroup, getLockScriptGroups } from '../lib/scriptGroups';
+import { getTypeScriptGroup, getLockScriptGroups, NO_TYPE_SCRIPT_GROUP } from '../lib/scriptGroups';
 import {
 	DEFAULT_LIVE_CELL_FILTERS,
 	DEFAULT_LIVE_CELL_SORT,
@@ -217,6 +217,9 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 								typeGroups.set(group, (typeGroups.get(group) ?? 0) + 1);
 							}
 						}
+					} else {
+						// Cell has no type script.
+						typeGroups.set(NO_TYPE_SCRIPT_GROUP, (typeGroups.get(NO_TYPE_SCRIPT_GROUP) ?? 0) + 1);
 					}
 
 					// Count lock script groups.
@@ -447,6 +450,13 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 		if (filteredCellCount === null) return 1;
 		return Math.max(1, Math.ceil(Number(filteredCellCount) / pageSize));
 	}, [filteredCellCount, pageSize]);
+
+	// Calculate pagination range for display.
+	const startIndex = (currentPage - 1) * pageSize;
+	const endIndex = filteredCellCount !== null
+		? Math.min(startIndex + pageSize, Number(filteredCellCount))
+		: startIndex + pageSize;
+	const isFiltered = cellCount !== null && filteredCellCount !== null && filteredCellCount !== cellCount;
 
 	// Reset pagination when filters or sort change.
 	useEffect(() => {
@@ -729,7 +739,15 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
 					<h2 className="font-semibold text-gray-900 dark:text-white">
-						Live Cells ({filteredCellCount !== null ? formatNumber(filteredCellCount) : '...'})
+						Live Cells {filteredCellCount !== null ? (
+							(totalPages > 1 || isFiltered) ? (
+								isFiltered
+									? `(${Number(filteredCellCount) === 0 ? 0 : startIndex + 1}-${endIndex} of ${formatNumber(filteredCellCount)}, ${formatNumber(cellCount!)} total)`
+									: `(${startIndex + 1}-${endIndex} of ${formatNumber(filteredCellCount)})`
+							) : (
+								`(${formatNumber(filteredCellCount)})`
+							)
+						) : '(...)'}
 					</h2>
 					<FilterSortButton
 						onClick={() => setFilterModalOpen(true)}

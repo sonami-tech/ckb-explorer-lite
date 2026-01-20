@@ -19,6 +19,10 @@ export interface ScriptIndicator {
 	name: string;
 	/** Resource ID for linking to /resources#id (undefined if not a known script). */
 	resourceId?: string;
+	/** Whether this is an unknown/other script. */
+	isOther?: boolean;
+	/** Full code hash for unknown scripts (used in tooltip). */
+	codeHash?: string;
 }
 
 /**
@@ -61,7 +65,8 @@ export function calculateTotalOutputCapacity(tx: RpcTransaction): bigint {
 }
 
 /**
- * Extract known lock script indicators from transaction outputs.
+ * Extract lock script indicators from transaction outputs.
+ * Includes both well-known scripts and "Other" (unknown) scripts.
  */
 export function extractLockScripts(
 	tx: RpcTransaction,
@@ -69,6 +74,8 @@ export function extractLockScripts(
 ): ScriptIndicator[] {
 	const seen = new Set<string>();
 	const indicators: ScriptIndicator[] = [];
+	let hasOther = false;
+	let otherCodeHash: string | undefined;
 
 	for (const output of tx.outputs) {
 		const info = lookupLockScript(
@@ -77,21 +84,38 @@ export function extractLockScripts(
 			networkType,
 			output.lock.args,
 		);
-		const name = info?.name ?? truncateHex(output.lock.code_hash, 6, 4);
-		if (!seen.has(name)) {
-			seen.add(name);
-			indicators.push({
-				name,
-				resourceId: info?.resourceId,
-			});
+		if (info) {
+			if (!seen.has(info.name)) {
+				seen.add(info.name);
+				indicators.push({
+					name: info.name,
+					resourceId: info.resourceId,
+				});
+			}
+		} else {
+			// Unknown lock script - track for "Other" indicator.
+			if (!hasOther) {
+				hasOther = true;
+				otherCodeHash = output.lock.code_hash;
+			}
 		}
+	}
+
+	// Add single "Other" indicator if any unknown lock scripts found.
+	if (hasOther) {
+		indicators.push({
+			name: 'Other',
+			isOther: true,
+			codeHash: otherCodeHash,
+		});
 	}
 
 	return indicators;
 }
 
 /**
- * Extract known type script indicators from transaction outputs.
+ * Extract type script indicators from transaction outputs.
+ * Includes both well-known scripts and "Other" (unknown) scripts.
  */
 export function extractTypeScripts(
 	tx: RpcTransaction,
@@ -99,6 +123,8 @@ export function extractTypeScripts(
 ): ScriptIndicator[] {
 	const seen = new Set<string>();
 	const indicators: ScriptIndicator[] = [];
+	let hasOther = false;
+	let otherCodeHash: string | undefined;
 
 	for (const output of tx.outputs) {
 		if (output.type) {
@@ -108,15 +134,31 @@ export function extractTypeScripts(
 				networkType,
 				output.type.args,
 			);
-			const name = info?.name ?? truncateHex(output.type.code_hash, 6, 4);
-			if (!seen.has(name)) {
-				seen.add(name);
-				indicators.push({
-					name,
-					resourceId: info?.resourceId,
-				});
+			if (info) {
+				if (!seen.has(info.name)) {
+					seen.add(info.name);
+					indicators.push({
+						name: info.name,
+						resourceId: info.resourceId,
+					});
+				}
+			} else {
+				// Unknown type script - track for "Other" indicator.
+				if (!hasOther) {
+					hasOther = true;
+					otherCodeHash = output.type.code_hash;
+				}
 			}
 		}
+	}
+
+	// Add single "Other" indicator if any unknown type scripts found.
+	if (hasOther) {
+		indicators.push({
+			name: 'Other',
+			isOther: true,
+			codeHash: otherCodeHash,
+		});
 	}
 
 	return indicators;
@@ -224,23 +266,26 @@ export function TransactionRow({ transaction, referenceTime }: TransactionRowPro
 				</span>
 			</div>
 
-			{/* Line 3: Script indicators (only well-known) */}
+			{/* Line 3: Script indicators (well-known + Other) */}
 			{(() => {
-				// Filter to only well-known scripts (those with resourceId).
-				const wellKnownIndicators = [
-					...transaction.lockScripts.filter(s => s.resourceId),
-					...transaction.typeScripts.filter(s => s.resourceId),
+				// Combine lock and type script indicators with scriptType annotation.
+				const allIndicators = [
+					...transaction.lockScripts.map(s => ({ ...s, scriptType: 'lock' as const })),
+					...transaction.typeScripts.map(s => ({ ...s, scriptType: 'type' as const })),
 				];
 
-				if (wellKnownIndicators.length === 0) return null;
+				if (allIndicators.length === 0) return null;
 
 				return (
 					<div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-						{wellKnownIndicators.map((indicator) => (
+						{allIndicators.map((indicator, index) => (
 							<ScriptIndicatorPill
-								key={indicator.name}
+								key={indicator.isOther ? `other-${indicator.scriptType}` : indicator.name}
 								name={indicator.name}
 								resourceId={indicator.resourceId}
+								isOther={indicator.isOther}
+								scriptType={indicator.scriptType}
+								codeHash={indicator.codeHash}
 								size="xs"
 							/>
 						))}
