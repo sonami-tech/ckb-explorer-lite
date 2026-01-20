@@ -10,7 +10,8 @@
  */
 
 import { generateLink, navigate } from '../lib/router';
-import { formatCkb, formatNumber } from '../lib/format';
+import { formatCkb, formatCkbShort, formatNumber } from '../lib/format';
+import { Tooltip } from './Tooltip';
 import { getTypeScriptGroup, getLockScriptGroups, FILTERABLE_LOCK_SCRIPTS } from '../lib/scriptGroups';
 import { ScriptIndicatorPill } from './ScriptIndicatorPill';
 import { HashDisplay } from './CopyButton';
@@ -103,7 +104,10 @@ export function CellRow({ cell, networkType }: CellRowProps) {
 					)}
 				</div>
 				<span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-					{formatCkb(capacity, 2)}
+					<Tooltip content={formatCkb(capacity)}>
+						<span className="lg:hidden">{formatCkbShort(capacity)} CKB</span>
+					</Tooltip>
+					<span className="hidden lg:inline">{formatCkb(capacity, 2)}</span>
 				</span>
 			</div>
 

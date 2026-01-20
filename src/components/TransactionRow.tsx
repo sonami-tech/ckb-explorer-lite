@@ -4,7 +4,7 @@ import { HashDisplay } from './CopyButton';
 import { ScriptIndicatorPill } from './ScriptIndicatorPill';
 import { Tooltip } from './Tooltip';
 import { generateLink } from '../lib/router';
-import { formatAbsoluteTime, formatCkb, formatNumber, formatRelativeTime, truncateHex } from '../lib/format';
+import { formatAbsoluteTime, formatCkb, formatCkbShort, formatNumber, formatRelativeTime, truncateHex } from '../lib/format';
 import { lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
 import { BRAND } from '../lib/badgeStyles';
 import { useIsMobile } from '../hooks/ui';
@@ -217,7 +217,10 @@ export function TransactionRow({ transaction, referenceTime }: TransactionRowPro
 					)}
 				</div>
 				<span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-					{formatCkb(transaction.totalCapacity, 2)}
+					<Tooltip content={formatCkb(transaction.totalCapacity)}>
+						<span className="lg:hidden">{formatCkbShort(transaction.totalCapacity)} CKB</span>
+					</Tooltip>
+					<span className="hidden lg:inline">{formatCkb(transaction.totalCapacity, 2)}</span>
 				</span>
 			</div>
 
