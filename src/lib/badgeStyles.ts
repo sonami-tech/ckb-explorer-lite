@@ -146,7 +146,7 @@ export const NETWORK = 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gra
 // =============================================================================
 
 /** Inactive pill state (dimmed). */
-export const INACTIVE = 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600';
+export const INACTIVE = 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 opacity-50';
 
 // =============================================================================
 // HELPER FUNCTIONS
