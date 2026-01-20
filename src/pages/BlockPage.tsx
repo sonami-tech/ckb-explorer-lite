@@ -475,6 +475,9 @@ export function BlockPage({ id }: BlockPageProps) {
 					<DetailRow label="Proposals">
 						{proposals.length}
 					</DetailRow>
+					<DetailRow label="Uncle Blocks">
+						{block.uncles.length}
+					</DetailRow>
 					<DetailRow label="Parent Hash">
 						<HashDisplay hash={header.parent_hash} linkTo={generateLink(`/block/${header.parent_hash}`)} responsive />
 					</DetailRow>

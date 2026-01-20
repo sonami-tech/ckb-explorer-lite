@@ -61,9 +61,14 @@ export interface RpcBlockHeader {
 	hash: Hex;
 }
 
+export interface RpcUncleBlock {
+	header: RpcBlockHeader;
+	proposals: Hex[];
+}
+
 export interface RpcBlock {
 	header: RpcBlockHeader;
-	uncles: unknown[];
+	uncles: RpcUncleBlock[];
 	transactions: RpcTransaction[];
 	proposals: Hex[];
 }
