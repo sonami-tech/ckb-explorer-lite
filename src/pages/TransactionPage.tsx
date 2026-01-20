@@ -504,6 +504,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 									fetchError={inputErrors.get(index)}
 									isLoading={inputsLoading}
 									networkType={networkType}
+									miningReward={isCellbase ? totalOutput : undefined}
 								/>
 							);
 						})

@@ -23,6 +23,8 @@ interface TransactionInputProps {
 	isLoading: boolean;
 	/** The current network type for address encoding and script lookups. */
 	networkType: NetworkType;
+	/** The mining reward amount for cellbase transactions (total output). */
+	miningReward?: bigint;
 }
 
 /**
@@ -46,6 +48,7 @@ export function TransactionInput({
 	fetchError,
 	isLoading,
 	networkType,
+	miningReward,
 }: TransactionInputProps) {
 	const isCellbase = isNullOutpoint(input.previous_output.tx_hash, input.previous_output.index);
 
@@ -56,12 +59,19 @@ export function TransactionInput({
 				<div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
 					#{index}
 				</div>
+				{miningReward !== undefined && (
+					<div className="mb-2">
+						<span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
+							{formatCkb(miningReward)}
+						</span>
+					</div>
+				)}
 				<div className="flex items-center gap-2">
 					<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${BRAND} rounded`}>
 						Cellbase
 					</span>
 					<span className="text-sm text-gray-500 dark:text-gray-400">
-						Mining reward
+						(Mining Reward)
 					</span>
 				</div>
 			</div>
