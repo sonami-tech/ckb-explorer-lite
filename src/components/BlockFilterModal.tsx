@@ -195,7 +195,8 @@ export function BlockFilterModal({
 									className="w-4 h-4 text-nervos focus:ring-nervos focus:ring-2 border-gray-300 dark:border-gray-600"
 								/>
 								<span className="text-sm text-gray-700 dark:text-gray-300">
-									{option.label} ({option.descLabel ?? 'Descending'})
+									<span className="whitespace-nowrap">{option.label}</span>{' '}
+									<span className="whitespace-nowrap">({option.descLabel ?? 'Descending'})</span>
 								</span>
 							</label>
 							{/* Ascending option. */}
@@ -208,7 +209,8 @@ export function BlockFilterModal({
 									className="w-4 h-4 text-nervos focus:ring-nervos focus:ring-2 border-gray-300 dark:border-gray-600"
 								/>
 								<span className="text-sm text-gray-700 dark:text-gray-300">
-									{option.label} ({option.ascLabel ?? 'Ascending'})
+									<span className="whitespace-nowrap">{option.label}</span>{' '}
+									<span className="whitespace-nowrap">({option.ascLabel ?? 'Ascending'})</span>
 								</span>
 							</label>
 						</div>
