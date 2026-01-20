@@ -645,8 +645,6 @@ const TEST_SECTIONS: TestLinkSection[] = [
 ];
 
 export function TestLinksPage() {
-	const totalLinks = TEST_SECTIONS.reduce((acc, s) => acc + s.links.length, 0);
-
 	return (
 		<div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
 			{/* Header. */}
@@ -658,12 +656,9 @@ export function TestLinksPage() {
 					<span aria-hidden="true">/</span>
 					<span aria-current="page">Test Links</span>
 				</nav>
-				<h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
+				<h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
 					Test Links
 				</h1>
-				<p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-					{totalLinks} links in {TEST_SECTIONS.length} sections organized by page type.
-				</p>
 			</div>
 
 			{/* Table of contents. */}
@@ -701,7 +696,7 @@ function TestLinkSection({ section, index }: { section: TestLinkSection; index: 
 					{section.title}
 				</h2>
 				<p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">
-					{section.description} ({section.links.length})
+					{section.description}
 				</p>
 			</div>
 
