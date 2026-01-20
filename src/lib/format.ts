@@ -380,6 +380,45 @@ export function formatHashRate(difficultyHex: string, avgBlockTimeSeconds: numbe
 }
 
 /**
+ * Antminer K7 hashrate in H/s (63.5 TH/s).
+ * The K7 is the most powerful CKB miner as of January 2023.
+ */
+const ANTMINER_K7_HASHRATE = 63.5e12;
+
+/**
+ * CKB target block time in seconds.
+ */
+const CKB_BLOCK_TIME = 10;
+
+/**
+ * Calculate equivalent Antminer K7 miners from difficulty.
+ * Network hashrate ≈ difficulty / block_time.
+ * Equivalent miners = network_hashrate / K7_hashrate.
+ *
+ * @param difficultyHex - Difficulty as hex string.
+ * @returns Number of equivalent K7 miners.
+ */
+export function calculateEquivalentK7Miners(difficultyHex: string): number {
+	const difficulty = BigInt(difficultyHex);
+	const networkHashRate = Number(difficulty) / CKB_BLOCK_TIME;
+	return networkHashRate / ANTMINER_K7_HASHRATE;
+}
+
+/**
+ * Format the equivalent K7 miners as a human-readable string.
+ *
+ * @param difficultyHex - Difficulty as hex string.
+ * @returns Formatted string like "~1,234 Antminer K7s".
+ */
+export function formatEquivalentK7Miners(difficultyHex: string): string {
+	const count = calculateEquivalentK7Miners(difficultyHex);
+	if (count < 1) {
+		return `~${count.toFixed(2)} Antminer K7s`;
+	}
+	return `~${formatNumber(Math.round(count))} Antminer K7s`;
+}
+
+/**
  * Format duration in seconds to human-readable format.
  */
 export function formatDuration(seconds: number): string {

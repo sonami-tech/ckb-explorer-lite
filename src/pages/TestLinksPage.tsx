@@ -669,7 +669,7 @@ export function TestLinksPage() {
 			{/* Table of contents. */}
 			<div className="mb-8 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 				<h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Sections</h2>
-				<div className="flex flex-wrap gap-2">
+				<div className="flex flex-col">
 					{TEST_SECTIONS.map((section, i) => (
 						<a
 							key={section.title}

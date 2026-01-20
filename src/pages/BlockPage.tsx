@@ -9,6 +9,7 @@ import {
 	compactTargetToTarget,
 	compactTargetToDifficulty,
 	formatDifficulty,
+	formatEquivalentK7Miners,
 } from '../lib/format';
 import { generateLink } from '../lib/router';
 import { InternalLink } from '../components/InternalLink';
@@ -16,6 +17,7 @@ import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { HashDisplay, CopyButton } from '../components/CopyButton';
 import { Tooltip } from '../components/Tooltip';
+import { InfoIcon } from '../components/InfoIcon';
 import { DetailRow } from '../components/DetailRow';
 import { Pagination } from '../components/Pagination';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
@@ -496,10 +498,14 @@ export function BlockPage({ id }: BlockPageProps) {
 						{(() => {
 							const difficultyHex = compactTargetToDifficulty(header.compact_target);
 							const fullValue = formatNumber(BigInt(difficultyHex));
+							const equivalentMiners = formatEquivalentK7Miners(difficultyHex);
 							return (
-								<Tooltip content={fullValue}>
-									<span>{formatDifficulty(difficultyHex)}</span>
-								</Tooltip>
+								<div className="flex items-center gap-2">
+									<Tooltip content={fullValue}>
+										<span>{formatDifficulty(difficultyHex)}</span>
+									</Tooltip>
+									<InfoIcon tooltip={`This difficulty is equivalent to ${equivalentMiners} (the most powerful CKB miner at 63.5 TH/s each).`} />
+								</div>
 							);
 						})()}
 					</DetailRow>
