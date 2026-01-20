@@ -117,3 +117,10 @@ export const DEFAULT_BLOCK_FILTERS = {
 	typeScriptGroups: [] as string[],
 	lockScriptGroups: [] as string[],
 };
+
+/**
+ * Maximum cell count for showing smart filter counts on Live Cells page.
+ * Above this threshold, filter checkboxes show without counts to avoid
+ * fetching all cells for client-side scanning.
+ */
+export const LIVE_CELLS_SMART_COUNTS_THRESHOLD = 100;
