@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { RpcError } from '../lib/rpc';
 import { useArchive } from '../contexts/ArchiveContext';
 import { formatNumber } from '../lib/format';
@@ -5,10 +6,27 @@ import { formatNumber } from '../lib/format';
 interface ErrorDisplayProps {
 	error: Error | RpcError;
 	title?: string;
+	description?: string;
 	onRetry?: () => void;
 }
 
-export function ErrorDisplay({ error, title, onRetry }: ErrorDisplayProps) {
+/** Format error message, inserting a word break opportunity in long hashes. */
+function formatErrorMessage(text: string): ReactNode {
+	// Check if the message looks like a hex hash (0x followed by hex chars).
+	if (/^0x[0-9a-fA-F]{64}$/.test(text)) {
+		const mid = Math.floor(text.length / 2);
+		return (
+			<span className="font-mono">
+				{text.slice(0, mid)}
+				<wbr />
+				{text.slice(mid)}
+			</span>
+		);
+	}
+	return text;
+}
+
+export function ErrorDisplay({ error, title, description, onRetry }: ErrorDisplayProps) {
 	const { archiveHeight, tipBlockNumber, isHeightBeyondTip } = useArchive();
 
 	const isRpcError = error instanceof RpcError;
@@ -22,12 +40,17 @@ export function ErrorDisplay({ error, title, onRetry }: ErrorDisplayProps) {
 						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 					</svg>
 				</div>
-				<div className="flex-1">
+				<div className="flex-1 min-w-0">
 					<h3 className="text-lg font-medium text-red-800 dark:text-red-200">
 						{title || 'Error'}
 					</h3>
-					<p className="mt-1 text-sm text-red-700 dark:text-red-300">
-						{errorMessage}
+					{description && (
+						<p className="mt-1 text-sm text-red-700 dark:text-red-300">
+							{description}
+						</p>
+					)}
+					<p className="mt-3 text-sm text-red-700 dark:text-red-300">
+						{formatErrorMessage(errorMessage)}
 					</p>
 
 					{/* RPC error details. */}

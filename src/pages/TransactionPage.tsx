@@ -94,7 +94,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 					navigate(generateLink(`/block/${hash}`));
 					return;
 				}
-				throw new Error(`Transaction not found: ${hash}`);
+				throw new Error(hash);
 			}
 
 			setTxData(result as RpcTransactionWithStatus & { transaction: RpcTransaction });
@@ -387,7 +387,12 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 	if (error) {
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
-				<ErrorDisplay error={error} title="Transaction not found" onRetry={fetchTransaction} />
+				<ErrorDisplay
+					error={error}
+					title="Transaction Not Found"
+					description="This transaction does not exist on the connected network. Verify the transaction hash is correct and that you are connected to the right network."
+					onRetry={fetchTransaction}
+				/>
 			</div>
 		);
 	}
