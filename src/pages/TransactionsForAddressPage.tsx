@@ -531,7 +531,10 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				</div>
 				<div className="divide-y divide-gray-200 dark:divide-gray-700">
 					<DetailRow label="Address">
-						<InternalLink href={generateLink(`/address/${address}`)}>
+						<InternalLink
+							href={generateLink(`/address/${address}`)}
+							className="text-nervos hover:text-nervos-dark"
+						>
 							<AddressDisplay address={address} truncate={false} />
 						</InternalLink>
 					</DetailRow>
