@@ -58,17 +58,23 @@ export function SkeletonTransactionItem() {
 
 /**
  * Cell list item skeleton.
+ * Matches CellRow layout: outpoint + capacity on row 1, block + badges + size on row 2.
  */
 export function SkeletonCellItem() {
 	return (
-		<div className="p-4 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
-			<div className="flex items-center justify-between mb-2">
-				<Skeleton className="h-4 w-56" />
+		<div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+			{/* Row 1: OutPoint and Capacity */}
+			<div className="flex items-center justify-between mb-1">
+				<Skeleton className="h-4 w-40" />
 				<Skeleton className="h-4 w-24" />
 			</div>
-			<div className="flex flex-col gap-1">
-				<Skeleton className="h-3 w-full" />
-				<Skeleton className="h-3 w-3/4" />
+			{/* Row 2: Block number, badges, data size */}
+			<div className="flex items-center justify-between mt-1">
+				<div className="flex items-center gap-2">
+					<Skeleton className="h-3 w-28" />
+					<Skeleton className="h-5 w-12 rounded-full" />
+				</div>
+				<Skeleton className="h-3 w-14" />
 			</div>
 		</div>
 	);
