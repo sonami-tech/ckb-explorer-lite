@@ -1,6 +1,6 @@
 /**
  * Test links page organized by page type for QA testing.
- * Access via /test~links (hidden from navigation).
+ * Access via /test-links (hidden from navigation).
  *
  * Structure:
  * - Each section corresponds to a page in the explorer
@@ -84,7 +84,7 @@ const TEST_SECTIONS: TestLinkSection[] = [
 			{
 				label: 'Genesis (Block 0)',
 				path: '/block/0',
-				description: '671-output cellbase, system cells.',
+				description: '671-output Cellbase, system cells.',
 			},
 			{
 				label: 'First Halving (8,760,000)',
@@ -157,7 +157,7 @@ const TEST_SECTIONS: TestLinkSection[] = [
 				description: 'Most outputs on mainnet (extreme distribution).',
 			},
 			{
-				label: '10,796 In / ? Out',
+				label: '10,796 In / 1 Out',
 				path: '/tx/0xa32a4d0ce6114bbeb19d2004cb69a5a7aa681506d53f58ead31b6aee39db1a76',
 				description: 'Most inputs on mainnet (extreme consolidation).',
 			},
@@ -591,6 +591,97 @@ const TEST_SECTIONS: TestLinkSection[] = [
 				label: 'At Claim (18,369,800)',
 				path: '/cell/0xa144941322dd72bf67e73120aac1e8ab159833fa4a0e982beda7f0c462dd4c6b/0?height=18369800',
 				description: 'Withdrawal cell consumed (claimed).',
+			},
+		],
+	},
+	// ═══════════════════════════════════════════════════════════════════════════
+	// SCRIPT FILTER TESTING
+	// ═══════════════════════════════════════════════════════════════════════════
+	{
+		title: 'Script Filters - Type Scripts',
+		description: 'Addresses and blocks for testing type script filters including "Other" (non-well-known) scripts.',
+		links: [
+			{
+				label: 'JoyID with 9 Types (4 known + 5 Other)',
+				path: '/address/ckb1qrgqep8saj8agswr30pls73hra28ry8jlnlc3ejzh3dl2ju7xxpjxqgqqxe8qffrzw8x9f77j286pegf7e9vrfkr3czw0wv0/cells',
+				description: 'xUDT, Spore, Spore Cluster, CoTA + 5 Other types (68 cells).',
+			},
+			{
+				label: 'SECP256K1 with Other Types (533 cells)',
+				path: '/address/ckb1qy594dglslrm603wmhlczc5jt0ehpg5sm5e8pkp3/cells',
+				description: 'Address with many non-well-known type scripts.',
+			},
+			{
+				label: 'JoyID with iCKB',
+				path: '/address/ckb1qrgqep8saj8agswr30pls73hra28ry8jlnlc3ejzh3dl2ju7xxpjxqgqq83503v79qrpczf2e6wdgf6jj8am56udwsa6jgn6/cells',
+				description: 'iCKB token cells + diverse types (33 cells).',
+			},
+			{
+				label: 'CKBFS Files',
+				path: '/address/ckb1qxwe8za4am8rtekeye8d47m49s6rqnz9suk30x4f/cells',
+				description: 'On-chain file storage cells (2 cells).',
+			},
+			{
+				label: 'Block with 4 Known + 1 Other Type',
+				path: '/block/14883129',
+				description: 'Spore, xUDT, CoTA, Spore Cluster + 1 Other type.',
+			},
+			{
+				label: 'Block with 2 Known + 7 Other Types',
+				path: '/block/6793910',
+				description: '9 distinct type scripts, mostly non-well-known.',
+			},
+		],
+	},
+	{
+		title: 'Script Filters - Lock Scripts',
+		description: 'Addresses for testing lock script filters.',
+		links: [
+			{
+				label: 'Omnilock with NervosDAO (7 cells)',
+				path: '/address/ckb1qzdcr9un5ezx8tkh03s46m9jymh22jruelq8svzr5krj2nx69dhjvqgyzvw53zdmxggv9p8fdrweamzcju2xy542qqj97c4m/cells',
+				description: 'Omnilock lock with active DAO deposits.',
+			},
+			{
+				label: 'JoyID Address (diverse)',
+				path: '/address/ckb1qrgqep8saj8agswr30pls73hra28ry8jlnlc3ejzh3dl2ju7xxpjxqgqqxxgyfqx3sqtc3mqua500yf7ddaudpwytqeht6mu/cells',
+				description: 'JoyID WebAuthn lock, 11 type scripts (391 cells).',
+			},
+		],
+	},
+	{
+		title: 'Script Filters - Specific Cells',
+		description: 'Individual cells with specific type scripts for direct testing.',
+		links: [
+			{
+				label: 'Cell with Other Type Script',
+				path: '/cell/0xeaed5dd7e7186128758eac0bb97aa3866fbe8056889375a49a332d4214406ffe/2',
+				description: 'Live cell with non-well-known type script (0xc70a...).',
+			},
+			{
+				label: 'xUDT Token Cell',
+				path: '/cell/0x769ad3108160156bf1491cf9c63f6c8f846fcffd97171b4fcdf2e097db51e803/0',
+				description: 'JoyID lock + xUDT type.',
+			},
+			{
+				label: 'SUDT Token Cell (consumed)',
+				path: '/cell/0x23beb3cb08ca9b029809eb7e854abe90300c4af8625b54c8c7560b0612979a95/1',
+				description: 'Simple UDT cell (block 7,480,214).',
+			},
+			{
+				label: 'Spore NFT Cell',
+				path: '/cell/0x86e722258c098a01fb68a443e0059f592948063c104c5e3ca59b68ba7a278cb5/0',
+				description: 'First Spore on-chain NFT.',
+			},
+			{
+				label: 'NervosDAO Cell',
+				path: '/cell/0x1fdfec93d515009759b6c0a029775143bdeaa9b9883216fc82589cc53e17c195/0',
+				description: 'Live DAO deposit cell.',
+			},
+			{
+				label: 'CoTA NFT Cell',
+				path: '/cell/0xcf3e553e07173127f8721ebfcf95890acdee23882cec40a4a5235c62ba533c27/0',
+				description: 'Compact Token Aggregator cell.',
 			},
 		],
 	},
