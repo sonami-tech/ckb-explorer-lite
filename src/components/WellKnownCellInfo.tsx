@@ -41,7 +41,7 @@ function getCategoryStyles(category: WellKnownCellCategory): { label: string; cl
 			};
 		default:
 			return {
-				label: 'Unknown',
+				label: 'Other',
 				className: STATUS_NEUTRAL,
 			};
 	}

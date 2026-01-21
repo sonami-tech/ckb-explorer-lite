@@ -192,7 +192,7 @@ export function AddressPage({ address }: AddressPageProps) {
 								networkType={networkType}
 							/>
 						) : (
-							<span className="text-gray-500 dark:text-gray-400">Unknown</span>
+							<span className="text-gray-500 dark:text-gray-400">Other</span>
 						)}
 					</DetailRow>
 

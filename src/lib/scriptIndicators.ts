@@ -4,10 +4,10 @@ import type { RpcScript } from '../types/rpc';
 import type { NetworkType } from '../config/networks';
 
 /**
- * Extended script indicator with unknown script handling.
+ * Extended script indicator with other (non-well-known) script handling.
  * Used in TransactionPage for detailed input/output display.
  */
-export interface ScriptIndicatorWithUnknown {
+export interface ScriptIndicatorWithOther {
 	/** Display name (script name or truncated hash). */
 	name: string;
 	/** Resource ID for linking to /resources#id. */
@@ -16,18 +16,18 @@ export interface ScriptIndicatorWithUnknown {
 	description?: string;
 	/** Whether this is a known/registered script. */
 	isKnown: boolean;
-	/** Full code hash for unknown scripts (used in tooltip). */
+	/** Full code hash for other (non-well-known) scripts (used in tooltip). */
 	fullHash?: string;
 }
 
 /**
  * Extract lock script indicator from a lock script.
- * Returns known script info or truncated hash for unknown scripts.
+ * Returns known script info or truncated hash for other (non-well-known) scripts.
  */
 export function extractLockScriptIndicator(
 	lock: RpcScript,
 	networkType: NetworkType,
-): ScriptIndicatorWithUnknown {
+): ScriptIndicatorWithOther {
 	const info = lookupLockScript(lock.code_hash, lock.hash_type, networkType, lock.args);
 	if (info) {
 		return {
@@ -46,12 +46,12 @@ export function extractLockScriptIndicator(
 
 /**
  * Extract type script indicator from a type script.
- * Returns known script info or truncated hash for unknown scripts.
+ * Returns known script info or truncated hash for other (non-well-known) scripts.
  */
 export function extractTypeScriptIndicator(
 	typeScript: RpcScript,
 	networkType: NetworkType,
-): ScriptIndicatorWithUnknown {
+): ScriptIndicatorWithOther {
 	const info = lookupTypeScript(typeScript.code_hash, typeScript.hash_type, networkType, typeScript.args);
 	if (info) {
 		return {

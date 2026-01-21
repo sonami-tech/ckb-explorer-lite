@@ -513,9 +513,9 @@ function getCategoryInfo(category: WellKnownCellCategory): { label: string; clas
 			};
 		default:
 			return {
-				label: 'Unknown',
+				label: 'Other',
 				className: STATUS_NEUTRAL,
-				tooltip: 'Unknown cell category.',
+				tooltip: 'Other cell category.',
 			};
 	}
 }

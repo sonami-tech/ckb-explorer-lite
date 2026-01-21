@@ -170,8 +170,8 @@ const TRANSACTION_STATUS_OPTIONS: OptionConfig[] = [
 	},
 	{
 		value: 'unknown',
-		label: 'Unknown',
-		tooltip: 'Transaction status is unknown.',
+		label: 'Other',
+		tooltip: 'Transaction status is not determined.',
 		activeClass: STATUS_WARNING,
 	},
 ];

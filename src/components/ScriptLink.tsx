@@ -19,7 +19,7 @@ interface ScriptLinkProps {
 	scriptType: 'lock' | 'type';
 	/** Network type for lookup. */
 	networkType: NetworkType;
-	/** Show code hash with tooltip for unknown scripts. */
+	/** Show code hash with tooltip for other (non-well-known) scripts. */
 	showHashForUnknown?: boolean;
 	/** Additional CSS classes. */
 	className?: string;
@@ -34,7 +34,7 @@ export function ScriptLink({ script, scriptType, networkType, showHashForUnknown
 		? lookupLockScript(script.code_hash, script.hash_type, networkType, script.args)
 		: lookupTypeScript(script.code_hash, script.hash_type, networkType, script.args);
 
-	// Unknown script - render with code hash if requested.
+	// Other (non-well-known) script - render with code hash if requested.
 	if (!scriptInfo) {
 		if (showHashForUnknown) {
 			const truncatedHash = `${script.code_hash.slice(0, 10)}...${script.code_hash.slice(-4)}`;
@@ -46,7 +46,7 @@ export function ScriptLink({ script, scriptType, networkType, showHashForUnknown
 				</Tooltip>
 			);
 		}
-		return <span className={`text-gray-500 dark:text-gray-400 ${className}`}>Unknown</span>;
+		return <span className={`text-gray-500 dark:text-gray-400 ${className}`}>Other</span>;
 	}
 
 	// Known script without resourceId - render plain text with name.
