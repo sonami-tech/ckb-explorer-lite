@@ -43,6 +43,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 	const [inputCellData, setInputCellData] = useState<Map<number, RpcCellWithLifecycle>>(new Map());
 	const [inputErrors, setInputErrors] = useState<Map<number, Error>>(new Map());
 	const [inputsLoading, setInputsLoading] = useState(false);
+	const [feePrefetchComplete, setFeePrefetchComplete] = useState(false);
 
 	// Cell dependency data fetching state.
 	const [cellDepData, setCellDepData] = useState<Map<number, RpcCellWithLifecycle>>(new Map());
@@ -311,13 +312,13 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 			return 'unavailable';
 		}
 
-		if (inputsLoading || inputCellData.size !== transaction.inputs.length) {
+		if (!feePrefetchComplete) {
 			return undefined; // Loading
 		}
 		const inputTotal = Array.from(inputCellData.values())
 			.reduce((sum, cell) => sum + BigInt(cell.output.capacity), 0n);
 		return inputTotal - totalOutput;
-	}, [transaction, inputCellData, inputsLoading, isCellbase, totalOutput]);
+	}, [transaction, inputCellData, feePrefetchComplete, isCellbase, totalOutput]);
 
 	// Extract cycles from RPC response.
 	const cycles = txData?.cycles ? BigInt(txData.cycles) : null;
@@ -362,6 +363,63 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		}
 	}, [paginatedInputs, inputsStartIndex, fetchInputCellData]);
 
+	// Prefetch all input cell data for fee calculation (up to FEE_CALCULATION_MAX_INPUTS).
+	// This runs independently of pagination to ensure fee displays immediately.
+	useEffect(() => {
+		if (!transaction || isCellbase) return;
+		if (transaction.inputs.length > FEE_CALCULATION_MAX_INPUTS) {
+			setFeePrefetchComplete(true); // Skip prefetch, fee will show as unavailable
+			return;
+		}
+
+		const prefetchAllInputs = async () => {
+			const allInputs = transaction.inputs;
+			const promises = allInputs.map(async (input, index) => {
+				// Skip cellbase inputs (should not happen for non-cellbase tx, but be safe).
+				if (isNullOutpoint(input.previous_output.tx_hash, input.previous_output.index)) {
+					return { index, cellData: null, error: null };
+				}
+
+				try {
+					const cellData = await rpc.getCellLifecycle(
+						input.previous_output.tx_hash,
+						parseInt(input.previous_output.index, 16),
+						true
+					);
+					return { index, cellData, error: null };
+				} catch (error) {
+					return { index, cellData: null, error: error as Error };
+				}
+			});
+
+			const results = await Promise.all(promises);
+
+			setInputCellData(prev => {
+				const dataMap = new Map(prev);
+				results.forEach(result => {
+					if (result.cellData) {
+						dataMap.set(result.index, result.cellData);
+					}
+				});
+				return dataMap;
+			});
+
+			setInputErrors(prev => {
+				const errorMap = new Map(prev);
+				results.forEach(result => {
+					if (result.error) {
+						errorMap.set(result.index, result.error);
+					}
+				});
+				return errorMap;
+			});
+
+			setFeePrefetchComplete(true);
+		};
+
+		prefetchAllInputs();
+	}, [transaction, isCellbase, rpc]);
+
 	useEffect(() => {
 		if (paginatedCellDeps.length > 0) {
 			fetchCellDepData(paginatedCellDeps, cellDepsStartIndex);
@@ -370,6 +428,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 	// Reset pagination when transaction changes.
 	useEffect(() => {
+		setFeePrefetchComplete(false);
 		setInputsPage(1);
 		setOutputsPage(1);
 		setCellDepsPage(1);
