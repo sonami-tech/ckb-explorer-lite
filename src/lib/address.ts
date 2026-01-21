@@ -73,6 +73,10 @@ export function parseAddress(address: string): {
 		payload = result.payload;
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Invalid encoding';
+		// If the library already provides a descriptive error, use it directly.
+		if (message.toLowerCase().includes('address')) {
+			throw new Error(message);
+		}
 		throw new Error(`Unknown address format ${address.length > 20 ? address.substring(0, 20) + '...' : address}: ${message}`);
 	}
 

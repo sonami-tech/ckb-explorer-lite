@@ -638,8 +638,8 @@ const TEST_SECTIONS: TestLinkSection[] = [
 		description: 'Addresses for testing lock script filters.',
 		links: [
 			{
-				label: 'Omnilock with NervosDAO (7 cells)',
-				path: '/address/ckb1qzdcr9un5ezx8tkh03s46m9jymh22jruelq8svzr5krj2nx69dhjvqgyzvw53zdmxggv9p8fdrweamzcju2xy542qqj97c4m/cells',
+				label: 'Omnilock with NervosDAO',
+				path: '/address/ckb1qzdcr9un5ezx8tkh03s46m9jymh22jruelq8svzr5krj2nx69dhjvqgyzvw53zdmxggv9p8fdrweamzcju2xy542qq8ew5se/cells',
 				description: 'Omnilock lock with active DAO deposits.',
 			},
 			{
@@ -680,8 +680,8 @@ const TEST_SECTIONS: TestLinkSection[] = [
 			},
 			{
 				label: 'CoTA NFT Cell',
-				path: '/cell/0xcf3e553e07173127f8721ebfcf95890acdee23882cec40a4a5235c62ba533c27/0',
-				description: 'Compact Token Aggregator cell.',
+				path: '/cell/0xb19a9bc906cf1ca38913b1932bd12702e6344c77e9e55be80b0ede17bbe66a7b/0',
+				description: 'Compact Token Aggregator cell (block 6,562,804).',
 			},
 		],
 	},
