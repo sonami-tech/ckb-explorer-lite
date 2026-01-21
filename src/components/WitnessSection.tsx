@@ -369,21 +369,21 @@ function WitnessArgsField({ label, value }: { label: string; value: string | nul
  */
 function SignatureView({ data }: { data: SignatureData }) {
 	return (
-		<div className="space-y-1 text-xs font-mono">
+		<div className="text-xs font-mono">
 			<div className="flex items-center gap-2">
-				<span className="text-gray-500 dark:text-gray-400 w-4">r:</span>
+				<span className="text-gray-500 dark:text-gray-400 w-3">r:</span>
 				<code className="break-all">{data.r}</code>
 				<CopyButton text={data.r} />
 			</div>
 			<div className="flex items-center gap-2">
-				<span className="text-gray-500 dark:text-gray-400 w-4">s:</span>
+				<span className="text-gray-500 dark:text-gray-400 w-3">s:</span>
 				<code className="break-all">{data.s}</code>
 				<CopyButton text={data.s} />
 			</div>
 			<div className="flex items-center gap-2">
-				<span className="text-gray-500 dark:text-gray-400 w-4">v:</span>
+				<span className="text-gray-500 dark:text-gray-400 w-3">v:</span>
 				<code>{data.v}</code>
-				<span className="text-gray-400 dark:text-gray-500">(recovery ID)</span>
+				<CopyButton text={data.v} />
 			</div>
 		</div>
 	);
