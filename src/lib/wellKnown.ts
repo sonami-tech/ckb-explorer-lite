@@ -190,6 +190,16 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		// ============================================
 		// Anyone-Can-Pay (RFC 0026)
 		// ============================================
+		'0x58eb58e2e3dd9852099a19424cf6e63b5238afe92e3085561b8feafced6d6876:0': {
+			name: 'Anyone-Can-Pay Lock Binary',
+			description: 'Contains the compiled RISC-V binary code for the Anyone-Can-Pay lock script.',
+			importance: 'Enables receiving payments without signing. Overcomes the 61 CKBytes minimum transfer requirement.',
+			category: 'protocol',
+			resources: [
+				{ title: 'RFC 0026: Anyone-Can-Pay', url: RFC_0026 },
+			],
+			rfc: '0026',
+		},
 		'0x4153a2014952d7cac45f285ce9a7c5c0c0e1b21f2d378b82ac1433cb11c25c4d:0': {
 			name: 'Anyone-Can-Pay Dep Group',
 			description: 'Dependency group for the Anyone-Can-Pay lock script. References the secp256k1 data cell and ACP code cell.',
@@ -264,9 +274,54 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		// ============================================
 		// JoyID
 		// ============================================
+		'0xbdc3153fcb7c256d007be758c0b50c8da60b5ac0e44ae9e11d3dcc5b73d2b347:0': {
+			name: 'JoyID Lock Binary',
+			description: 'Contains the compiled RISC-V binary code for the JoyID lock script.',
+			importance: 'Main JoyID lock implementation for WebAuthn-based passwordless authentication.',
+			category: 'protocol',
+			resources: [
+				{ title: 'JoyID Documentation', url: JOYID_DOCS },
+			],
+		},
+		'0xbac0f6f0a177a03974870df47ab0c3e761c5dd19e9ca165358d0b72bd7f433f5:1': {
+			name: 'JoyID Library 1',
+			description: 'Supporting library for JoyID lock script operations.',
+			importance: 'Required dependency for JoyID WebAuthn signature verification.',
+			category: 'protocol',
+			resources: [
+				{ title: 'JoyID Documentation', url: JOYID_DOCS },
+			],
+		},
+		'0xbac0f6f0a177a03974870df47ab0c3e761c5dd19e9ca165358d0b72bd7f433f5:2': {
+			name: 'JoyID Library 2',
+			description: 'Supporting library for JoyID lock script operations.',
+			importance: 'Required dependency for JoyID WebAuthn signature verification.',
+			category: 'protocol',
+			resources: [
+				{ title: 'JoyID Documentation', url: JOYID_DOCS },
+			],
+		},
+		'0xbac0f6f0a177a03974870df47ab0c3e761c5dd19e9ca165358d0b72bd7f433f5:3': {
+			name: 'JoyID Library 3',
+			description: 'Supporting library for JoyID lock script operations.',
+			importance: 'Required dependency for JoyID WebAuthn signature verification.',
+			category: 'protocol',
+			resources: [
+				{ title: 'JoyID Documentation', url: JOYID_DOCS },
+			],
+		},
+		'0xbac0f6f0a177a03974870df47ab0c3e761c5dd19e9ca165358d0b72bd7f433f5:4': {
+			name: 'JoyID Library 4',
+			description: 'Supporting library for JoyID lock script operations.',
+			importance: 'Required dependency for JoyID WebAuthn signature verification.',
+			category: 'protocol',
+			resources: [
+				{ title: 'JoyID Documentation', url: JOYID_DOCS },
+			],
+		},
 		'0xf05188e5f3a6767fc4687faf45ba5f1a6e25d3ada6129dae8722cb282f262493:0': {
 			name: 'JoyID Dep Group',
-			description: 'Dependency group for the JoyID lock script. References the code cell and required dependencies.',
+			description: 'Dependency group for the JoyID lock script. References the JoyID lock binary, 4 supporting libraries, and secp256k1 data.',
 			importance: 'WebAuthn-based authentication using device biometrics. Enables passwordless wallet access.',
 			category: 'dep_group',
 			dataFormat: 'dep_group',
@@ -277,9 +332,36 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		// ============================================
 		// CoTA (Compact Token Aggregator)
 		// ============================================
+		'0x668921df2836e5ce4b3c41c626aab1ee3ef9bccfa4b527abcf28a61b166837ab:0': {
+			name: 'CoTA Type Script Binary 1',
+			description: 'Contains a compiled RISC-V binary for CoTA type script operations.',
+			importance: 'Core CoTA NFT management logic for efficient on-chain NFT storage.',
+			category: 'protocol',
+			resources: [
+				{ title: 'CoTA SDK Constants', url: COTA_CONSTANTS },
+			],
+		},
+		'0x668921df2836e5ce4b3c41c626aab1ee3ef9bccfa4b527abcf28a61b166837ab:1': {
+			name: 'CoTA Type Script Binary 2',
+			description: 'Contains a compiled RISC-V binary for CoTA type script operations.',
+			importance: 'Core CoTA NFT management logic for efficient on-chain NFT storage.',
+			category: 'protocol',
+			resources: [
+				{ title: 'CoTA SDK Constants', url: COTA_CONSTANTS },
+			],
+		},
+		'0x70d970f804b4d372f079cfe2434d10617ec8d9d2a4637a9c7fdb31806a91898e:2': {
+			name: 'CoTA Registry Binary',
+			description: 'Contains the compiled RISC-V binary for CoTA registry operations.',
+			importance: 'Manages CoTA NFT registry and metadata for the protocol.',
+			category: 'protocol',
+			resources: [
+				{ title: 'CoTA SDK Constants', url: COTA_CONSTANTS },
+			],
+		},
 		'0xabaa25237554f0d6c586dc010e7e85e6870bcfd9fb8773257ecacfbe1fd738a0:0': {
 			name: 'CoTA Dep Group',
-			description: 'Dependency group for the CoTA type script. References code cells needed for CoTA operations.',
+			description: 'Dependency group for the CoTA type script. References 2 CoTA type script binaries and the CoTA registry binary.',
 			importance: 'Compact Token Aggregator protocol for efficient NFT management with minimal cell usage.',
 			category: 'dep_group',
 			dataFormat: 'dep_group',
@@ -323,10 +405,28 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		// ============================================
 		// CKBFS (File Storage)
 		// ============================================
+		'0xc9b6698f44c3b80e7e1c48823b2714e432b93f0206ffaf9df885d23267ed2ebc:0': {
+			name: 'CKB-Adler32 Hasher Binary',
+			description: 'Contains the compiled RISC-V binary for the Adler32 hashing algorithm used by CKBFS.',
+			importance: 'Provides efficient checksumming for CKBFS file integrity verification.',
+			category: 'protocol',
+			resources: [
+				{ title: 'CKBFS Deployment', url: CKBFS_README },
+			],
+		},
+		'0xc9b6698f44c3b80e7e1c48823b2714e432b93f0206ffaf9df885d23267ed2ebc:1': {
+			name: 'CKBFS Type Script Binary',
+			description: 'Contains the compiled RISC-V binary code for the CKBFS type script (version 20241025).',
+			importance: 'Core file storage protocol implementation for on-chain content-addressable file storage.',
+			category: 'protocol',
+			resources: [
+				{ title: 'CKBFS Deployment', url: CKBFS_README },
+			],
+		},
 		'0xfab07962ed7178ed88d450774e2a6ecd50bae856bdb9b692980be8c5147d1bfa:0': {
 			name: 'CKBFS Dep Group',
-			description: 'Dependency group for the CKBFS type script. References code cells needed for file storage operations.',
-			importance: 'Enables on-chain file storage with content-addressable chunks.',
+			description: 'Dependency group for the CKBFS type script. References the CKBFS binary and Adler32 hasher.',
+			importance: 'Enables on-chain file storage with content-addressable chunks and integrity verification.',
 			category: 'dep_group',
 			dataFormat: 'dep_group',
 			resources: [
@@ -336,9 +436,36 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 		// ============================================
 		// iCKB Protocol
 		// ============================================
+		'0xd7309191381f5a8a2904b8a79958a9be2752dbba6871fa193dab6aeb29dc8f44:0': {
+			name: 'iCKB Logic Binary',
+			description: 'Contains the compiled RISC-V binary for iCKB protocol logic. Used as both lock and type script for token minting and burning.',
+			importance: 'Core iCKB protocol script that tokenizes NervosDAO deposits into liquid iCKB tokens.',
+			category: 'protocol',
+			resources: [
+				{ title: 'iCKB Deployment', url: ICKB_DEPLOYMENT },
+			],
+		},
+		'0xd7309191381f5a8a2904b8a79958a9be2752dbba6871fa193dab6aeb29dc8f44:1': {
+			name: 'iCKB Limit Order Binary',
+			description: 'Contains the compiled RISC-V binary for iCKB limit order matching.',
+			importance: 'Enables decentralized limit order matching for iCKB token trading.',
+			category: 'protocol',
+			resources: [
+				{ title: 'iCKB Deployment', url: ICKB_DEPLOYMENT },
+			],
+		},
+		'0xd7309191381f5a8a2904b8a79958a9be2752dbba6871fa193dab6aeb29dc8f44:2': {
+			name: 'iCKB Owned-Owner Binary',
+			description: 'Contains the compiled RISC-V binary for iCKB ownership verification.',
+			importance: 'Manages ownership validation for iCKB protocol operations.',
+			category: 'protocol',
+			resources: [
+				{ title: 'iCKB Deployment', url: ICKB_DEPLOYMENT },
+			],
+		},
 		'0x621a6f38de3b9f453016780edac3b26bfcbfa3e2ecb47c2da275471a5d3ed165:0': {
 			name: 'iCKB Dep Group',
-			description: 'Dependency group for the iCKB protocol scripts. References logic, limit order, and owned-owner code cells.',
+			description: 'Dependency group for the iCKB protocol scripts. References iCKB logic, limit order, owned-owner, xUDT, SECP256K1 lock, NervosDAO, secp256k1 data, and multisig binaries.',
 			importance: 'NervosDAO liquidity protocol that tokenizes DAO deposits into transferable iCKB tokens.',
 			category: 'dep_group',
 			dataFormat: 'dep_group',
