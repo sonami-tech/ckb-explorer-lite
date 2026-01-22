@@ -268,7 +268,7 @@ export function BlockPage({ id }: BlockPageProps) {
 			if (fetchId !== fetchIdRef.current) return;
 
 			if (!result) {
-				throw new Error(`Block not found: ${id}`);
+				throw new Error(id);
 			}
 
 			setBlock(result);
@@ -467,7 +467,12 @@ export function BlockPage({ id }: BlockPageProps) {
 	if (error) {
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
-				<ErrorDisplay error={error} title="Block not found" onRetry={fetchBlock} />
+				<ErrorDisplay
+					error={error}
+					title="Block Not Found"
+					description="This block does not exist on the connected network. Verify the block number or hash is correct."
+					onRetry={fetchBlock}
+				/>
 			</div>
 		);
 	}

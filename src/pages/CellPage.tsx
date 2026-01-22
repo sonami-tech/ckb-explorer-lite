@@ -59,10 +59,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 
 			if (result === null) {
 				// Cell never existed.
-				throw new Error(
-					`Cell not found: ${txHash}:${index}. ` +
-					`This cell does not exist in the blockchain.`
-				);
+				throw new Error(`${txHash}:${index}`);
 			}
 
 			setCellData(result);
@@ -109,7 +106,12 @@ export function CellPage({ txHash, index }: CellPageProps) {
 	if (error) {
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
-				<ErrorDisplay error={error} title="Cell not found" onRetry={fetchCell} />
+				<ErrorDisplay
+					error={error}
+					title="Cell Not Found"
+					description="This cell does not exist on the connected network. Verify the transaction hash and output index are correct."
+					onRetry={fetchCell}
+				/>
 			</div>
 		);
 	}

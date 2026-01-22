@@ -10,19 +10,34 @@ interface ErrorDisplayProps {
 	onRetry?: () => void;
 }
 
-/** Format error message, inserting a word break opportunity in long hashes. */
+/** Format error message, inserting word break opportunities in long hashes. */
 function formatErrorMessage(text: string): ReactNode {
-	// Check if the message looks like a hex hash (0x followed by hex chars).
+	// Cell outpoint format: 0x{64 hex chars}:{index}
+	const outpointMatch = text.match(/^(0x[0-9a-fA-F]{64}):(\d+)$/);
+	if (outpointMatch) {
+		const [, hash, index] = outpointMatch;
+		const mid = Math.floor(hash.length / 2);
+		return (
+			<span className="font-mono break-all">
+				{hash.slice(0, mid)}
+				<wbr />
+				{hash.slice(mid)}:{index}
+			</span>
+		);
+	}
+
+	// Plain hex hash (0x followed by 64 hex chars).
 	if (/^0x[0-9a-fA-F]{64}$/.test(text)) {
 		const mid = Math.floor(text.length / 2);
 		return (
-			<span className="font-mono">
+			<span className="font-mono break-all">
 				{text.slice(0, mid)}
 				<wbr />
 				{text.slice(mid)}
 			</span>
 		);
 	}
+
 	return text;
 }
 

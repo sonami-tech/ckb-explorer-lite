@@ -496,7 +496,12 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			: undefined;
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
-				<ErrorDisplay error={error} title="Transactions Error" onRetry={handleRetry} />
+				<ErrorDisplay
+					error={error}
+					title="Transactions Error"
+					description="Unable to load transactions for this address. Check that the address format is valid and you are connected to the correct network."
+					onRetry={handleRetry}
+				/>
 			</div>
 		);
 	}

@@ -138,7 +138,12 @@ export function AddressPage({ address }: AddressPageProps) {
 	if (displayError) {
 		return (
 			<div className="max-w-7xl mx-auto px-4 py-6">
-				<ErrorDisplay error={displayError} title="Address Error" onRetry={script ? fetchData : undefined} />
+				<ErrorDisplay
+					error={displayError}
+					title="Address Error"
+					description="Unable to load address data. Check that the address format is valid and you are connected to the correct network."
+					onRetry={script ? fetchData : undefined}
+				/>
 			</div>
 		);
 	}
