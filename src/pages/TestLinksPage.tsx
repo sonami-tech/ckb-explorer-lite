@@ -449,6 +449,32 @@ const TEST_SECTIONS: TestLinkSection[] = [
 			},
 		],
 	},
+	{
+		title: 'AddressPage - Address Formats',
+		description: 'Test CKB2019 (deprecated) and CKB2021 address format handling.',
+		links: [
+			{
+				label: 'CKB2019 Short (SECP256K1)',
+				path: '/address/ckb1qyqt8xaupvm8837nv3gtc9x0ekkj64vud3jqfwyw5v',
+				description: 'Deprecated short format with code_hash_index 0x00.',
+			},
+			{
+				label: 'CKB2019 Short (Multisig)',
+				path: '/address/ckb1qyq5lv479ewscx3ms620sv34pgeuz6zagaaqklhtgg',
+				description: 'Deprecated short format with code_hash_index 0x01.',
+			},
+			{
+				label: 'CKB2019 Legacy Short',
+				path: '/address/ckb1qy594dglslrm603wmhlczc5jt0ehpg5sm5e8pkp3',
+				description: '20-byte legacy format (assumes SECP256K1).',
+			},
+			{
+				label: 'CKB2021 Full (SECP256K1)',
+				path: '/address/ckb1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqg89znuqg5adz8tu5azgw7zrhusnza3wrs6kmfrz',
+				description: 'Current standard full format address.',
+			},
+		],
+	},
 	// ═══════════════════════════════════════════════════════════════════════════
 	// TRANSACTIONS FOR ADDRESS PAGE
 	// ═══════════════════════════════════════════════════════════════════════════
@@ -549,27 +575,27 @@ const TEST_SECTIONS: TestLinkSection[] = [
 	},
 	{
 		title: 'Archive - Address Balance',
-		description: 'Track address balance changes over time.',
+		description: 'Track address balance changes over time using CKB2019 short format address.',
 		links: [
 			{
 				label: 'Before First Deposit (10,707)',
-				path: '/address/ckb1qyqt05xa00g4rgw2jtkp5ez9ffq7u7ucuggsr39vfn?height=10707',
-				description: 'Balance: 0 CKB.',
+				path: '/address/ckb1qyqt8xaupvm8837nv3gtc9x0ekkj64vud3jqfwyw5v?height=10707',
+				description: 'Balance: 0 CKB (CKB2019 short format).',
 			},
 			{
 				label: 'After First Deposit (10,708)',
-				path: '/address/ckb1qyqt05xa00g4rgw2jtkp5ez9ffq7u7ucuggsr39vfn?height=10708',
-				description: 'Balance: ~137 CKB.',
+				path: '/address/ckb1qyqt8xaupvm8837nv3gtc9x0ekkj64vud3jqfwyw5v?height=10708',
+				description: 'Balance check at early block.',
 			},
 			{
-				label: 'Peak Balance (453,897)',
-				path: '/address/ckb1qyqt05xa00g4rgw2jtkp5ez9ffq7u7ucuggsr39vfn?height=453897',
-				description: 'Balance: ~1,609 CKB (13 cells).',
+				label: 'Mid Activity (453,897)',
+				path: '/address/ckb1qyqt8xaupvm8837nv3gtc9x0ekkj64vud3jqfwyw5v?height=453897',
+				description: 'Historical balance snapshot.',
 			},
 			{
-				label: 'After All Spent (3,726,964)',
-				path: '/address/ckb1qyqt05xa00g4rgw2jtkp5ez9ffq7u7ucuggsr39vfn?height=3726964',
-				description: 'Balance: 0 CKB (all consumed).',
+				label: 'Later Activity (3,726,964)',
+				path: '/address/ckb1qyqt8xaupvm8837nv3gtc9x0ekkj64vud3jqfwyw5v?height=3726964',
+				description: 'Balance at later block.',
 			},
 		],
 	},
@@ -613,7 +639,7 @@ const TEST_SECTIONS: TestLinkSection[] = [
 			},
 			{
 				label: 'JoyID with iCKB',
-				path: '/address/ckb1qrgqep8saj8agswr30pls73hra28ry8jlnlc3ejzh3dl2ju7xxpjxqgqq83503v79qrpczf2e6wdgf6jj8am56udwsa6jgn6/cells',
+				path: '/address/ckb1qrgqep8saj8agswr30pls73hra28ry8jlnlc3ejzh3dl2ju7xxpjxqgqq83503v79qrpczf2e6wdgf6jj8am56udwsgxzykc/cells',
 				description: 'iCKB token cells + diverse types (33 cells).',
 			},
 			{

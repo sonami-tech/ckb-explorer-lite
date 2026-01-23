@@ -73,11 +73,7 @@ export function parseAddress(address: string): {
 		payload = result.payload;
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Invalid encoding';
-		// If the library already provides a descriptive error, use it directly.
-		if (message.toLowerCase().includes('address')) {
-			throw new Error(message);
-		}
-		throw new Error(`Unknown address format ${address.length > 20 ? address.substring(0, 20) + '...' : address}: ${message}`);
+		throw new Error(`Invalid address: ${message}`);
 	}
 
 	const isDeprecated = format !== AddressFormat.Full;
@@ -130,13 +126,56 @@ export function parseAddress(address: string): {
 		};
 	}
 
-	// Short format - requires known script lookup.
-	// For now, we'll return without a script and let the caller handle it.
-	return {
-		prefix,
-		format: format as AddressFormat,
-		isDeprecated: true,
-	};
+	// Short format: payload = [code_hash_index (1 byte), ...args (20 bytes)]
+	// Per RFC 0021, args is always 20 bytes in short format.
+	// Standard short format: 21 bytes (1 byte index + 20 bytes args)
+	// Legacy short format: 20 bytes (assumes SECP256K1, args only)
+	if (format === AddressFormat.Short) {
+		if (payload.length < 20) {
+			throw new Error('Invalid short address payload length.');
+		}
+
+		const networkType = prefix === 'ckb' ? 'mainnet' : 'testnet';
+		let codeHash: string;
+		let hashType: RpcScript['hash_type'] = 'type';
+		let args: string;
+
+		if (payload.length === 20) {
+			// Legacy format: 20 bytes args only, assumes SECP256K1.
+			codeHash = SHORT_FORMAT_SCRIPTS.secp256k1.codeHash;
+			args = '0x' + payload.map((b: number) => b.toString(16).padStart(2, '0')).join('');
+		} else {
+			// Standard format: code_hash_index + 20 bytes args.
+			const codeHashIndex = payload[0];
+			args = '0x' + payload.slice(1).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+
+			if (codeHashIndex === SHORT_FORMAT_SCRIPTS.secp256k1.index) {
+				codeHash = SHORT_FORMAT_SCRIPTS.secp256k1.codeHash;
+			} else if (codeHashIndex === SHORT_FORMAT_SCRIPTS.multisig.index) {
+				codeHash = SHORT_FORMAT_SCRIPTS.multisig.codeHash;
+			} else if (codeHashIndex === SHORT_FORMAT_SCRIPTS.acp.index) {
+				codeHash = networkType === 'mainnet'
+					? SHORT_FORMAT_SCRIPTS.acp.mainnet
+					: SHORT_FORMAT_SCRIPTS.acp.testnet;
+			} else {
+				throw new Error(`Unknown short format code_hash_index: 0x${codeHashIndex.toString(16)}`);
+			}
+		}
+
+		return {
+			prefix,
+			format: format as AddressFormat,
+			script: {
+				code_hash: codeHash,
+				hash_type: hashType,
+				args,
+			},
+			isDeprecated: true,
+		};
+	}
+
+	// Unknown format.
+	throw new Error(`Unknown address format: 0x${format.toString(16)}`);
 }
 
 /**
