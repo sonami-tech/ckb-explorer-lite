@@ -137,7 +137,7 @@ export function parseAddress(address: string): {
 
 		const networkType = prefix === 'ckb' ? 'mainnet' : 'testnet';
 		let codeHash: string;
-		let hashType: RpcScript['hash_type'] = 'type';
+		const hashType: RpcScript['hash_type'] = 'type';
 		let args: string;
 
 		if (payload.length === 20) {

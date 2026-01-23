@@ -4,7 +4,7 @@ import { HashDisplay } from './CopyButton';
 import { ScriptIndicatorPill } from './ScriptIndicatorPill';
 import { Tooltip } from './Tooltip';
 import { generateLink } from '../lib/router';
-import { formatAbsoluteTime, formatCkb, formatCkbShort, formatNumber, formatRelativeTime, truncateHex } from '../lib/format';
+import { formatAbsoluteTime, formatCkb, formatCkbShort, formatNumber, formatRelativeTime } from '../lib/format';
 import { lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
 import { BRAND } from '../lib/badgeStyles';
 import { useIsMobile } from '../hooks/ui';
@@ -278,7 +278,7 @@ export function TransactionRow({ transaction, referenceTime }: TransactionRowPro
 
 				return (
 					<div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-						{allIndicators.map((indicator, index) => (
+						{allIndicators.map((indicator) => (
 							<ScriptIndicatorPill
 								key={indicator.isOther ? `other-${indicator.scriptType}` : indicator.name}
 								name={indicator.name}

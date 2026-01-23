@@ -81,6 +81,8 @@ export interface RpcTransactionWithStatus {
 		block_number?: Uint64 | null;
 		reason?: string | null;
 	};
+	/** Transaction cycles (only present for committed transactions after Mirana hardfork). */
+	cycles?: Uint64 | null;
 }
 
 export interface RpcCell {

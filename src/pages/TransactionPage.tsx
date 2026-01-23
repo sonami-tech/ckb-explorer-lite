@@ -51,19 +51,19 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 	// Pagination state for inputs.
 	const [inputsPage, setInputsPage] = useState(1);
-	const [inputsPageSize, setInputsPageSize] = useState(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
+	const [inputsPageSize, setInputsPageSize] = useState<number>(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
 
 	// Pagination state for outputs.
 	const [outputsPage, setOutputsPage] = useState(1);
-	const [outputsPageSize, setOutputsPageSize] = useState(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
+	const [outputsPageSize, setOutputsPageSize] = useState<number>(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
 
 	// Pagination state for cell dependencies.
 	const [cellDepsPage, setCellDepsPage] = useState(1);
-	const [cellDepsPageSize, setCellDepsPageSize] = useState(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
+	const [cellDepsPageSize, setCellDepsPageSize] = useState<number>(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
 
 	// Pagination state for header dependencies.
 	const [headerDepsPage, setHeaderDepsPage] = useState(1);
-	const [headerDepsPageSize, setHeaderDepsPageSize] = useState(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
+	const [headerDepsPageSize, setHeaderDepsPageSize] = useState<number>(TRANSACTION_SECTION_PAGINATION.defaultPageSize);
 
 	const networkType = currentNetwork?.type ?? 'mainnet';
 
@@ -236,7 +236,8 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 	// All derived state and hooks must be called before any early returns.
 	// This satisfies React Hooks rules.
 	const transaction = txData?.transaction ?? null;
-	const tx_status = txData?.tx_status;
+	// tx_status is always present when txData exists per RpcTransactionWithStatus interface.
+	const tx_status = txData?.tx_status ?? { status: 'unknown' as const };
 
 	// Check if this is a cellbase transaction.
 	const isCellbase = transaction && transaction.inputs.length > 0 && isNullOutpoint(

@@ -383,7 +383,7 @@ function SignatureView({ data }: { data: SignatureData }) {
 			<div className="flex items-center gap-2">
 				<span className="text-gray-500 dark:text-gray-400 w-3">v:</span>
 				<code>{data.v}</code>
-				<CopyButton text={data.v} />
+				<CopyButton text={String(data.v)} />
 			</div>
 		</div>
 	);
