@@ -12,13 +12,13 @@ Specific test data for manual QA on mainnet archive node. Requires archive node 
 | Dep Group (Multisig) | `0x71a7ba8fc96349fea0ed3a5c47992e3b4084b031a42264a018e0072e8172e46c:1` | Genesis | None | Always live, dep_group decoding |
 | Genesis Data | `0xe2fb199810d49a4d8beec56718ba2593b665db9d52299a0f9e6e75416d73ff5c:0` | Genesis | None | Raw data display without type script |
 | DAO Deposit | `0x1fdfec93d515009759b6c0a029775143bdeaa9b9883216fc82589cc53e17c195:0` | SECP256K1 | NervosDAO | Live, DAO data decoding (8 bytes) |
-| iCKB Token | `0x7822556daf897a1815a9e593be3ccb6472e967f11bf296904204ef94c3439415:0` | Omnilock V2 | xUDT | Live, xUDT data decoding (16 bytes) |
+| iCKB Token | `0x7822556daf897a1815a9e593be3ccb6472e967f11bf296904204ef94c3439415:0` | Omnilock | xUDT | Live, xUDT data decoding (16 bytes) |
 
 ### Dead Cells
 
 | Name | OutPoint | Created | Consumed | Verify |
 |------|----------|---------|----------|--------|
-| Short-lived | `0x82f18d6dd30acd5aaf74737852cb020a38beaa481d21013344f597a2f5c4e7d9:0` | 18,013,850 | 18,013,852 | Dead status, Omnilock V1 lock |
+| Short-lived | `0x82f18d6dd30acd5aaf74737852cb020a38beaa481d21013344f597a2f5c4e7d9:0` | 18,013,850 | 18,013,852 | Dead status, undocumented lock |
 | DAO Withdraw | `0x0d62a62747493ea53ab6cbebef2a5efc6625125e9d1cb950ce01676a08ad3b16:0` | 11,174 | 290,749 | Dead status, DAO consumed |
 | xUDT Spent | `0x14b69894e2896511d09eb95d4774c7c3798178c2210e147384f64b45d41e72a4:1` | 11,979,619 | 11,993,333 | Dead status, xUDT consumed, JoyID lock |
 
@@ -48,7 +48,7 @@ SECP256K1_BLAKE160 addresses for testing AddressPage.
 
 | Name | Address | Live Cells | Use Case |
 |------|---------|------------|----------|
-| Omnilock V2 | `ckb1qzdcr9un5ezx8tkh03s46m9jymh22jruelq8svzr5krj2nx69dhjvqgpf0hefv3rzsgnkynr8gl38vp3pn5qafuzqq593rr6` | 2 | Non-SECP lock display |
+| Omnilock | `ckb1qzdcr9un5ezx8tkh03s46m9jymh22jruelq8svzr5krj2nx69dhjvqgpf0hefv3rzsgnkynr8gl38vp3pn5qafuzqq593rr6` | 2 | Non-SECP lock display |
 
 ## Blocks
 
@@ -65,7 +65,7 @@ SECP256K1_BLAKE160 addresses for testing AddressPage.
 | Transaction Hash | Type | Verify |
 |------------------|------|--------|
 | `0x71a7ba8fc96349fea0ed3a5c47992e3b4084b031a42264a018e0072e8172e46c` | Genesis cellbase | Single output, system cells |
-| `0x82f18d6dd30acd5aaf74737852cb020a38beaa481d21013344f597a2f5c4e7d9` | Regular transfer | Omnilock V1 output |
+| `0x82f18d6dd30acd5aaf74737852cb020a38beaa481d21013344f597a2f5c4e7d9` | Regular transfer | Undocumented lock output |
 | `0x1fdfec93d515009759b6c0a029775143bdeaa9b9883216fc82589cc53e17c195` | DAO deposit | NervosDAO type script output |
 | `0x8ea92e89466c73b25cc01e6957c7bc5439fa9deaacc95ee1fd44e6c64f1451d0` | DAO withdrawal | Phase 2 withdrawal with header_deps |
 
@@ -93,8 +93,9 @@ Transactions for testing scrolling lists and pagination in TransactionPage.
 | Lock Type | Example Cell | Verify |
 |-----------|--------------|--------|
 | SECP256K1/blake160 | `0x1fdfec93d515009759b6c0a029775143bdeaa9b9883216fc82589cc53e17c195:0` | Default lock badge |
-| Omnilock V1 | `0x82f18d6dd30acd5aaf74737852cb020a38beaa481d21013344f597a2f5c4e7d9:0` | Omnilock badge |
-| Omnilock V2 | `0x7822556daf897a1815a9e593be3ccb6472e967f11bf296904204ef94c3439415:0` | Omnilock badge |
+| Omnilock | `0x7822556daf897a1815a9e593be3ccb6472e967f11bf296904204ef94c3439415:0` | Omnilock badge |
+| JoyID | `0x14b69894e2896511d09eb95d4774c7c3798178c2210e147384f64b45d41e72a4:1` | JoyID badge (dead cell) |
+| Undocumented | `0x82f18d6dd30acd5aaf74737852cb020a38beaa481d21013344f597a2f5c4e7d9:0` | Unknown badge (dead cell) |
 
 ## Archive Mode
 
@@ -108,22 +109,36 @@ Transactions for testing scrolling lists and pagination in TransactionPage.
 
 ## Code Hashes (Reference)
 
+All code hashes verified against official sources.
+
 ### Lock Scripts
 
-| Name | Code Hash |
-|------|-----------|
-| SECP256K1/blake160 | `0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8` |
-| Omnilock V2 | `0x9b819793a64463aed77c615d6cb226eea5487ccfc0783043a587254cda2b6f26` |
-| Omnilock V1 | `0xa4398768d87bd17aea1361edc3accd6a0117774dc4ebc813bfa173e8ac0d086d` |
+| Name | Code Hash | Source |
+|------|-----------|--------|
+| SECP256K1/blake160 | `0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8` | [RFC 0024][rfc0024] |
+| Omnilock | `0x9b819793a64463aed77c615d6cb226eea5487ccfc0783043a587254cda2b6f26` | [RFC 0042][rfc0042] |
+| JoyID | `0xd00c84f0ec8fd441c38bc3f87a371f547190f2fcff88e642bc5bf54b9e318323` | [JoyID Docs][joyid] |
 
 ### Type Scripts
 
-| Name | Code Hash |
-|------|-----------|
-| NervosDAO | `0x82d76d1b75fe2fd9a27dfbaa65a039221a380d76c926f378d3f81cf3e7e13f2e` |
-| xUDT | `0x50bd8d6680b8b9cf98b73f3c08faf8b2a21914311954118ad6609be6e78a1b95` |
-| SUDT | `0x5e7a36a77e68eecc013dfa2fe6a23f3b6c344b04005808694ae6dd45eea4cfd5` |
+| Name | Code Hash | Source |
+|------|-----------|--------|
+| NervosDAO | `0x82d76d1b75fe2fd9a27dfbaa65a039221a380d76c926f378d3f81cf3e7e13f2e` | [RFC 0024][rfc0024] |
+| xUDT | `0x50bd8d6680b8b9cf98b73f3c08faf8b2a21914311954118ad6609be6e78a1b95` | [RFC 0052][rfc0052] |
+| SUDT | `0x5e7a36a77e68eecc013dfa2fe6a23f3b6c344b04005808694ae6dd45eea4cfd5` | [RFC 0025][rfc0025] |
 
-## Additional Reference
+### Undocumented Scripts
 
-For comprehensive test data including performance benchmarks and SQL queries, see `ckb-set-block-height/TEST_DATA.md` in the parent workspace.
+Scripts used in test data with no official documentation.
+
+| Code Hash | Type ID Args | Notes |
+|-----------|--------------|-------|
+| `0xa4398768d87bd17aea1361edc3accd6a0117774dc4ebc813bfa173e8ac0d086d` | `0xf3a8efcb165546ab0d7bc2aaf35c52c3432c571b4b1b2abee0619e872539654d` | Lock script deployed June 21, 2022 at block 7,469,215. Cell: `0x625696834db4320214a8af09de74fd51fc8a83be69d920243f8ccd219071473b:0`. |
+
+## Sources
+
+[rfc0024]: https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0024-ckb-genesis-script-list/0024-ckb-genesis-script-list.md
+[rfc0025]: https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0025-simple-udt/0025-simple-udt.md
+[rfc0042]: https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0042-omnilock/0042-omnilock.md
+[rfc0052]: https://github.com/nervosnetwork/rfcs/blob/master/rfcs/0052-extensible-udt/0052-extensible-udt.md
+[joyid]: https://docs.joyid.dev/guide/ckb/smart-contract
