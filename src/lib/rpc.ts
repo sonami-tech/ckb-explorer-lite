@@ -8,7 +8,6 @@ import type {
 	RpcEpoch,
 	RpcGetCellsResponse,
 	RpcGetGroupedTransactionsResponse,
-	RpcGetTransactionsResponse,
 	RpcLiveCell,
 	RpcTransactionsCount,
 	RpcTransactionWithStatus,
@@ -577,28 +576,6 @@ export function createRpcClient(rpcUrl: string) {
 				return sendArchiveRequest<RpcGetCellsResponse>(height, 'get_cells', params);
 			}
 			return sendRequest<RpcGetCellsResponse>('get_cells', params);
-		},
-
-		/**
-		 * Get transactions by search key (indexer).
-		 * @param searchKey - Indexer search key.
-		 * @param order - Sort order ('asc' or 'desc').
-		 * @param limit - Maximum number of results.
-		 * @param cursor - Pagination cursor.
-		 * @param height - Optional archive height for historical query.
-		 */
-		async getTransactions(
-			searchKey: IndexerSearchKey,
-			order: 'asc' | 'desc' = 'asc',
-			limit: number = 20,
-			cursor?: string,
-			height?: number,
-		): Promise<RpcGetTransactionsResponse> {
-			const params = [searchKey, order, toHex(limit), cursor ?? null];
-			if (height !== undefined) {
-				return sendArchiveRequest<RpcGetTransactionsResponse>(height, 'get_transactions', params);
-			}
-			return sendRequest<RpcGetTransactionsResponse>('get_transactions', params);
 		},
 
 		/**

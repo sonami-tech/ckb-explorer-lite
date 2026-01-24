@@ -52,9 +52,6 @@ interface HexDataProps {
 	/** Allow modal view for large data. Default: true. */
 	allowModal?: boolean;
 
-	/** URL param name for persisting decode choice. */
-	urlParamName?: string;
-
 	/** Custom character limits per breakpoint. */
 	charLimits?: Partial<Record<BreakpointTier, number>>;
 

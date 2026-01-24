@@ -12,6 +12,7 @@ import {
 	formatEquivalentK7Miners,
 } from '../lib/format';
 import { generateLink } from '../lib/router';
+import { getStoredPageSize, setStoredPageSize } from '../lib/localStorage';
 import { InternalLink } from '../components/InternalLink';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
@@ -180,15 +181,6 @@ function filterTransactions(
 	});
 }
 
-function getStoredPageSize(): number {
-	const stored = localStorage.getItem(STORAGE_KEY);
-	const parsed = parseInt(stored ?? '', 10);
-	if (PAGE_SIZE_CONFIG.options.includes(parsed as 5 | 10 | 20 | 50 | 100)) {
-		return parsed;
-	}
-	return PAGE_SIZE_CONFIG.default;
-}
-
 /**
  * Enrich a single raw RPC transaction for display.
  */
@@ -226,7 +218,7 @@ export function BlockPage({ id }: BlockPageProps) {
 
 	// Pagination state.
 	const [currentPage, setCurrentPage] = useState(1);
-	const [pageSize, setPageSize] = useState(getStoredPageSize);
+	const [pageSize, setPageSize] = useState(() => getStoredPageSize(STORAGE_KEY));
 
 	// Sort state.
 	const [sort, setSort] = useState<{ field: string; direction: 'asc' | 'desc' }>(DEFAULT_SORT);
@@ -291,7 +283,7 @@ export function BlockPage({ id }: BlockPageProps) {
 	// Handle page size change.
 	const handlePageSizeChange = useCallback((newSize: number) => {
 		setPageSize(newSize);
-		localStorage.setItem(STORAGE_KEY, newSize.toString());
+		setStoredPageSize(STORAGE_KEY, newSize);
 		setCurrentPage(1); // Reset to first page.
 	}, []);
 

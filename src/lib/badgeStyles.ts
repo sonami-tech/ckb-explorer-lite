@@ -138,13 +138,6 @@ export function getHashTypeStyle(hashType: string): string {
 }
 
 /**
- * Get the appropriate script type color based on whether it's a lock or type script.
- */
-export function getScriptTypeStyle(isLockScript: boolean): string {
-	return isLockScript ? SCRIPT_LOCK : SCRIPT_TYPE;
-}
-
-/**
  * Get the appropriate category style for a well-known script by name.
  */
 export function getScriptCategoryStyle(scriptName: string): string {

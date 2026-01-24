@@ -98,19 +98,6 @@ export interface RpcGetCellsResponse {
 	last_cursor: string;
 }
 
-export interface RpcTransactionInfo {
-	tx_hash: Hex;
-	block_number: Uint64;
-	tx_index: Uint32;
-	io_index: Uint32;
-	io_type: 'input' | 'output';
-}
-
-export interface RpcGetTransactionsResponse {
-	objects: RpcTransactionInfo[];
-	last_cursor: string;
-}
-
 /**
  * Grouped transaction info from get_transactions with group_by_transaction: true.
  * Groups all IO for this address within a single transaction.
