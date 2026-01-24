@@ -14,13 +14,6 @@ export function Skeleton({ className = '' }: SkeletonProps) {
 }
 
 /**
- * Text skeleton with default height.
- */
-export function SkeletonText({ className = '' }: SkeletonProps) {
-	return <Skeleton className={`h-4 ${className}`} />;
-}
-
-/**
  * Block list item skeleton.
  */
 export function SkeletonBlockItem() {

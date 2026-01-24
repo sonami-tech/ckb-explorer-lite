@@ -5,7 +5,7 @@ import { FilterModalShell } from './FilterModalShell';
 import { TYPE_SCRIPT_GROUPS, LOCK_SCRIPT_GROUPS, OTHER_SCRIPTS_GROUP, NO_TYPE_SCRIPT_GROUP } from '../lib/scriptGroups';
 import { DEFAULT_BLOCK_FILTERS } from './TransactionFilters';
 import type { BlockPageFilters, PresentScripts } from './TransactionFilters';
-import type { SortOption, SortValue } from './SortDropdown';
+import type { SortOption, SortValue } from '../types/sort';
 
 export interface BlockFilterModalProps {
 	isOpen: boolean;

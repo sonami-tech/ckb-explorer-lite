@@ -21,7 +21,7 @@ import { InfoIcon } from '../components/InfoIcon';
 import { DetailRow } from '../components/DetailRow';
 import { Pagination } from '../components/Pagination';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
-import { type SortOption } from '../components/SortDropdown';
+import type { SortOption } from '../types/sort';
 import {
 	TransactionRow,
 	calculateTotalOutputCapacity,

@@ -3,9 +3,7 @@
  * Provides parsing for common CKB data formats.
  */
 
-import type { NetworkType } from '../config/networks';
 import type { ScriptInfo } from './wellKnown';
-import { lookupTypeScript } from './wellKnown';
 import { hexToBytes, bytesToHex } from './bytes';
 
 /**
@@ -138,7 +136,7 @@ export function decodeUdt(data: string): UdtData | null {
 
 	const amount = readUint128LE(bytes);
 	const extraData = bytes.length > 16
-		? '0x' + Array.from(bytes.slice(16)).map(b => b.toString(16).padStart(2, '0')).join('')
+		? bytesToHex(bytes.slice(16))
 		: '0x';
 
 	return {
@@ -205,7 +203,7 @@ export function decodeDepGroup(data: string): DepGroupData | null {
 
 		// Read tx_hash (32 bytes).
 		const txHashBytes = bytes.slice(offset, offset + 32);
-		const txHash = '0x' + Array.from(txHashBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+		const txHash = bytesToHex(txHashBytes);
 
 		// Read index (4 bytes, uint32 LE).
 		const index = readUint32LE(bytes, offset + 32);
@@ -402,31 +400,6 @@ export function decodeUtf8(data: string): TextData {
 		text: escapeHtml(result),
 		hasBinaryChars,
 	};
-}
-
-/**
- * Auto-detect and decode cell data based on type script.
- */
-export function decodeData(
-	data: string,
-	typeScript: { code_hash: string; hash_type: string; args: string } | null,
-	network: NetworkType,
-): DecodedData {
-	// Empty data.
-	if (data === '0x') {
-		return { type: 'raw', hex: data };
-	}
-
-	// Try auto-detection based on type script.
-	if (typeScript) {
-		const scriptInfo = lookupTypeScript(typeScript.code_hash, typeScript.hash_type, network, typeScript.args);
-		if (scriptInfo) {
-			return decodeByFormat(data, scriptInfo.dataFormat);
-		}
-	}
-
-	// Default to raw.
-	return { type: 'raw', hex: data };
 }
 
 /** Integer format type for decodeByFormat. */
@@ -683,7 +656,7 @@ function parseOptionalBytes(
 
 	// Extract content bytes.
 	const content = bytes.slice(startOffset + 4, startOffset + 4 + contentSize);
-	return '0x' + Array.from(content).map(b => b.toString(16).padStart(2, '0')).join('');
+	return bytesToHex(content);
 }
 
 /**
@@ -696,8 +669,8 @@ export function decodeSignature(data: string): SignatureData | null {
 	// Must be exactly 65 bytes.
 	if (bytes.length !== 65) return null;
 
-	const r = '0x' + Array.from(bytes.slice(0, 32)).map(b => b.toString(16).padStart(2, '0')).join('');
-	const s = '0x' + Array.from(bytes.slice(32, 64)).map(b => b.toString(16).padStart(2, '0')).join('');
+	const r = bytesToHex(bytes.slice(0, 32));
+	const s = bytesToHex(bytes.slice(32, 64));
 	const v = bytes[64];
 
 	return {

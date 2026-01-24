@@ -28,10 +28,8 @@ import {
 	type LiveCellSort,
 	type PresentScripts,
 } from '../components/LiveCellFilters';
+import { SKIP_THRESHOLD_PAGES } from '../lib/filterUtils';
 import type { IndexerSearchKey, RpcCell } from '../types/rpc';
-
-// Threshold for using large-limit skipping during cursor building.
-const SKIP_THRESHOLD_PAGES = 10;
 
 interface CellsForAddressPageProps {
 	address: string;

@@ -25,10 +25,8 @@ import {
 import { FilterSortButton } from '../components/FilterSortButton';
 import { AddressFilterModal } from '../components/AddressFilterModal';
 import { ActiveFilterChips, type FilterChip } from '../components/ActiveFilterChips';
+import { SKIP_THRESHOLD_PAGES } from '../lib/filterUtils';
 import type { IndexerSearchKey } from '../types/rpc';
-
-// Threshold for using large-limit skipping during cursor building.
-const SKIP_THRESHOLD_PAGES = 10;
 
 interface TransactionsForAddressPageProps {
 	address: string;

@@ -152,24 +152,6 @@ export function getTypeScriptGroup(codeHash: string, network: NetworkType): stri
 }
 
 /**
- * Get the filterable lock script name for a code hash.
- * Returns the script name (e.g., "Multisig", "Omnilock") or null if not found.
- * Excludes SECP256K1/blake160 since it is not filterable.
- */
-export function getFilterableLockScript(codeHash: string, network: NetworkType): string | null {
-	const registryNetwork = toRegistryNetwork(network);
-	const info = LOCK_SCRIPT_INFO[registryNetwork][codeHash];
-	if (!info) {
-		return null;
-	}
-	// Only return if it's in the filterable list.
-	if (FILTERABLE_LOCK_SCRIPTS.includes(info.name)) {
-		return info.name;
-	}
-	return null;
-}
-
-/**
  * Get the lock script groups for a code hash.
  * Returns an array of group names (e.g., ["RGB++"]) or null if not found.
  * A script can belong to multiple groups.
@@ -198,38 +180,6 @@ export function getCodeHashesForGroup(groupName: string, network: NetworkType): 
 	}
 
 	return codeHashes;
-}
-
-/**
- * Get the code hash for a type script by name.
- * Returns the code hash or null if not found.
- */
-export function getCodeHashForScript(scriptName: string, network: NetworkType): string | null {
-	const registryNetwork = toRegistryNetwork(network);
-
-	for (const [codeHash, info] of Object.entries(TYPE_SCRIPT_INFO[registryNetwork])) {
-		if (info.name === scriptName) {
-			return codeHash;
-		}
-	}
-
-	return null;
-}
-
-/**
- * Get the code hash for a filterable lock script by name.
- * Returns the code hash or null if not found.
- */
-export function getCodeHashForLockScript(scriptName: string, network: NetworkType): string | null {
-	const registryNetwork = toRegistryNetwork(network);
-
-	for (const [codeHash, info] of Object.entries(LOCK_SCRIPT_INFO[registryNetwork])) {
-		if (info.name === scriptName && FILTERABLE_LOCK_SCRIPTS.includes(info.name)) {
-			return codeHash;
-		}
-	}
-
-	return null;
 }
 
 /**

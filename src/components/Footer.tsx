@@ -3,7 +3,8 @@
  * Provides links to resources, community, and documentation.
  */
 
-import { navigate, generateLink } from '../lib/router';
+import { generateLink } from '../lib/router';
+import { InternalLink } from './InternalLink';
 
 // External link icon component.
 function ExternalLinkIcon() {
@@ -11,27 +12,6 @@ function ExternalLinkIcon() {
 		<svg className="w-3 h-3 ml-1 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 			<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
 		</svg>
-	);
-}
-
-// Internal navigation link component.
-function InternalLink({ href, children }: { href: string; children: React.ReactNode }) {
-	const handleClick = (e: React.MouseEvent) => {
-		if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
-			return;
-		}
-		e.preventDefault();
-		navigate(href);
-	};
-
-	return (
-		<a
-			href={href}
-			onClick={handleClick}
-			className="hover:text-nervos transition-colors"
-		>
-			{children}
-		</a>
 	);
 }
 
@@ -63,12 +43,12 @@ export function Footer() {
 						</h3>
 						<ul className="space-y-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
 							<li>
-								<InternalLink href={generateLink('/')}>
+								<InternalLink href={generateLink('/')} className="hover:text-nervos transition-colors">
 									Home
 								</InternalLink>
 							</li>
 							<li>
-								<InternalLink href={generateLink('/resources')}>
+								<InternalLink href={generateLink('/resources')} className="hover:text-nervos transition-colors">
 									Well-Known Resources
 								</InternalLink>
 							</li>

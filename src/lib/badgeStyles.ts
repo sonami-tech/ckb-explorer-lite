@@ -103,22 +103,6 @@ export const CELL_PROTOCOL = 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark
 export const BRAND = 'bg-nervos/10 text-nervos';
 
 // =============================================================================
-// TIMELINE EVENT BADGES
-// =============================================================================
-
-/** Genesis event marker. */
-export const EVENT_GENESIS = 'bg-blue-500';
-
-/** Hardfork event marker. */
-export const EVENT_HARDFORK = 'bg-purple-500';
-
-/** Halving event marker. */
-export const EVENT_HALVING = 'bg-amber-500';
-
-/** Default event marker. */
-export const EVENT_DEFAULT = 'bg-gray-500';
-
-// =============================================================================
 // DAO PHASE BADGES
 // =============================================================================
 
@@ -132,17 +116,8 @@ export const DAO_WITHDRAW = 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700
 // MISCELLANEOUS BADGES
 // =============================================================================
 
-/** Has type script indicator. */
-export const HAS_TYPE = 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
-
 /** Dep type indicator (code/dep_group). */
 export const DEP_TYPE = 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400';
-
-/** Legacy format indicator. */
-export const LEGACY_FORMAT = 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
-
-/** Network indicator. */
-export const NETWORK = 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300';
 
 // =============================================================================
 // INACTIVE/DISABLED STATE

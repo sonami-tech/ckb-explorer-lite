@@ -17,19 +17,6 @@ export const POLL_INTERVAL_MS = 8000;
 export const HOME_ITEMS_TO_SHOW = 10;
 
 /**
- * Hash truncation settings for display.
- * Format: "0x{prefix}...{suffix}"
- */
-export const HASH_TRUNCATE = {
-	/** Standard truncation for transaction and block hashes. */
-	standard: { prefix: 8, suffix: 8 },
-	/** Shorter truncation for code hashes in type/lock scripts. */
-	short: { prefix: 6, suffix: 6 },
-	/** Minimal truncation for inline display. */
-	minimal: { prefix: 4, suffix: 4 },
-} as const;
-
-/**
  * RPC request cache configuration.
  * See src/CACHE_POLICY.md for detailed cache policy documentation.
  */
@@ -50,20 +37,6 @@ export const CACHE_CONFIG = {
 export const CELL_DATA_CONFIG = {
 	/** Automatically decode cell data for known type scripts (SUDT, xUDT, DAO). */
 	autoDecodeKnownTypes: true,
-} as const;
-
-/**
- * HexData display configuration for large data handling.
- */
-export const HEX_DATA_CONFIG = {
-	/** Bytes threshold to show download button. */
-	downloadThreshold: 10 * 1024,  // 10 KB
-	/** Bytes threshold to show warning before expanding. */
-	warnThreshold: 100 * 1024,     // 100 KB
-	/** Bytes threshold to suggest modal view. */
-	modalThreshold: 50 * 1024,     // 50 KB
-	/** Max height in pixels for expanded in-place view. */
-	maxExpandedHeight: 384,        // ~24rem
 } as const;
 
 /**
