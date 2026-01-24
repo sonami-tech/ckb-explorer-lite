@@ -48,6 +48,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 
 	// Cell list state.
 	const [cells, setCells] = useState<RpcCell[]>([]);
+	const [cellTimestamps, setCellTimestamps] = useState<Map<bigint, number>>(new Map());
 	const [currentPage, setCurrentPage] = useState(1);
 	const [isLoadingOverview, setIsLoadingOverview] = useState(true);
 	const [isLoadingCells, setIsLoadingCells] = useState(true);
@@ -296,6 +297,20 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 				cursorCacheRef.current.set(pageSize, cellsResult.last_cursor);
 			}
 
+			// Fetch timestamps for unique blocks in this page.
+			const uniqueBlocks = [...new Set(filteredCells.map(c => BigInt(c.block_number)))];
+			const headers = await Promise.all(uniqueBlocks.map(bn => rpc.getHeaderByNumber(bn, archiveHeight)));
+
+			if (fetchId !== cellsFetchIdRef.current) return;
+
+			const timestampMap = new Map<bigint, number>();
+			uniqueBlocks.forEach((bn, i) => {
+				if (headers[i]) {
+					timestampMap.set(bn, Number(BigInt(headers[i]!.timestamp)));
+				}
+			});
+
+			setCellTimestamps(timestampMap);
 			setCells(filteredCells);
 		} catch (err) {
 			if (fetchId !== cellsFetchIdRef.current) return;
@@ -417,6 +432,20 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 				filteredCells = filterCellsByLockScript(filteredCells, filters.lockScriptGroups, networkType);
 			}
 
+			// Fetch timestamps for unique blocks in this page.
+			const uniqueBlocks = [...new Set(filteredCells.map(c => BigInt(c.block_number)))];
+			const headers = await Promise.all(uniqueBlocks.map(bn => rpc.getHeaderByNumber(bn, archiveHeight)));
+
+			if (fetchId !== cellsFetchIdRef.current) return;
+
+			const timestampMap = new Map<bigint, number>();
+			uniqueBlocks.forEach((bn, i) => {
+				if (headers[i]) {
+					timestampMap.set(bn, Number(BigInt(headers[i]!.timestamp)));
+				}
+			});
+
+			setCellTimestamps(timestampMap);
 			setCells(filteredCells);
 			setCurrentPage(targetPage);
 		} catch (err) {
@@ -791,6 +820,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 								key={`${cell.out_point.tx_hash}-${cell.out_point.index}`}
 								cell={cell}
 								networkType={networkType}
+								timestamp={cellTimestamps.get(BigInt(cell.block_number))}
 							/>
 						))
 					)}

@@ -3,31 +3,35 @@
  *
  * Layout:
  * ┌─────────────────────────────────────────────────────────────┐
- * │ 0x1234...abcd:0  [copy]                                     │
+ * │ 0x1234...abcd:0  [copy]                         3 hours ago │
  * │ Block 12,345,678 • 128 B                       1,234.56 CKB │
  * │ [RGB++] [UDT]                                               │
  * └─────────────────────────────────────────────────────────────┘
  */
 
 import { generateLink, navigate } from '../lib/router';
-import { formatCkb, formatCkbShort, formatNumber } from '../lib/format';
+import { formatAbsoluteTime, formatCkb, formatCkbShort, formatNumber, formatRelativeTime, formatRelativeTimeShort } from '../lib/format';
 import { Tooltip } from './Tooltip';
 import { getTypeScriptGroup, getLockScriptGroups, FILTERABLE_LOCK_SCRIPTS, isOtherLockScript, isOtherTypeScript } from '../lib/scriptGroups';
 import { ScriptIndicatorPill } from './ScriptIndicatorPill';
 import { HashDisplay } from './CopyButton';
+import { useIsMobile } from '../hooks/ui';
 import type { NetworkType } from '../config/networks';
 import type { RpcCell } from '../types/rpc';
 
 interface CellRowProps {
 	cell: RpcCell;
 	networkType: NetworkType;
+	/** Block timestamp in milliseconds (optional). */
+	timestamp?: number;
 }
 
 /**
  * Display a single cell as a clickable row.
  * Navigates to the cell detail page on click.
  */
-export function CellRow({ cell, networkType }: CellRowProps) {
+export function CellRow({ cell, networkType, timestamp }: CellRowProps) {
+	const isMobile = useIsMobile();
 	const txHash = cell.out_point.tx_hash;
 	const index = Number(cell.out_point.index);
 	const blockNumber = BigInt(cell.block_number);
@@ -110,14 +114,21 @@ export function CellRow({ cell, networkType }: CellRowProps) {
 			onKeyDown={handleKeyDown}
 			className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors"
 		>
-			{/* Row 1: OutPoint with copy button */}
-			<div className="mb-1.5">
+			{/* Row 1: OutPoint with copy button on left, relative time on right */}
+			<div className="flex items-center justify-between mb-1.5">
 				<HashDisplay
 					hash={outPointDisplay}
 					linkTo={cellLink}
 					responsive
 					className="font-mono text-sm"
 				/>
+				{timestamp !== undefined && (
+					<Tooltip content={formatAbsoluteTime(timestamp)}>
+						<span className="text-xs text-gray-400 dark:text-gray-500">
+							{isMobile ? formatRelativeTimeShort(timestamp) : formatRelativeTime(timestamp)}
+						</span>
+					</Tooltip>
+				)}
 			</div>
 
 			{/* Row 2: Block number • data bytes on left, Capacity on right */}
