@@ -176,8 +176,10 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
 			const header = await rpc.getTipHeader();
 			setTipBlockNumber(BigInt(header.number));
 			setTipBlockTimestamp(BigInt(header.timestamp));
-		} catch {
-			// Silently fail on refresh - don't update error state.
+		} catch (err) {
+			// Log refresh errors for debugging but don't update error state
+			// to avoid flashing error UI on transient network issues.
+			console.debug('Tip refresh failed:', err);
 		}
 	}, [rpc]);
 
