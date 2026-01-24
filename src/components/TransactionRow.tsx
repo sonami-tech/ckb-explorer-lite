@@ -4,7 +4,7 @@ import { HashDisplay } from './CopyButton';
 import { ScriptIndicatorPill } from './ScriptIndicatorPill';
 import { Tooltip } from './Tooltip';
 import { generateLink } from '../lib/router';
-import { formatAbsoluteTime, formatCkb, formatCkbShort, formatNumber, formatRelativeTime } from '../lib/format';
+import { formatAbsoluteTime, formatCkb, formatCkbShort, formatNumber, formatRelativeTime, formatRelativeTimeShort } from '../lib/format';
 import { lookupLockScript, lookupTypeScript } from '../lib/wellKnown';
 import { BRAND } from '../lib/badgeStyles';
 import { useIsMobile } from '../hooks/ui';
@@ -192,22 +192,22 @@ export function TransactionRow({ transaction, referenceTime }: TransactionRowPro
 		if (referenceTime) {
 			// Calculate relative to reference time.
 			const diff = referenceTime - transaction.timestamp;
-			if (diff < 0) return 'just now';
+			if (diff < 0) return isMobile ? 'now' : 'just now';
 			const seconds = Math.floor(diff / 1000);
-			if (seconds < 60) return seconds === 1 ? '1 second ago' : `${seconds} seconds ago`;
+			if (seconds < 60) return isMobile ? `${seconds}s` : (seconds === 1 ? '1 second ago' : `${seconds} seconds ago`);
 			const minutes = Math.floor(seconds / 60);
-			if (minutes < 60) return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
+			if (minutes < 60) return isMobile ? `${minutes}m` : (minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`);
 			const hours = Math.floor(minutes / 60);
-			if (hours < 24) return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+			if (hours < 24) return isMobile ? `${hours}h` : (hours === 1 ? '1 hour ago' : `${hours} hours ago`);
 			const days = Math.floor(hours / 24);
-			if (days < 30) return days === 1 ? '1 day ago' : `${days} days ago`;
+			if (days < 30) return isMobile ? `${days}d` : (days === 1 ? '1 day ago' : `${days} days ago`);
 			const months = Math.floor(days / 30);
-			if (months < 12) return months === 1 ? '1 month ago' : `${months} months ago`;
+			if (months < 12) return isMobile ? `${months}mo` : (months === 1 ? '1 month ago' : `${months} months ago`);
 			const years = Math.floor(months / 12);
-			return years === 1 ? '1 year ago' : `${years} years ago`;
+			return isMobile ? `${years}y` : (years === 1 ? '1 year ago' : `${years} years ago`);
 		}
-		return formatRelativeTime(transaction.timestamp);
-	}, [transaction.timestamp, referenceTime]);
+		return isMobile ? formatRelativeTimeShort(transaction.timestamp) : formatRelativeTime(transaction.timestamp);
+	}, [transaction.timestamp, referenceTime, isMobile]);
 
 	// Input/output labels.
 	const inputLabel = isMobile
