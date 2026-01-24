@@ -14,7 +14,7 @@ import {
 import { encodeAddress } from '../lib/address';
 import { TimeSlider } from '../components/TimeSlider';
 import { navigate, generateLink } from '../lib/router';
-import { useIsMobile } from '../hooks/ui';
+import { useBreakpoint } from '../hooks/ui';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonBlockItem, SkeletonTransactionItem } from '../components/Skeleton';
 import { ErrorDisplay, ConnectionError } from '../components/ErrorDisplay';
@@ -248,7 +248,7 @@ export function HomePage() {
 			</div>
 
 			{/* Blocks list. */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 				<section>
 					<h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 						{`Latest Blocks${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}
@@ -376,9 +376,10 @@ function CellbaseIcon() {
 }
 
 function TransactionListItem({ tx }: { tx: TransactionInfo }) {
-	const isMobile = useIsMobile();
-	const inputLabel = isMobile ? `${tx.inputCount} in` : tx.inputCount === 1 ? '1 input' : `${tx.inputCount} inputs`;
-	const outputLabel = isMobile ? `${tx.outputCount} out` : tx.outputCount === 1 ? '1 output' : `${tx.outputCount} outputs`;
+	const breakpoint = useBreakpoint();
+	const isCompact = breakpoint !== 'desktop';
+	const inputLabel = isCompact ? `${tx.inputCount} in` : tx.inputCount === 1 ? '1 input' : `${tx.inputCount} inputs`;
+	const outputLabel = isCompact ? `${tx.outputCount} out` : tx.outputCount === 1 ? '1 output' : `${tx.outputCount} outputs`;
 	const href = generateLink(`/tx/${tx.hash}`);
 
 	const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -402,7 +403,7 @@ function TransactionListItem({ tx }: { tx: TransactionInfo }) {
 						{truncateHex(tx.hash, 8, 8)}
 					</span>
 					{tx.isCellbase && (
-						isMobile ? (
+						isCompact ? (
 							<CellbaseIcon />
 						) : (
 							<span className={`px-1.5 py-0.5 text-[10px] font-semibold ${BRAND} rounded`}>
