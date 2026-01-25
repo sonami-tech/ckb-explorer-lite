@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { networks as configuredNetworks, type NetworkConfig } from '../config';
 import { createRpcClient, type RpcClient } from '../lib/rpc';
+import { safeGetItem, safeSetItem } from '../lib/localStorage';
 
 const STORAGE_KEY = 'ckb-explorer-selected-network';
 const URL_PARAM_KEY = 'network';
@@ -54,7 +55,7 @@ function getInitialNetworkIndex(networks: NetworkConfig[]): number {
 	}
 
 	// Then check localStorage.
-	const stored = localStorage.getItem(STORAGE_KEY);
+	const stored = safeGetItem(STORAGE_KEY);
 	if (stored) {
 		const index = parseInt(stored, 10);
 		if (!isNaN(index) && index >= 0 && index < networks.length) {
@@ -95,7 +96,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
 	// Persist selection and update URL when network changes.
 	useEffect(() => {
 		if (currentNetwork) {
-			localStorage.setItem(STORAGE_KEY, selectedIndex.toString());
+			safeSetItem(STORAGE_KEY, selectedIndex.toString());
 			updateUrlWithNetwork(currentNetwork.name);
 		}
 	}, [selectedIndex, currentNetwork]);

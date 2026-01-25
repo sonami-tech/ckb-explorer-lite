@@ -12,7 +12,7 @@ import {
 	type LiveCellFilters,
 	type LiveCellSort,
 	type PresentScripts,
-} from './LiveCellFilters';
+} from '../lib/liveCellFilters';
 import type { BlockRangeFilter } from './AddressTransactionFilters';
 
 export interface LiveCellFilterModalProps {

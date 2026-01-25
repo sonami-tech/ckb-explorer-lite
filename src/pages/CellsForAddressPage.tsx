@@ -27,7 +27,7 @@ import {
 	type LiveCellFilters,
 	type LiveCellSort,
 	type PresentScripts,
-} from '../components/LiveCellFilters';
+} from '../lib/liveCellFilters';
 import { SKIP_THRESHOLD_PAGES } from '../lib/filterUtils';
 import type { IndexerSearchKey, RpcCell } from '../types/rpc';
 

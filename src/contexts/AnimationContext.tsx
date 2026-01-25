@@ -6,6 +6,7 @@ import {
 	useCallback,
 	type ReactNode,
 } from 'react';
+import { safeGetItem, safeSetItem } from '../lib/localStorage';
 
 interface AnimationContextValue {
 	isPlaying: boolean;
@@ -19,7 +20,7 @@ const STORAGE_KEY = 'ckb-explorer-animation';
 
 function getStoredState(): boolean | null {
 	if (typeof window === 'undefined') return null;
-	const stored = localStorage.getItem(STORAGE_KEY);
+	const stored = safeGetItem(STORAGE_KEY);
 	if (stored === 'true') return true;
 	if (stored === 'false') return false;
 	return null;
@@ -39,7 +40,7 @@ export function AnimationProvider({ children }: { children: ReactNode }) {
 
 	const setIsPlaying = useCallback((playing: boolean) => {
 		setIsPlayingState(playing);
-		localStorage.setItem(STORAGE_KEY, String(playing));
+		safeSetItem(STORAGE_KEY, String(playing));
 	}, []);
 
 	const toggle = useCallback(() => {

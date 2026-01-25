@@ -7,6 +7,7 @@ import {
 	useCallback,
 	type ReactNode,
 } from 'react';
+import { safeGetItem, safeSetItem } from '../lib/localStorage';
 
 export type Theme = 'light' | 'dark' | 'auto';
 
@@ -27,7 +28,7 @@ function getSystemTheme(): 'light' | 'dark' {
 
 function getStoredTheme(): Theme {
 	if (typeof window === 'undefined') return 'auto';
-	const stored = localStorage.getItem(STORAGE_KEY);
+	const stored = safeGetItem(STORAGE_KEY);
 	if (stored === 'light' || stored === 'dark' || stored === 'auto') {
 		return stored;
 	}
@@ -42,7 +43,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 	const setTheme = useCallback((newTheme: Theme) => {
 		setThemeState(newTheme);
-		localStorage.setItem(STORAGE_KEY, newTheme);
+		safeSetItem(STORAGE_KEY, newTheme);
 	}, []);
 
 	// Listen for system theme changes.
