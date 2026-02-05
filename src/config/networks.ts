@@ -16,6 +16,8 @@ export interface NetworkConfig {
 	isArchive: boolean;
 	/** RPC endpoint URL. */
 	url: string;
+	/** Optional stats server URL (port 8116 by default). */
+	statsUrl?: string;
 }
 
 /**
@@ -30,6 +32,7 @@ export const networks: NetworkConfig[] = [
 		type: 'mainnet',
 		isArchive: true,
 		url: 'http://192.168.0.74:8114',
+		statsUrl: '/stats-api',
 	},
 	{
 		name: 'Mainnet',

@@ -2,6 +2,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AnimationProvider } from './contexts/AnimationContext';
 import { NetworkProvider } from './contexts/NetworkContext';
 import { ArchiveProvider } from './contexts/ArchiveContext';
+import { StatsProvider } from './contexts/StatsContext';
 import { TickProvider } from './contexts/TickContext';
 import { ResponsiveProvider } from './contexts/ResponsiveContext';
 import { Layout } from './components/Layout';
@@ -52,11 +53,13 @@ function App() {
 				<AnimationProvider>
 					<NetworkProvider>
 						<ArchiveProvider>
-							<TickProvider>
-								<Layout>
-									<Router />
-								</Layout>
-							</TickProvider>
+							<StatsProvider>
+								<TickProvider>
+									<Layout>
+										<Router />
+									</Layout>
+								</TickProvider>
+							</StatsProvider>
 						</ArchiveProvider>
 					</NetworkProvider>
 				</AnimationProvider>
