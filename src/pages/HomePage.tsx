@@ -12,14 +12,17 @@ import {
 	compactTargetToDifficulty,
 } from '../lib/format';
 import { encodeAddress } from '../lib/address';
+import { fromHex } from '../lib/rpc';
 import { TimeSlider } from '../components/TimeSlider';
 import { navigate, generateLink } from '../lib/router';
 import { useBreakpoint } from '../hooks/ui';
 import { useArchive } from '../contexts/ArchiveContext';
+import { useStats } from '../contexts/StatsContext';
 import { SkeletonBlockItem, SkeletonTransactionItem } from '../components/Skeleton';
 import { ErrorDisplay, ConnectionError } from '../components/ErrorDisplay';
 import { RelativeTime } from '../components/RelativeTime';
 import type { RpcBlock } from '../types/rpc';
+import type { StatsAllGlobalResponse, StatsSupplyResponse } from '../types/stats';
 import { POLL_INTERVAL_MS, HOME_ITEMS_TO_SHOW } from '../config';
 import { BRAND } from '../lib/badgeStyles';
 
@@ -59,8 +62,11 @@ export function HomePage() {
 	const [blocksError, setBlocksError] = useState<Error | null>(null);
 	const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
 	const [avgBlockTime, setAvgBlockTime] = useState<number>(0);
+	const [globalStats, setGlobalStats] = useState<StatsAllGlobalResponse | null>(null);
+	const [supplyStats, setSupplyStats] = useState<StatsSupplyResponse | null>(null);
 
 	const networkType = currentNetwork?.type ?? 'mainnet';
+	const { statsClient, isStatsAvailable } = useStats();
 
 	// Determine which block to use as the starting point for display.
 	// In archive mode, show blocks up to the archive height; otherwise show latest.
@@ -175,6 +181,23 @@ export function HomePage() {
 		}
 	}, [rpc, displayTip, archiveHeight, networkType]);
 
+	// Fetch global stats from stats server.
+	const fetchStats = useCallback(async () => {
+		if (!statsClient) return;
+
+		try {
+			const [globalResult, supplyResult] = await Promise.all([
+				statsClient.getAllGlobalStats(archiveHeight),
+				statsClient.getCirculatingSupply(archiveHeight),
+			]);
+			setGlobalStats(globalResult);
+			setSupplyStats(supplyResult);
+		} catch (err) {
+			// Stats are supplementary - log error but don't block page.
+			console.error('Failed to fetch stats:', err);
+		}
+	}, [statsClient, archiveHeight]);
+
 	// Initial fetch and polling (skip polling in archive mode since historical data doesn't change).
 	// Note: Tip polling is handled by ArchiveContext; we only poll for block data here.
 	useEffect(() => {
@@ -186,6 +209,19 @@ export function HomePage() {
 			return () => clearInterval(interval);
 		}
 	}, [fetchBlocks, archiveHeight]);
+
+	// Fetch and poll stats (when stats server available).
+	useEffect(() => {
+		if (!isStatsAvailable) return;
+
+		fetchStats();
+
+		// Only poll for updates when viewing latest blocks.
+		if (archiveHeight === undefined) {
+			const interval = setInterval(fetchStats, POLL_INTERVAL_MS);
+			return () => clearInterval(interval);
+		}
+	}, [fetchStats, isStatsAvailable, archiveHeight]);
 
 	// Show connection error if initial load fails.
 	if (archiveError && !archiveLoading) {
@@ -245,6 +281,40 @@ export function HomePage() {
 						{networkStats ? formatDifficulty(networkStats.difficulty) : '...'}
 					</StatItem>
 				</StatGroup>
+
+				{isStatsAvailable && (
+					<>
+						{/* Network stats from stats server. */}
+						<StatGroup title={`Network${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
+							<StatItem label="Total Addresses">
+								{globalStats ? formatNumber(fromHex(globalStats.core.total_addresses)) : '...'}
+							</StatItem>
+							<StatItem label="Active Addresses">
+								{globalStats ? formatNumber(fromHex(globalStats.core.active_addresses)) : '...'}
+							</StatItem>
+						</StatGroup>
+
+						{/* Cell stats from stats server. */}
+						<StatGroup title={`Cells${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
+							<StatItem label="Total Live Cells">
+								{globalStats ? formatNumber(fromHex(globalStats.core.total_live_cells)) : '...'}
+							</StatItem>
+							<StatItem label="DAO Cells">
+								{globalStats ? formatNumber(fromHex(globalStats.core.dao_cells)) : '...'}
+							</StatItem>
+						</StatGroup>
+
+						{/* Supply stats from stats server. */}
+						<StatGroup title={`Supply${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
+							<StatItem label="Circulating">
+								{supplyStats ? formatCkb(fromHex(supplyStats.circulating), 0) : '...'}
+							</StatItem>
+							<StatItem label="DAO Locked">
+								{supplyStats ? formatCkb(fromHex(supplyStats.dao_locked), 0) : '...'}
+							</StatItem>
+						</StatGroup>
+					</>
+				)}
 			</div>
 
 			{/* Blocks list. */}
