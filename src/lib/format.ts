@@ -21,7 +21,13 @@ export function formatCkb(shannons: bigint | string, decimals?: number): string 
 		const roundedFraction = (fraction + divisor / 2n) / divisor;
 		// Handle case where rounding causes overflow (e.g., 0.999... → 1.0).
 		if (roundedFraction >= 10n ** BigInt(decimals)) {
+			if (decimals === 0) {
+				return formatNumber(whole + 1n) + ' CKB';
+			}
 			return formatNumber(whole + 1n) + '.' + '0'.repeat(decimals) + ' CKB';
+		}
+		if (decimals === 0) {
+			return formatNumber(whole) + ' CKB';
 		}
 		const fractionStr = roundedFraction.toString().padStart(decimals, '0');
 		return formatNumber(whole) + '.' + fractionStr + ' CKB';
