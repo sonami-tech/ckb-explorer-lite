@@ -82,6 +82,7 @@ const ICKB_DEPLOYMENT = 'https://github.com/ickb/whitepaper#mainnet-deployment';
 const RGBPP_CONSTANTS = 'https://github.com/ckb-cell/rgbpp-sdk/blob/main/packages/ckb/src/constants/index.ts';
 const CKBFS_README = 'https://github.com/nervape/ckbfs/blob/master/README.md';
 const CKB_SYSTEM_SCRIPTS = 'https://github.com/nervosnetwork/ckb-system-scripts';
+const QUANTUM_LOCK_README = 'https://github.com/cryptape/quantum-resistant-lock-script';
 
 /** Network type for script registries (mainnet or testnet). */
 export type RegistryNetwork = 'mainnet' | 'testnet';
@@ -473,6 +474,18 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 				{ title: 'iCKB Deployment', url: ICKB_DEPLOYMENT },
 			],
 		},
+		// ============================================
+		// Quantum-Resistant Lock (SPHINCS+)
+		// ============================================
+		'0x4598d00df2f3dc8bc40eee38689a539c94f6cc3720b7a2a6746736daa60f500a:0': {
+			name: 'Quantum Lock Binary',
+			description: 'Contains the compiled RISC-V binary code for the quantum-resistant lock script using SPHINCS+ signatures.',
+			importance: 'Post-quantum cryptographic lock supporting all 12 NIST FIPS 205 parameter sets for future-proof security.',
+			category: 'protocol',
+			resources: [
+				{ title: 'Quantum Lock Deployment', url: QUANTUM_LOCK_README },
+			],
+		},
 	},
 	testnet: {
 		// ============================================
@@ -711,6 +724,18 @@ export const WELL_KNOWN_CELLS: Record<RegistryNetwork, Record<string, WellKnownC
 			dataFormat: 'dep_group',
 			resources: [
 				{ title: 'iCKB Deployment', url: ICKB_DEPLOYMENT },
+			],
+		},
+		// ============================================
+		// Quantum-Resistant Lock (SPHINCS+)
+		// ============================================
+		'0x631d9a6049fb1fc3790e89d9daf35abe535b5e754cd8c3404319319710f0b106:0': {
+			name: 'Quantum Lock Binary',
+			description: 'Contains the compiled RISC-V binary code for the quantum-resistant lock script using SPHINCS+ signatures.',
+			importance: 'Post-quantum cryptographic lock supporting all 12 NIST FIPS 205 parameter sets for future-proof security.',
+			category: 'protocol',
+			resources: [
+				{ title: 'Quantum Lock Deployment', url: QUANTUM_LOCK_README },
 			],
 		},
 	},
@@ -1046,6 +1071,15 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			resourceId: 'rgbpp',
 			groups: ['RGB++'],
 		},
+		// Quantum-Resistant Lock (SPHINCS+).
+		'0x302d35982f865ebcbedb9a9360e40530ed32adb8e10b42fbbe70d8312ff7cedf': {
+			name: 'Quantum Lock',
+			description: 'Post-quantum lock using SPHINCS+ signatures (NIST FIPS 205).',
+			hashType: 'type',
+			sourceUrl: QUANTUM_LOCK_README,
+			resourceId: 'quantum',
+			groups: ['Quantum'],
+		},
 	},
 	testnet: {
 		// SECP256K1/blake160 - RFC 0024 (same as mainnet).
@@ -1160,6 +1194,15 @@ export const KNOWN_LOCK_SCRIPTS: Record<RegistryNetwork, Record<string, ScriptIn
 			sourceUrl: RGBPP_CONSTANTS,
 			resourceId: 'rgbpp',
 			groups: ['RGB++'],
+		},
+		// Quantum-Resistant Lock (SPHINCS+).
+		'0x147ecbb5c5127d982ee1362d2c2bb4267803da2eb006d150e88af6caaa0a7eaf': {
+			name: 'Quantum Lock',
+			description: 'Post-quantum lock using SPHINCS+ signatures (NIST FIPS 205).',
+			hashType: 'data1',
+			sourceUrl: QUANTUM_LOCK_README,
+			resourceId: 'quantum',
+			groups: ['Quantum'],
 		},
 	},
 };
