@@ -8,5 +8,13 @@ export default defineConfig({
   server: {
     port: 5273,
     host: true,
+    proxy: {
+      // Proxy stats server requests to avoid CORS during development.
+      '/stats-api': {
+        target: 'http://127.0.0.1:8116',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/stats-api/, ''),
+      },
+    },
   },
 })
