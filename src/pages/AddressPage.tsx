@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
+import { useStats } from '../contexts/StatsContext';
 import {
 	getNetworkFromPrefix,
 	getFormatDescription,
@@ -7,7 +8,9 @@ import {
 	AddressFormat,
 } from '../lib/address';
 import { formatNumber, formatCkb } from '../lib/format';
+import { scriptToLockHash } from '../lib/lockHash';
 import { navigate, generateLink } from '../lib/router';
+import { fromHex } from '../lib/rpc';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
@@ -21,6 +24,7 @@ import { TransactionRow, type EnrichedTransaction } from '../components/Transact
 import { useAddressScript } from '../hooks/useAddressScript';
 import { useEnrichTransactions } from '../hooks/useEnrichTransactions';
 import type { IndexerSearchKey } from '../types/rpc';
+import type { StatsAllAddressResponse } from '../types/stats';
 
 interface AddressPageProps {
 	address: string;
@@ -30,6 +34,7 @@ export function AddressPage({ address }: AddressPageProps) {
 	const rpc = useRpc();
 	const { currentNetwork } = useNetwork();
 	const { archiveHeight } = useArchive();
+	const { statsClient, isStatsAvailable } = useStats();
 	const networkType = currentNetwork?.type ?? 'mainnet';
 
 	// Parse address using hook.
@@ -44,6 +49,8 @@ export function AddressPage({ address }: AddressPageProps) {
 	const [transactionCount, setTransactionCount] = useState<bigint | null>(null);
 	const [recentTransactions, setRecentTransactions] = useState<EnrichedTransaction[]>([]);
 	const [referenceTimestamp, setReferenceTimestamp] = useState<number | undefined>(undefined);
+	const [daoStats, setDaoStats] = useState<StatsAllAddressResponse['dao'] | null>(null);
+	const [typedStats, setTypedStats] = useState<StatsAllAddressResponse['typed'] | null>(null);
 
 	// UI state.
 	const [isLoading, setIsLoading] = useState(true);
@@ -59,6 +66,8 @@ export function AddressPage({ address }: AddressPageProps) {
 
 		setIsLoading(true);
 		setError(null);
+		setDaoStats(null);
+		setTypedStats(null);
 
 		try {
 			const searchKey: IndexerSearchKey = {
@@ -76,27 +85,63 @@ export function AddressPage({ address }: AddressPageProps) {
 				}
 			}
 
-			// Fetch balance, counts, and recent transactions in parallel.
-			const [balanceResult, cellsCountResult, txCountResult, groupedTxsResult] = await Promise.all([
-				rpc.getCellsCapacity(searchKey, archiveHeight),
-				rpc.getCellsCount(searchKey, archiveHeight),
-				rpc.getTransactionsCount(searchKey, archiveHeight),
-				rpc.getGroupedTransactions(searchKey, 'desc', PAGE_SIZE_CONFIG.preview, undefined, archiveHeight),
-			]);
+			// Fetch data - use stats server if available, otherwise use RPC.
+			let balanceResult: bigint | null = null;
+			let cellsCountResult: bigint | null = null;
+			let txCountResult: bigint | null = null;
 
-			if (fetchId !== fetchIdRef.current) return;
+			if (isStatsAvailable && statsClient && script) {
+				// Use stats server for core address data.
+				const lockHash = scriptToLockHash(script);
+				const [statsResult, groupedTxsResult] = await Promise.all([
+					statsClient.getAllAddressStats(lockHash, archiveHeight),
+					rpc.getGroupedTransactions(searchKey, 'desc', PAGE_SIZE_CONFIG.preview, undefined, archiveHeight),
+				]);
 
-			setBalance(balanceResult);
-			setCellCount(BigInt(cellsCountResult.count));
-			setTransactionCount(BigInt(txCountResult.count));
-			setReferenceTimestamp(archiveTimestamp);
+				if (fetchId !== fetchIdRef.current) return;
 
-			// Enrich recent transactions.
-			const enriched = await enrichTransactions(groupedTxsResult.objects);
+				if (statsResult) {
+					balanceResult = fromHex(statsResult.core.capacity);
+					cellsCountResult = fromHex(statsResult.core.live_cell_count);
+					txCountResult = fromHex(statsResult.core.tx_count);
+					setDaoStats(statsResult.dao);
+					setTypedStats(statsResult.typed);
+				}
 
-			if (fetchId !== fetchIdRef.current) return;
+				setBalance(balanceResult);
+				setCellCount(cellsCountResult);
+				setTransactionCount(txCountResult);
+				setReferenceTimestamp(archiveTimestamp);
 
-			setRecentTransactions(enriched);
+				// Enrich recent transactions.
+				const enriched = await enrichTransactions(groupedTxsResult.objects);
+
+				if (fetchId !== fetchIdRef.current) return;
+
+				setRecentTransactions(enriched);
+			} else {
+				// Fallback to RPC calls.
+				const [rpcBalanceResult, rpcCellsCountResult, rpcTxCountResult, groupedTxsResult] = await Promise.all([
+					rpc.getCellsCapacity(searchKey, archiveHeight),
+					rpc.getCellsCount(searchKey, archiveHeight),
+					rpc.getTransactionsCount(searchKey, archiveHeight),
+					rpc.getGroupedTransactions(searchKey, 'desc', PAGE_SIZE_CONFIG.preview, undefined, archiveHeight),
+				]);
+
+				if (fetchId !== fetchIdRef.current) return;
+
+				setBalance(rpcBalanceResult);
+				setCellCount(BigInt(rpcCellsCountResult.count));
+				setTransactionCount(BigInt(rpcTxCountResult.count));
+				setReferenceTimestamp(archiveTimestamp);
+
+				// Enrich recent transactions.
+				const enriched = await enrichTransactions(groupedTxsResult.objects);
+
+				if (fetchId !== fetchIdRef.current) return;
+
+				setRecentTransactions(enriched);
+			}
 		} catch (err) {
 			if (fetchId !== fetchIdRef.current) return;
 			setError(err instanceof Error ? err : new Error('Failed to fetch address data.'));
@@ -105,7 +150,7 @@ export function AddressPage({ address }: AddressPageProps) {
 				setIsLoading(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, enrichTransactions]);
+	}, [rpc, script, archiveHeight, enrichTransactions, statsClient, isStatsAvailable]);
 
 	useEffect(() => {
 		if (script) {
@@ -240,8 +285,42 @@ export function AddressPage({ address }: AddressPageProps) {
 							</button>
 						</div>
 					</DetailRow>
+
+					{isStatsAvailable && (
+						<DetailRow label="Typed Cells">
+							<span className="font-mono text-gray-900 dark:text-white">
+								{typedStats ? formatNumber(fromHex(typedStats.typed_cell_count)) : '0'}
+							</span>
+						</DetailRow>
+					)}
 				</div>
 			</div>
+
+			{/* DAO Statistics. */}
+			{isStatsAvailable && (
+				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+					<div className="p-4 border-b border-gray-200 dark:border-gray-700">
+						<h2 className="font-semibold text-gray-900 dark:text-white">DAO Statistics</h2>
+					</div>
+					<div className="divide-y divide-gray-200 dark:divide-gray-700">
+						<DetailRow label="Active Deposits">
+							<span className="text-nervos font-semibold">
+								{daoStats ? formatCkb(fromHex(daoStats.active_deposits)) : '0 CKB'}
+							</span>
+						</DetailRow>
+						<DetailRow label="Pending Withdrawals">
+							<span className="font-mono text-gray-900 dark:text-white">
+								{daoStats ? formatCkb(fromHex(daoStats.pending_withdrawals)) : '0 CKB'}
+							</span>
+						</DetailRow>
+						<DetailRow label="Realized Compensation">
+							<span className="font-mono text-gray-900 dark:text-white">
+								{daoStats ? formatCkb(fromHex(daoStats.realized_compensation)) : '0 CKB'}
+							</span>
+						</DetailRow>
+					</div>
+				</div>
+			)}
 
 			{/* Lock Script. */}
 			{script && (
