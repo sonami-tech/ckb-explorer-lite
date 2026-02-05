@@ -13,7 +13,7 @@ import { KNOWN_TYPE_SCRIPTS } from '../lib/wellKnown';
 import { resolveBlockRange, getScriptInfo } from '../lib/filterUtils';
 import type { NetworkType } from '../config/networks';
 import type { RpcScript, RpcCell } from '../types/rpc';
-import type { BlockRangeFilter } from './AddressTransactionFilters';
+import type { BlockRangeFilter } from '../components/AddressTransactionFilters';
 
 /**
  * Filter state for Live Cells page.
