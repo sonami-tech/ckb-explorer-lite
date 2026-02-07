@@ -6,6 +6,9 @@ import { AddressDisplay } from '../components/AddressDisplay';
 import { getDaoTypeScript } from '../lib/wellKnown';
 import { generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
+import { useStats } from '../contexts/StatsContext';
+import { scriptToLockHash } from '../lib/lockHash';
+import { fromHex } from '../lib/rpc';
 import { SkeletonDetail, SkeletonCellItem } from '../components/Skeleton';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { InternalLink } from '../components/InternalLink';
@@ -41,6 +44,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 	const rpc = useRpc();
 	const { currentNetwork } = useNetwork();
 	const { archiveHeight } = useArchive();
+	const { statsClient, isStatsAvailable } = useStats();
 	const networkType = currentNetwork?.type ?? 'mainnet';
 	const { script, error: parseError, isReady } = useAddressScript(address);
 
@@ -117,41 +121,74 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 				script_search_mode: 'exact',
 			};
 
-			// DAO search key for DAO-specific queries.
-			const daoScript = getDaoTypeScript();
-			const daoSearchKey: IndexerSearchKey = {
-				script,
-				script_type: 'lock',
-				script_search_mode: 'exact',
-				filter: {
-					script: daoScript,
-				},
-			};
+			let totalCellCount: bigint;
+			let oldestCellResult: Awaited<ReturnType<typeof rpc.getCells>>;
+			let newestCellResult: Awaited<ReturnType<typeof rpc.getCells>>;
 
-			// Fetch overview stats in parallel.
-			const [
-				balanceResult,
-				cellCountResult,
-				oldestCellResult,
-				newestCellResult,
-				daoCapacityResult,
-				daoCellCountResult,
-			] = await Promise.all([
-				rpc.getCellsCapacity(baseSearchKey, archiveHeight),
-				rpc.getCellsCount(baseSearchKey, archiveHeight),
-				rpc.getCells(baseSearchKey, 'asc', 1, undefined, archiveHeight),
-				rpc.getCells(baseSearchKey, 'desc', 1, undefined, archiveHeight),
-				rpc.getCellsCapacity(daoSearchKey, archiveHeight),
-				rpc.getCellsCount(daoSearchKey, archiveHeight),
-			]);
+			if (isStatsAvailable && statsClient && script) {
+				// Stats path: 1 stats call + 2 RPC calls (oldest/newest).
+				const lockHash = scriptToLockHash(script);
+				const [statsResult, oldest, newest] = await Promise.all([
+					statsClient.getAllAddressStats(lockHash, archiveHeight),
+					rpc.getCells(baseSearchKey, 'asc', 1, undefined, archiveHeight),
+					rpc.getCells(baseSearchKey, 'desc', 1, undefined, archiveHeight),
+				]);
+				oldestCellResult = oldest;
+				newestCellResult = newest;
 
-			if (fetchId !== overviewFetchIdRef.current) return;
+				if (fetchId !== overviewFetchIdRef.current) return;
 
-			const totalCellCount = BigInt(cellCountResult.count);
-			setCellCount(totalCellCount);
-			setBalance(balanceResult);
-			setDaoCapacity(daoCapacityResult);
-			setDaoCellCount(BigInt(daoCellCountResult.count));
+				if (statsResult) {
+					totalCellCount = fromHex(statsResult.core.live_cell_count);
+					setCellCount(totalCellCount);
+					setBalance(fromHex(statsResult.core.capacity));
+					setDaoCapacity(statsResult.dao ? fromHex(statsResult.dao.total_dao_deposit) : 0n);
+					setDaoCellCount(statsResult.dao ? fromHex(statsResult.dao.dao_cell_count) : 0n);
+				} else {
+					totalCellCount = 0n;
+					setCellCount(0n);
+					setBalance(0n);
+					setDaoCapacity(0n);
+					setDaoCellCount(0n);
+				}
+			} else {
+				// RPC fallback path: 6 parallel RPC calls.
+				const daoScript = getDaoTypeScript();
+				const daoSearchKey: IndexerSearchKey = {
+					script,
+					script_type: 'lock',
+					script_search_mode: 'exact',
+					filter: {
+						script: daoScript,
+					},
+				};
+
+				const [
+					balanceResult,
+					cellCountResult,
+					oldest,
+					newest,
+					daoCapacityResult,
+					daoCellCountResult,
+				] = await Promise.all([
+					rpc.getCellsCapacity(baseSearchKey, archiveHeight),
+					rpc.getCellsCount(baseSearchKey, archiveHeight),
+					rpc.getCells(baseSearchKey, 'asc', 1, undefined, archiveHeight),
+					rpc.getCells(baseSearchKey, 'desc', 1, undefined, archiveHeight),
+					rpc.getCellsCapacity(daoSearchKey, archiveHeight),
+					rpc.getCellsCount(daoSearchKey, archiveHeight),
+				]);
+				oldestCellResult = oldest;
+				newestCellResult = newest;
+
+				if (fetchId !== overviewFetchIdRef.current) return;
+
+				totalCellCount = BigInt(cellCountResult.count);
+				setCellCount(totalCellCount);
+				setBalance(balanceResult);
+				setDaoCapacity(daoCapacityResult);
+				setDaoCellCount(BigInt(daoCellCountResult.count));
+			}
 
 			// Process oldest cell.
 			let oldestCellData: typeof oldestCell = null;
@@ -242,7 +279,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 				setIsLoadingOverview(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, networkType]);
+	}, [rpc, script, archiveHeight, networkType, isStatsAvailable, statsClient]);
 
 	// Fetch filtered cell count and first page of cells.
 	const fetchCellData = useCallback(async () => {

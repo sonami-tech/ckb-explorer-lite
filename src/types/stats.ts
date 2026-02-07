@@ -29,6 +29,8 @@ export interface StatsAddressResponse {
 export interface StatsAddressDaoResponse {
 	/** Block height this data is from (hex). */
 	block_number: Hex;
+	/** Number of live DAO cells (deposit + withdrawing) (hex). */
+	dao_cell_count: Hex;
 	/** Active deposits earning compensation (hex shannons). */
 	active_deposits: Hex;
 	/** Pending withdrawals awaiting Phase 2 (hex shannons). */
