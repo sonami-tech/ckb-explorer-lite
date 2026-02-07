@@ -42,6 +42,15 @@ export const DEFAULT_ADDRESS_FILTERS: AddressPageFilters = {
 };
 
 /**
+ * Check if any transaction filters are active (non-default).
+ */
+export function hasActiveFilters(filters: AddressPageFilters): boolean {
+	return filters.minCellCkb !== null
+		|| filters.typeScriptGroups.length > 0
+		|| filters.blockRange.preset !== 'all';
+}
+
+/**
  * Default sort values for AddressPage.
  */
 export const DEFAULT_ADDRESS_SORT: AddressPageSort = {

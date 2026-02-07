@@ -8,24 +8,29 @@ import {
 	isCellbaseTransaction,
 	type EnrichedTransaction,
 } from '../components/TransactionRow';
-import type { RpcGroupedTransactionInfo } from '../types/rpc';
 import type { NetworkType } from '../config/networks';
 
+/** Minimal transaction info needed for enrichment. */
+export interface MinimalTransactionInfo {
+	tx_hash: string;
+	block_number: string;
+}
+
 /**
- * Hook that provides a callback to enrich grouped transactions with full details.
+ * Hook that provides a callback to enrich transactions with full details.
  * Fetches full transaction data and block headers for timestamps.
  *
  * @param networkType - The current network type for script lookups.
- * @returns A callback function that enriches grouped transactions.
+ * @returns A callback function that enriches transactions.
  */
 export function useEnrichTransactions(
 	networkType: NetworkType,
-): (groupedTxs: RpcGroupedTransactionInfo[]) => Promise<EnrichedTransaction[]> {
+): (groupedTxs: MinimalTransactionInfo[]) => Promise<EnrichedTransaction[]> {
 	const rpc = useRpc();
 	const { archiveHeight } = useArchive();
 
 	return useCallback(async (
-		groupedTxs: RpcGroupedTransactionInfo[],
+		groupedTxs: MinimalTransactionInfo[],
 	): Promise<EnrichedTransaction[]> => {
 		if (groupedTxs.length === 0) return [];
 

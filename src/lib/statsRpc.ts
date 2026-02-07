@@ -10,6 +10,7 @@
 
 import type {
 	StatsAddressResponse,
+	StatsAddressTxHistoryResponse,
 	StatsAllAddressResponse,
 	StatsGlobalResponse,
 	StatsAllGlobalResponse,
@@ -240,6 +241,28 @@ export function createStatsClient(statsUrl: string) {
 			return sendRequest<StatsSupplyResponse | null>(
 				'get_circulating_supply',
 				[],
+				blockNumber,
+			);
+		},
+
+		/**
+		 * Get paginated transaction history for an address.
+		 * @param lockHash - The lock script hash (32-byte hex with 0x prefix).
+		 * @param offset - Zero-based offset into the result set.
+		 * @param limit - Number of transactions to return.
+		 * @param sort - Sort order: 'newest' or 'oldest'.
+		 * @param blockNumber - Optional block height for archive query.
+		 */
+		async getAddressTransactions(
+			lockHash: string,
+			offset: number,
+			limit: number,
+			sort: 'newest' | 'oldest',
+			blockNumber?: number,
+		): Promise<StatsAddressTxHistoryResponse> {
+			return sendRequest<StatsAddressTxHistoryResponse>(
+				'get_address_transactions',
+				[lockHash, null, toHex(offset), toHex(limit), sort],
 				blockNumber,
 			);
 		},

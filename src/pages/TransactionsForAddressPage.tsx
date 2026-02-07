@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
+import { useStats } from '../contexts/StatsContext';
+import { scriptToLockHash } from '../lib/lockHash';
+import { RpcError, fromHex } from '../lib/rpc';
 import { formatNumber, formatActivitySpan, formatCkb } from '../lib/format';
 import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
@@ -19,6 +22,7 @@ import {
 	DEFAULT_ADDRESS_FILTERS,
 	DEFAULT_ADDRESS_SORT,
 	buildIndexerFilter,
+	hasActiveFilters,
 	type AddressPageFilters,
 	type AddressPageSort,
 } from '../components/AddressTransactionFilters';
@@ -39,6 +43,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	const { currentNetwork } = useNetwork();
 	const { archiveHeight } = useArchive();
 	const networkType = currentNetwork?.type ?? 'mainnet';
+	const { statsClient, isStatsAvailable } = useStats();
 	const { script, error: parseError, isReady } = useAddressScript(address);
 	const enrichTransactions = useEnrichTransactions(networkType);
 	const [transactions, setTransactions] = useState<EnrichedTransaction[]>([]);
@@ -54,6 +59,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	const [sort, setSort] = useState<AddressPageSort>(DEFAULT_ADDRESS_SORT);
 	const [filterModalOpen, setFilterModalOpen] = useState(false);
 	const [tipBlockNumber, setTipBlockNumber] = useState<bigint | null>(null);
+	const [txHistoryAvailable, setTxHistoryAvailable] = useState(false);
 
 	// Overview stats state.
 	const [balance, setBalance] = useState<bigint | null>(null);
@@ -78,6 +84,9 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 	// Cursor cache: maps item index (0, 100, 200...) to cursor string.
 	// Key 0 = null cursor (start of results).
 	const cursorCacheRef = useRef<Map<number, string | null>>(new Map([[0, null]]));
+
+	// Use stats server for pagination when available and no filters active.
+	const useStatsMode = isStatsAvailable && txHistoryAvailable && !hasActiveFilters(filters);
 
 	// Combine parseError and fetchError for display.
 	const error = parseError ?? fetchError;
@@ -120,6 +129,12 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				},
 			};
 
+			// Check stats tx_history availability in parallel with overview stats.
+			const statsAvailablePromise = (isStatsAvailable && statsClient && script)
+				? statsClient.getAddressStats(scriptToLockHash(script), archiveHeight)
+					.catch(() => null)
+				: Promise.resolve(null);
+
 			// Fetch overview stats in parallel.
 			const [
 				balanceResult,
@@ -128,6 +143,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				lastTxResult,
 				daoCapacityResult,
 				daoCellCountResult,
+				statsResult,
 			] = await Promise.all([
 				rpc.getCellsCapacity(baseSearchKey, archiveHeight),
 				rpc.getTransactionsCount(baseSearchKey, archiveHeight),
@@ -135,6 +151,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				rpc.getGroupedTransactions(baseSearchKey, 'desc', 1, undefined, archiveHeight),
 				rpc.getCellsCapacity(daoSearchKey, archiveHeight),
 				rpc.getCellsCount(daoSearchKey, archiveHeight),
+				statsAvailablePromise,
 			]);
 
 			if (fetchId !== overviewFetchIdRef.current) return;
@@ -179,6 +196,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			setLastActivity(lastActivityData);
 			setDaoLockedCapacity(daoCapacityResult);
 			setDaoCellCount(BigInt(daoCellCountResult.count));
+			setTxHistoryAvailable(statsResult?.tx_history_available ?? false);
 		} catch (err) {
 			if (fetchId !== overviewFetchIdRef.current) return;
 			setFetchError(err instanceof Error ? err : new Error('Failed to fetch address overview.'));
@@ -187,7 +205,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				setIsLoadingOverview(false);
 			}
 		}
-	}, [rpc, script, archiveHeight]);
+	}, [rpc, script, archiveHeight, isStatsAvailable, statsClient]);
 
 	// Fetch filtered transaction count and first page of transactions.
 	const fetchTransactionData = useCallback(async () => {
@@ -202,43 +220,67 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		cursorCacheRef.current = new Map([[0, null]]);
 
 		try {
-			// Fetch tip header for block range filter presets.
-			const tipHeader = await rpc.getTipHeader();
-			const currentTip = BigInt(tipHeader.number);
-			setTipBlockNumber(currentTip);
+			if (useStatsMode && statsClient) {
+				// Stats mode: offset-based pagination.
+				const lockHash = scriptToLockHash(script);
+				const statsSort = sort.direction === 'desc' ? 'newest' : 'oldest';
 
-			// Build search key with filters.
-			const indexerFilter = buildIndexerFilter(filters, currentTip, networkType);
-			const searchKey: IndexerSearchKey = {
-				script,
-				script_type: 'lock',
-				script_search_mode: 'exact',
-				filter: indexerFilter,
-			};
+				const result = await statsClient.getAddressTransactions(
+					lockHash, 0, pageSize, statsSort, archiveHeight,
+				);
 
-			// Fetch transaction count and first page in parallel.
-			const [txCountResult, groupedTxsResult] = await Promise.all([
-				rpc.getTransactionsCount(searchKey, archiveHeight),
-				rpc.getGroupedTransactions(searchKey, sort.direction, pageSize, undefined, archiveHeight),
-			]);
+				if (fetchId !== txFetchIdRef.current) return;
 
-			if (fetchId !== txFetchIdRef.current) return;
+				setFilteredTransactionCount(fromHex(result.total));
 
-			setFilteredTransactionCount(BigInt(txCountResult.count));
+				const enriched = await enrichTransactions(result.transactions);
 
-			// Cache the cursor for the next page.
-			if (groupedTxsResult.last_cursor) {
-				cursorCacheRef.current.set(pageSize, groupedTxsResult.last_cursor);
+				if (fetchId !== txFetchIdRef.current) return;
+
+				setTransactions(enriched);
+			} else {
+				// CKB RPC mode: cursor-based pagination.
+				const tipHeader = await rpc.getTipHeader();
+				const currentTip = BigInt(tipHeader.number);
+				setTipBlockNumber(currentTip);
+
+				const indexerFilter = buildIndexerFilter(filters, currentTip, networkType);
+				const searchKey: IndexerSearchKey = {
+					script,
+					script_type: 'lock',
+					script_search_mode: 'exact',
+					filter: indexerFilter,
+				};
+
+				const [txCountResult, groupedTxsResult] = await Promise.all([
+					rpc.getTransactionsCount(searchKey, archiveHeight),
+					rpc.getGroupedTransactions(searchKey, sort.direction, pageSize, undefined, archiveHeight),
+				]);
+
+				if (fetchId !== txFetchIdRef.current) return;
+
+				setFilteredTransactionCount(BigInt(txCountResult.count));
+
+				if (groupedTxsResult.last_cursor) {
+					cursorCacheRef.current.set(pageSize, groupedTxsResult.last_cursor);
+				}
+
+				const enriched = await enrichTransactions(groupedTxsResult.objects);
+
+				if (fetchId !== txFetchIdRef.current) return;
+
+				setTransactions(enriched);
 			}
-
-			// Enrich transactions with full details.
-			const enriched = await enrichTransactions(groupedTxsResult.objects);
-
-			if (fetchId !== txFetchIdRef.current) return;
-
-			setTransactions(enriched);
 		} catch (err) {
 			if (fetchId !== txFetchIdRef.current) return;
+
+			// Handle stats server errors by falling back to CKB RPC mode.
+			if (useStatsMode && err instanceof RpcError
+				&& (err.code === -32006 || err.code === -32007 || err.code === -32001)) {
+				setTxHistoryAvailable(false);
+				return;
+			}
+
 			// Don't overwrite overview errors with transaction errors.
 			if (!fetchError) {
 				setFetchError(err instanceof Error ? err : new Error('Failed to fetch transactions.'));
@@ -248,7 +290,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				setIsLoadingTransactions(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, pageSize, enrichTransactions, filters, sort.direction, networkType, fetchError]);
+	}, [rpc, script, archiveHeight, pageSize, enrichTransactions, filters, sort.direction, networkType, fetchError, useStatsMode, statsClient]);
 
 	// Fetch overview data when script changes.
 	useEffect(() => {
@@ -273,99 +315,118 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		setIsLoadingTransactions(true);
 
 		try {
-			// Build search key with filters.
-			const indexerFilter = buildIndexerFilter(filters, tipBlockNumber, networkType);
-			const searchKey: IndexerSearchKey = {
-				script,
-				script_type: 'lock',
-				script_search_mode: 'exact',
-				filter: indexerFilter,
-			};
+			if (useStatsMode && statsClient) {
+				// Stats mode: direct offset-based page jump.
+				const lockHash = scriptToLockHash(script);
+				const statsSort = sort.direction === 'desc' ? 'newest' : 'oldest';
+				const offset = (targetPage - 1) * pageSize;
 
-			// Calculate target start item index (0-indexed).
-			const targetStartIndex = (targetPage - 1) * pageSize;
+				const result = await statsClient.getAddressTransactions(
+					lockHash, offset, pageSize, statsSort, archiveHeight,
+				);
 
-			// Find the nearest cached cursor position at or before target.
-			const cache = cursorCacheRef.current;
-			let nearestCachedIndex = 0;
-			for (const cachedIndex of cache.keys()) {
-				if (cachedIndex <= targetStartIndex && cachedIndex > nearestCachedIndex) {
-					nearestCachedIndex = cachedIndex;
-				}
-			}
-
-			let currentCursor = cache.get(nearestCachedIndex) ?? null;
-			let currentIndex = nearestCachedIndex;
-
-			// Calculate how many pages we need to skip.
-			const itemsToSkip = targetStartIndex - currentIndex;
-			const pagesToSkip = Math.ceil(itemsToSkip / pageSize);
-
-			// Use large limit for skipping if jump is large (> SKIP_THRESHOLD_PAGES).
-			const skipLimit = pagesToSkip > SKIP_THRESHOLD_PAGES ? PAGE_SIZE_CONFIG.max : pageSize;
-
-			// Skip to target position by fetching with appropriate limit.
-			while (currentIndex < targetStartIndex) {
 				if (fetchId !== txFetchIdRef.current) return;
 
-				const remainingToSkip = targetStartIndex - currentIndex;
-				const fetchLimit = Math.min(skipLimit, remainingToSkip);
+				const enriched = await enrichTransactions(result.transactions);
 
-				const skipResult = await rpc.getGroupedTransactions(
+				if (fetchId !== txFetchIdRef.current) return;
+
+				setTransactions(enriched);
+				setCurrentPage(targetPage);
+			} else {
+				// CKB RPC mode: cursor-based page navigation.
+				const indexerFilter = buildIndexerFilter(filters, tipBlockNumber, networkType);
+				const searchKey: IndexerSearchKey = {
+					script,
+					script_type: 'lock',
+					script_search_mode: 'exact',
+					filter: indexerFilter,
+				};
+
+				const targetStartIndex = (targetPage - 1) * pageSize;
+
+				// Find the nearest cached cursor position at or before target.
+				const cache = cursorCacheRef.current;
+				let nearestCachedIndex = 0;
+				for (const cachedIndex of cache.keys()) {
+					if (cachedIndex <= targetStartIndex && cachedIndex > nearestCachedIndex) {
+						nearestCachedIndex = cachedIndex;
+					}
+				}
+
+				let currentCursor = cache.get(nearestCachedIndex) ?? null;
+				let currentIndex = nearestCachedIndex;
+
+				const itemsToSkip = targetStartIndex - currentIndex;
+				const pagesToSkip = Math.ceil(itemsToSkip / pageSize);
+				const skipLimit = pagesToSkip > SKIP_THRESHOLD_PAGES ? PAGE_SIZE_CONFIG.max : pageSize;
+
+				// Skip to target position by fetching with appropriate limit.
+				while (currentIndex < targetStartIndex) {
+					if (fetchId !== txFetchIdRef.current) return;
+
+					const remainingToSkip = targetStartIndex - currentIndex;
+					const fetchLimit = Math.min(skipLimit, remainingToSkip);
+
+					const skipResult = await rpc.getGroupedTransactions(
+						searchKey,
+						sort.direction,
+						fetchLimit,
+						currentCursor ?? undefined,
+						archiveHeight
+					);
+
+					currentIndex += skipResult.objects.length;
+					if (skipResult.last_cursor) {
+						cache.set(currentIndex, skipResult.last_cursor);
+						currentCursor = skipResult.last_cursor;
+					}
+
+					if (skipResult.objects.length < fetchLimit) {
+						break;
+					}
+				}
+
+				if (fetchId !== txFetchIdRef.current) return;
+
+				const pageResult = await rpc.getGroupedTransactions(
 					searchKey,
 					sort.direction,
-					fetchLimit,
+					pageSize,
 					currentCursor ?? undefined,
 					archiveHeight
 				);
 
-				// Cache the cursor at the new position.
-				currentIndex += skipResult.objects.length;
-				if (skipResult.last_cursor) {
-					cache.set(currentIndex, skipResult.last_cursor);
-					currentCursor = skipResult.last_cursor;
+				if (fetchId !== txFetchIdRef.current) return;
+
+				if (pageResult.last_cursor) {
+					cache.set(targetStartIndex + pageResult.objects.length, pageResult.last_cursor);
 				}
 
-				// If we didn't get enough items, we've reached the end.
-				if (skipResult.objects.length < fetchLimit) {
-					break;
-				}
+				const enriched = await enrichTransactions(pageResult.objects);
+
+				if (fetchId !== txFetchIdRef.current) return;
+
+				setTransactions(enriched);
+				setCurrentPage(targetPage);
 			}
-
-			if (fetchId !== txFetchIdRef.current) return;
-
-			// Fetch the actual page data.
-			const pageResult = await rpc.getGroupedTransactions(
-				searchKey,
-				sort.direction,
-				pageSize,
-				currentCursor ?? undefined,
-				archiveHeight
-			);
-
-			if (fetchId !== txFetchIdRef.current) return;
-
-			// Cache the cursor for the next page.
-			if (pageResult.last_cursor) {
-				cache.set(targetStartIndex + pageResult.objects.length, pageResult.last_cursor);
-			}
-
-			// Enrich transactions with full details.
-			const enriched = await enrichTransactions(pageResult.objects);
-
-			if (fetchId !== txFetchIdRef.current) return;
-
-			setTransactions(enriched);
-			setCurrentPage(targetPage);
 		} catch (err) {
 			if (fetchId !== txFetchIdRef.current) return;
+
+			// Handle stats server errors by falling back to CKB RPC mode.
+			if (useStatsMode && err instanceof RpcError
+				&& (err.code === -32006 || err.code === -32007 || err.code === -32001)) {
+				setTxHistoryAvailable(false);
+				return;
+			}
+
 			console.error('Failed to fetch page:', err);
 		} finally {
 			if (fetchId === txFetchIdRef.current) {
 				setIsLoadingTransactions(false);
 			}
 		}
-	}, [script, isLoadingTransactions, filters, tipBlockNumber, networkType, pageSize, sort.direction, rpc, archiveHeight, enrichTransactions]);
+	}, [script, isLoadingTransactions, filters, tipBlockNumber, networkType, pageSize, sort.direction, rpc, archiveHeight, enrichTransactions, useStatsMode, statsClient]);
 
 	// Handle page size change.
 	const handlePageSizeChange = useCallback((newSize: number) => {

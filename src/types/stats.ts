@@ -21,6 +21,8 @@ export interface StatsAddressResponse {
 	live_cell_count: Hex;
 	/** Total transaction count (hex). */
 	tx_count: Hex;
+	/** Whether transaction history is available for this address. */
+	tx_history_available: boolean;
 }
 
 /** Address DAO statistics. */
@@ -49,6 +51,28 @@ export interface StatsAddressTypedResponse {
 	typed_capacity: Hex;
 	/** Total number of typed cells (hex). */
 	typed_cell_count: Hex;
+}
+
+/** A single transaction entry from address tx history. */
+export interface StatsTxHistoryEntry {
+	/** Block number containing this transaction (hex). */
+	block_number: Hex;
+	/** Transaction hash. */
+	tx_hash: Hex;
+}
+
+/** Response from get_address_transactions. */
+export interface StatsAddressTxHistoryResponse {
+	/** Block height this data is from (hex). */
+	block_number: Hex;
+	/** Total number of transactions for this address (hex). */
+	total: Hex;
+	/** Current offset into the result set (hex). */
+	offset: Hex;
+	/** Limit used for this query (hex). */
+	limit: Hex;
+	/** Transaction entries for the requested page. */
+	transactions: StatsTxHistoryEntry[];
 }
 
 /** Combined address statistics (all categories). */
