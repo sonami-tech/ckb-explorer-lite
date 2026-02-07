@@ -6,7 +6,6 @@ import { RpcError, fromHex } from '../lib/rpc';
 import { formatNumber, formatActivitySpan, formatCkb } from '../lib/format';
 import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
-import { getDaoTypeScript } from '../lib/wellKnown';
 import { generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail, SkeletonTransactionItem } from '../components/Skeleton';
@@ -73,8 +72,6 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		blockNumber: bigint;
 		timestamp: number;
 	} | null>(null);
-	const [daoLockedCapacity, setDaoLockedCapacity] = useState<bigint | null>(null);
-	const [daoCellCount, setDaoCellCount] = useState<bigint | null>(null);
 
 	const overviewFetchIdRef = useRef(0);
 	const txFetchIdRef = useRef(0);
@@ -118,17 +115,6 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				}
 			}
 
-			// Build DAO filter for DAO-specific queries.
-			const daoScript = getDaoTypeScript();
-			const daoSearchKey: IndexerSearchKey = {
-				script,
-				script_type: 'lock',
-				script_search_mode: 'exact',
-				filter: {
-					script: daoScript,
-				},
-			};
-
 			// Check stats tx_history availability in parallel with overview stats.
 			const statsAvailablePromise = (isStatsAvailable && statsClient && script)
 				? statsClient.getAddressStats(scriptToLockHash(script), archiveHeight)
@@ -141,16 +127,12 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				txCountResult,
 				firstTxResult,
 				lastTxResult,
-				daoCapacityResult,
-				daoCellCountResult,
 				statsResult,
 			] = await Promise.all([
 				rpc.getCellsCapacity(baseSearchKey, archiveHeight),
 				rpc.getTransactionsCount(baseSearchKey, archiveHeight),
 				rpc.getGroupedTransactions(baseSearchKey, 'asc', 1, undefined, archiveHeight),
 				rpc.getGroupedTransactions(baseSearchKey, 'desc', 1, undefined, archiveHeight),
-				rpc.getCellsCapacity(daoSearchKey, archiveHeight),
-				rpc.getCellsCount(daoSearchKey, archiveHeight),
 				statsAvailablePromise,
 			]);
 
@@ -194,8 +176,6 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			setTotalTransactionCount(BigInt(txCountResult.count));
 			setFirstActivity(firstActivityData);
 			setLastActivity(lastActivityData);
-			setDaoLockedCapacity(daoCapacityResult);
-			setDaoCellCount(BigInt(daoCellCountResult.count));
 			setTxHistoryAvailable(statsResult?.tx_history_available ?? false);
 		} catch (err) {
 			if (fetchId !== overviewFetchIdRef.current) return;
@@ -620,29 +600,6 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 						<span className="font-mono text-gray-900 dark:text-white">
 							{totalTransactionCount !== null ? formatNumber(totalTransactionCount) : '...'}
 						</span>
-					</DetailRow>
-
-					<DetailRow label="DAO Deposits">
-						<span className="text-gray-900 dark:text-white">
-							{daoCellCount !== null
-								? `${formatNumber(daoCellCount)} cell${daoCellCount === 1n ? '' : 's'}`
-								: '...'}
-						</span>
-					</DetailRow>
-
-					<DetailRow label="DAO Locked">
-						{daoLockedCapacity !== null && balance !== null ? (
-							<span className="text-gray-900 dark:text-white">
-								{formatCkb(daoLockedCapacity)}
-								{daoLockedCapacity > 0n && balance > 0n && (
-									<span className="text-gray-500 dark:text-gray-400 ml-2">
-										({(Math.floor(Number((daoLockedCapacity * 100000n) / balance)) / 1000).toFixed(2)}% of balance)
-									</span>
-								)}
-							</span>
-						) : (
-							<span className="text-gray-500 dark:text-gray-400">...</span>
-						)}
 					</DetailRow>
 
 					<DetailRow label="Activity Span">
