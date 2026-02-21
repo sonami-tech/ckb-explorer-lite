@@ -8,12 +8,29 @@ export default defineConfig({
   server: {
     port: 5273,
     host: true,
+    allowedHosts: ['explorer.ckbdev.com'],
     proxy: {
-      // Proxy stats server requests to avoid CORS during development.
-      '/stats-api': {
+      // Proxy CKB node RPC requests to avoid CORS and enable external access.
+      '/rpc/archive': {
+        target: 'http://192.168.0.74:8114',
+        changeOrigin: true,
+        rewrite: () => '/',
+      },
+      '/rpc/mainnet': {
+        target: 'http://192.168.0.73:8114',
+        changeOrigin: true,
+        rewrite: () => '/',
+      },
+      '/rpc/testnet': {
+        target: 'http://192.168.0.73:18114',
+        changeOrigin: true,
+        rewrite: () => '/',
+      },
+      // Proxy stats server requests.
+      '/rpc/stats': {
         target: 'http://127.0.0.1:8116',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/stats-api/, ''),
+        rewrite: () => '/',
       },
     },
   },

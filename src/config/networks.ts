@@ -31,20 +31,20 @@ export const networks: NetworkConfig[] = [
 		name: 'Mainnet Archive',
 		type: 'mainnet',
 		isArchive: true,
-		url: 'http://192.168.0.74:8114',
-		statsUrl: '/stats-api',
+		url: '/rpc/archive',
+		statsUrl: '/rpc/stats',
 	},
 	{
 		name: 'Mainnet',
 		type: 'mainnet',
 		isArchive: false,
-		url: 'http://192.168.0.73:8114',
+		url: '/rpc/mainnet',
 	},
 	{
 		name: 'Testnet',
 		type: 'testnet',
 		isArchive: false,
-		url: 'http://192.168.0.73:18114',
+		url: '/rpc/testnet',
 	},
 ];
 
