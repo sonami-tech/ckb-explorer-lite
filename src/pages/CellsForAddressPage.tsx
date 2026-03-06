@@ -282,7 +282,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 	}, [rpc, script, archiveHeight, networkType, isStatsAvailable, statsClient]);
 
 	// Fetch filtered cell count and first page of cells.
-	const fetchCellData = useCallback(async () => {
+	const fetchCellList = useCallback(async () => {
 		if (!script) return;
 
 		const fetchId = ++cellsFetchIdRef.current;
@@ -370,9 +370,9 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 	// Fetch cell data when script or filters change.
 	useEffect(() => {
 		if (script) {
-			fetchCellData();
+			fetchCellList();
 		}
-	}, [fetchCellData, script]);
+	}, [fetchCellList, script]);
 
 	// Fetch a specific page of cells with hybrid cursor caching.
 	const fetchPage = useCallback(async (targetPage: number) => {
@@ -531,7 +531,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 			prevFiltersRef.current = currentFilters;
 			prevSortRef.current = currentSort;
 
-			// Reset pagination state (data will be refetched by fetchCellData effect).
+			// Reset pagination state (data will be refetched by fetchCellList effect).
 			setCurrentPage(1);
 			setCells([]);
 			cursorCacheRef.current = new Map([[0, null]]);
@@ -634,7 +634,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 		const handleRetry = script
 			? () => {
 				fetchOverviewData();
-				fetchCellData();
+				fetchCellList();
 			}
 			: undefined;
 		return (

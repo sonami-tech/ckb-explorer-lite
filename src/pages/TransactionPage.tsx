@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
+import { fetchCellData, isNullOutpoint } from '../lib/cellFetcher';
+import type { RpcClient } from '../lib/rpc';
 import {
 	formatNumber,
 	formatCkb,
@@ -26,14 +28,66 @@ interface TransactionPageProps {
 	hash: string;
 }
 
-/** Helper to check if outpoint is null (cellbase). */
-function isNullOutpoint(txHash: string, index: string): boolean {
-	return txHash === '0x0000000000000000000000000000000000000000000000000000000000000000' && index === '0xffffffff';
+/** Fetch cell data for a batch of inputs, returning per-index results. */
+async function fetchInputCells(
+	inputs: RpcCellInput[],
+	startIndex: number,
+	rpc: RpcClient,
+	isArchiveSupported: boolean,
+): Promise<{ index: number; cellData: RpcCellWithLifecycle | null; error: Error | null }[]> {
+	const promises = inputs.map(async (input, paginatedIdx) => {
+		const actualIndex = startIndex + paginatedIdx;
+		if (isNullOutpoint(input.previous_output.tx_hash, input.previous_output.index)) {
+			return { index: actualIndex, cellData: null, error: null };
+		}
+
+		try {
+			const result = await fetchCellData(
+				rpc,
+				input.previous_output.tx_hash,
+				parseInt(input.previous_output.index, 16),
+				isArchiveSupported,
+				true
+			);
+			return { index: actualIndex, cellData: result?.cell ?? null, error: null };
+		} catch (error) {
+			return { index: actualIndex, cellData: null, error: error as Error };
+		}
+	});
+
+	return Promise.all(promises);
+}
+
+/** Merge fetch results into inputCellData and inputErrors state maps. */
+function mergeInputResults(
+	results: { index: number; cellData: RpcCellWithLifecycle | null; error: Error | null }[],
+	setInputCellData: Dispatch<SetStateAction<Map<number, RpcCellWithLifecycle>>>,
+	setInputErrors: Dispatch<SetStateAction<Map<number, Error>>>,
+) {
+	setInputCellData(prev => {
+		const dataMap = new Map(prev);
+		for (const result of results) {
+			if (result.cellData) {
+				dataMap.set(result.index, result.cellData);
+			}
+		}
+		return dataMap;
+	});
+
+	setInputErrors(prev => {
+		const errorMap = new Map(prev);
+		for (const result of results) {
+			if (result.error) {
+				errorMap.set(result.index, result.error);
+			}
+		}
+		return errorMap;
+	});
 }
 
 export function TransactionPage({ hash }: TransactionPageProps) {
 	const rpc = useRpc();
-	const { currentNetwork } = useNetwork();
+	const { currentNetwork, isArchiveSupported } = useNetwork();
 	const [txData, setTxData] = useState<RpcTransactionWithStatus | null>(null);
 	const [blockTimestamp, setBlockTimestamp] = useState<bigint | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
@@ -120,57 +174,18 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		}
 	}, [rpc, hash]);
 
-	const fetchInputCellData = useCallback(async (inputs: RpcCellInput[], startIndex: number) => {
+	const fetchPageInputs = useCallback(async (inputs: RpcCellInput[], startIndex: number) => {
 		setInputsLoading(true);
 
 		try {
-			// Fetch only current page inputs in parallel (cellbase inputs are filtered during rendering).
-			const promises = inputs.map(async (input, paginatedIdx) => {
-				const actualIndex = startIndex + paginatedIdx;
-				// Skip cellbase inputs.
-				if (isNullOutpoint(input.previous_output.tx_hash, input.previous_output.index)) {
-					return { index: actualIndex, cellData: null, error: null };
-				}
-
-				try {
-					const cellData = await rpc.getCellLifecycle(
-						input.previous_output.tx_hash,
-						parseInt(input.previous_output.index, 16),
-						true
-					);
-					return { index: actualIndex, cellData, error: null };
-				} catch (error) {
-					return { index: actualIndex, cellData: null, error: error as Error };
-				}
-			});
-
-			const results = await Promise.all(promises);
-
-			setInputCellData(prev => {
-				const dataMap = new Map(prev);
-				results.forEach(result => {
-					if (result.cellData) {
-						dataMap.set(result.index, result.cellData);
-					}
-				});
-				return dataMap;
-			});
-
-			setInputErrors(prev => {
-				const errorMap = new Map(prev);
-				results.forEach(result => {
-					if (result.error) {
-						errorMap.set(result.index, result.error);
-					}
-				});
-				return errorMap;
-			});
+			const results = await fetchInputCells(inputs, startIndex, rpc, isArchiveSupported);
+			mergeInputResults(results, setInputCellData, setInputErrors);
 		} catch (error) {
 			console.error('Failed to fetch input cell data:', error);
 		} finally {
 			setInputsLoading(false);
 		}
-	}, [rpc]);
+	}, [rpc, isArchiveSupported]);
 
 	const fetchCellDepData = useCallback(async (
 		cellDeps: { out_point: { tx_hash: string; index: string }; dep_type: string }[],
@@ -183,12 +198,14 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 			const promises = cellDeps.map(async (dep, paginatedIdx) => {
 				const actualIndex = startIndex + paginatedIdx;
 				try {
-					const cellData = await rpc.getCellLifecycle(
+					const result = await fetchCellData(
+						rpc,
 						dep.out_point.tx_hash,
 						parseInt(dep.out_point.index, 16),
+						isArchiveSupported,
 						true
 					);
-					return { index: actualIndex, cellData };
+					return { index: actualIndex, cellData: result?.cell ?? null };
 				} catch (error) {
 					console.error(`Failed to fetch cell dep ${actualIndex}:`, error);
 					return { index: actualIndex, cellData: null };
@@ -211,7 +228,7 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		} finally {
 			setCellDepsLoading(false);
 		}
-	}, [rpc]);
+	}, [rpc, isArchiveSupported]);
 
 	const handleInputsPageSizeChange = useCallback((newSize: number) => {
 		setInputsPageSize(newSize);
@@ -360,9 +377,9 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 	useEffect(() => {
 		if (paginatedInputs.length > 0) {
-			fetchInputCellData(paginatedInputs, inputsStartIndex);
+			fetchPageInputs(paginatedInputs, inputsStartIndex);
 		}
-	}, [paginatedInputs, inputsStartIndex, fetchInputCellData]);
+	}, [paginatedInputs, inputsStartIndex, fetchPageInputs]);
 
 	// Prefetch all input cell data for fee calculation (up to FEE_CALCULATION_MAX_INPUTS).
 	// This runs independently of pagination to ensure fee displays immediately.
@@ -374,52 +391,13 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		}
 
 		const prefetchAllInputs = async () => {
-			const allInputs = transaction.inputs;
-			const promises = allInputs.map(async (input, index) => {
-				// Skip cellbase inputs (should not happen for non-cellbase tx, but be safe).
-				if (isNullOutpoint(input.previous_output.tx_hash, input.previous_output.index)) {
-					return { index, cellData: null, error: null };
-				}
-
-				try {
-					const cellData = await rpc.getCellLifecycle(
-						input.previous_output.tx_hash,
-						parseInt(input.previous_output.index, 16),
-						true
-					);
-					return { index, cellData, error: null };
-				} catch (error) {
-					return { index, cellData: null, error: error as Error };
-				}
-			});
-
-			const results = await Promise.all(promises);
-
-			setInputCellData(prev => {
-				const dataMap = new Map(prev);
-				results.forEach(result => {
-					if (result.cellData) {
-						dataMap.set(result.index, result.cellData);
-					}
-				});
-				return dataMap;
-			});
-
-			setInputErrors(prev => {
-				const errorMap = new Map(prev);
-				results.forEach(result => {
-					if (result.error) {
-						errorMap.set(result.index, result.error);
-					}
-				});
-				return errorMap;
-			});
-
+			const results = await fetchInputCells(transaction.inputs, 0, rpc, isArchiveSupported);
+			mergeInputResults(results, setInputCellData, setInputErrors);
 			setFeePrefetchComplete(true);
 		};
 
 		prefetchAllInputs();
-	}, [transaction, isCellbase, rpc]);
+	}, [transaction, isCellbase, rpc, isArchiveSupported]);
 
 	useEffect(() => {
 		if (paginatedCellDeps.length > 0) {

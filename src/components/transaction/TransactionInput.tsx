@@ -5,6 +5,7 @@ import { Tooltip } from '../Tooltip';
 import { generateLink } from '../../lib/router';
 import { formatCkb, formatCkbShort, formatSince } from '../../lib/format';
 import { encodeAddress } from '../../lib/address';
+import { isNullOutpoint } from '../../lib/cellFetcher';
 import { extractLockScriptIndicator, extractTypeScriptIndicator } from '../../lib/scriptIndicators';
 import { BRAND } from '../../lib/badgeStyles';
 import type { RpcCellInput, RpcCellWithLifecycle } from '../../types/rpc';
@@ -25,13 +26,6 @@ interface TransactionInputProps {
 	networkType: NetworkType;
 	/** The mining reward amount for cellbase transactions (total output). */
 	miningReward?: bigint;
-}
-
-/**
- * Check if an outpoint represents a cellbase (mining reward) input.
- */
-function isNullOutpoint(txHash: string, index: string): boolean {
-	return txHash === '0x0000000000000000000000000000000000000000000000000000000000000000' && index === '0xffffffff';
 }
 
 /**
