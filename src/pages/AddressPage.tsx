@@ -22,7 +22,7 @@ import { ScriptLink } from '../components/ScriptLink';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import { TransactionRow, type EnrichedTransaction } from '../components/TransactionRow';
 import { useAddressScript } from '../hooks/useAddressScript';
-import { useEnrichTransactions } from '../hooks/useEnrichTransactions';
+import { useEnrichTransactions, type MinimalTransactionInfo } from '../hooks/useEnrichTransactions';
 import type { IndexerSearchKey } from '../types/rpc';
 import type { StatsAllAddressResponse } from '../types/stats';
 
@@ -85,42 +85,8 @@ export function AddressPage({ address }: AddressPageProps) {
 				}
 			}
 
-			// Fetch data - use stats server if available, otherwise use RPC.
-			let balanceResult: bigint | null = null;
-			let cellsCountResult: bigint | null = null;
-			let txCountResult: bigint | null = null;
-
-			if (isStatsAvailable && statsClient && script) {
-				// Use stats server for core address data.
-				const lockHash = scriptToLockHash(script);
-				const [statsResult, groupedTxsResult] = await Promise.all([
-					statsClient.getAllAddressStats(lockHash, archiveHeight),
-					rpc.getGroupedTransactions(searchKey, 'desc', PAGE_SIZE_CONFIG.preview, undefined, archiveHeight),
-				]);
-
-				if (fetchId !== fetchIdRef.current) return;
-
-				if (statsResult) {
-					balanceResult = fromHex(statsResult.core.capacity);
-					cellsCountResult = fromHex(statsResult.core.live_cell_count);
-					txCountResult = fromHex(statsResult.core.tx_count);
-					setDaoStats(statsResult.dao);
-					setTypedStats(statsResult.typed);
-				}
-
-				setBalance(balanceResult);
-				setCellCount(cellsCountResult);
-				setTransactionCount(txCountResult);
-				setReferenceTimestamp(archiveTimestamp);
-
-				// Enrich recent transactions.
-				const enriched = await enrichTransactions(groupedTxsResult.objects);
-
-				if (fetchId !== fetchIdRef.current) return;
-
-				setRecentTransactions(enriched);
-			} else {
-				// Fallback to RPC calls.
+			// RPC fallback path — used when stats server is unavailable or errors.
+			async function fetchDataViaRpc() {
 				const [rpcBalanceResult, rpcCellsCountResult, rpcTxCountResult, groupedTxsResult] = await Promise.all([
 					rpc.getCellsCapacity(searchKey, archiveHeight),
 					rpc.getCellsCount(searchKey, archiveHeight),
@@ -135,12 +101,63 @@ export function AddressPage({ address }: AddressPageProps) {
 				setTransactionCount(BigInt(rpcTxCountResult.count));
 				setReferenceTimestamp(archiveTimestamp);
 
-				// Enrich recent transactions.
 				const enriched = await enrichTransactions(groupedTxsResult.objects);
 
 				if (fetchId !== fetchIdRef.current) return;
 
 				setRecentTransactions(enriched);
+			}
+
+			// Fetch data — use stats server if available, fall back to RPC on error.
+			if (isStatsAvailable && statsClient && script) {
+				try {
+					const lockHash = scriptToLockHash(script);
+					const statsResult = await statsClient.getAllAddressStats(lockHash, archiveHeight);
+
+					if (fetchId !== fetchIdRef.current) return;
+
+					let recentTxSource: MinimalTransactionInfo[];
+
+					if (statsResult) {
+						setBalance(fromHex(statsResult.core.capacity));
+						setCellCount(fromHex(statsResult.core.live_cell_count));
+						setTransactionCount(fromHex(statsResult.core.tx_count));
+						setDaoStats(statsResult.dao);
+						setTypedStats(statsResult.typed);
+						setReferenceTimestamp(archiveTimestamp);
+
+						if (statsResult.core.tx_history_available) {
+							const txHistory = await statsClient.getAddressTransactions(
+								lockHash, 0, PAGE_SIZE_CONFIG.preview, 'newest', archiveHeight,
+							);
+							recentTxSource = txHistory.transactions;
+						} else {
+							const groupedTxsResult = await rpc.getGroupedTransactions(
+								searchKey, 'desc', PAGE_SIZE_CONFIG.preview, undefined, archiveHeight,
+							);
+							recentTxSource = groupedTxsResult.objects;
+						}
+					} else {
+						const groupedTxsResult = await rpc.getGroupedTransactions(
+							searchKey, 'desc', PAGE_SIZE_CONFIG.preview, undefined, archiveHeight,
+						);
+						recentTxSource = groupedTxsResult.objects;
+					}
+
+					if (fetchId !== fetchIdRef.current) return;
+
+					const enriched = await enrichTransactions(recentTxSource);
+
+					if (fetchId !== fetchIdRef.current) return;
+
+					setRecentTransactions(enriched);
+				} catch (statsErr) {
+					console.warn('Stats server error, falling back to RPC:', statsErr);
+					if (fetchId !== fetchIdRef.current) return;
+					await fetchDataViaRpc();
+				}
+			} else {
+				await fetchDataViaRpc();
 			}
 		} catch (err) {
 			if (fetchId !== fetchIdRef.current) return;
@@ -289,7 +306,7 @@ export function AddressPage({ address }: AddressPageProps) {
 					{isStatsAvailable && (
 						<DetailRow label="Typed Cells">
 							<span className="font-mono text-gray-900 dark:text-white">
-								{typedStats ? formatNumber(fromHex(typedStats.typed_cell_count)) : '0'}
+								{typedStats ? formatNumber(fromHex(typedStats.typed_cell_count)) : '...'}
 							</span>
 						</DetailRow>
 					)}
@@ -305,17 +322,17 @@ export function AddressPage({ address }: AddressPageProps) {
 					<div className="divide-y divide-gray-200 dark:divide-gray-700">
 						<DetailRow label="Active Deposits">
 							<span className="text-nervos font-semibold">
-								{daoStats ? formatCkb(fromHex(daoStats.active_deposits)) : '0 CKB'}
+								{daoStats ? formatCkb(fromHex(daoStats.active_deposits)) : '...'}
 							</span>
 						</DetailRow>
 						<DetailRow label="Pending Withdrawals">
 							<span className="font-mono text-gray-900 dark:text-white">
-								{daoStats ? formatCkb(fromHex(daoStats.pending_withdrawals)) : '0 CKB'}
+								{daoStats ? formatCkb(fromHex(daoStats.pending_withdrawals)) : '...'}
 							</span>
 						</DetailRow>
 						<DetailRow label="Realized Compensation">
 							<span className="font-mono text-gray-900 dark:text-white">
-								{daoStats ? formatCkb(fromHex(daoStats.realized_compensation)) : '0 CKB'}
+								{daoStats ? formatCkb(fromHex(daoStats.realized_compensation)) : '...'}
 							</span>
 						</DetailRow>
 					</div>

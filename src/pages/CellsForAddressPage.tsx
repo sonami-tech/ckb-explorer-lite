@@ -121,41 +121,11 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 				script_search_mode: 'exact',
 			};
 
-			let totalCellCount: bigint;
-			let oldestCellResult: Awaited<ReturnType<typeof rpc.getCells>>;
-			let newestCellResult: Awaited<ReturnType<typeof rpc.getCells>>;
-
-			if (isStatsAvailable && statsClient && script) {
-				// Stats path: 1 stats call + 2 RPC calls (oldest/newest).
-				const lockHash = scriptToLockHash(script);
-				const [statsResult, oldest, newest] = await Promise.all([
-					statsClient.getAllAddressStats(lockHash, archiveHeight),
-					rpc.getCells(baseSearchKey, 'asc', 1, undefined, archiveHeight),
-					rpc.getCells(baseSearchKey, 'desc', 1, undefined, archiveHeight),
-				]);
-				oldestCellResult = oldest;
-				newestCellResult = newest;
-
-				if (fetchId !== overviewFetchIdRef.current) return;
-
-				if (statsResult) {
-					totalCellCount = fromHex(statsResult.core.live_cell_count);
-					setCellCount(totalCellCount);
-					setBalance(fromHex(statsResult.core.capacity));
-					setDaoCapacity(statsResult.dao ? fromHex(statsResult.dao.total_dao_deposit) : 0n);
-					setDaoCellCount(statsResult.dao ? fromHex(statsResult.dao.dao_cell_count) : 0n);
-				} else {
-					totalCellCount = 0n;
-					setCellCount(0n);
-					setBalance(0n);
-					setDaoCapacity(0n);
-					setDaoCellCount(0n);
-				}
-			} else {
-				// RPC fallback path: 6 parallel RPC calls.
+			// RPC fallback for counts/balance — used when stats server is unavailable or errors.
+			async function fetchCountsViaRpc(): Promise<bigint> {
 				const daoScript = getDaoTypeScript();
 				const daoSearchKey: IndexerSearchKey = {
-					script,
+					script: script!,
 					script_type: 'lock',
 					script_search_mode: 'exact',
 					filter: {
@@ -166,28 +136,64 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 				const [
 					balanceResult,
 					cellCountResult,
-					oldest,
-					newest,
 					daoCapacityResult,
 					daoCellCountResult,
 				] = await Promise.all([
 					rpc.getCellsCapacity(baseSearchKey, archiveHeight),
 					rpc.getCellsCount(baseSearchKey, archiveHeight),
-					rpc.getCells(baseSearchKey, 'asc', 1, undefined, archiveHeight),
-					rpc.getCells(baseSearchKey, 'desc', 1, undefined, archiveHeight),
 					rpc.getCellsCapacity(daoSearchKey, archiveHeight),
 					rpc.getCellsCount(daoSearchKey, archiveHeight),
 				]);
-				oldestCellResult = oldest;
-				newestCellResult = newest;
 
-				if (fetchId !== overviewFetchIdRef.current) return;
+				if (fetchId !== overviewFetchIdRef.current) return 0n;
 
-				totalCellCount = BigInt(cellCountResult.count);
-				setCellCount(totalCellCount);
+				const count = BigInt(cellCountResult.count);
+				setCellCount(count);
 				setBalance(balanceResult);
 				setDaoCapacity(daoCapacityResult);
 				setDaoCellCount(BigInt(daoCellCountResult.count));
+
+				return count;
+			}
+
+			// Fetch oldest/newest cells (always via RPC, independent of stats).
+			const [oldestCellResult, newestCellResult] = await Promise.all([
+				rpc.getCells(baseSearchKey, 'asc', 1, undefined, archiveHeight),
+				rpc.getCells(baseSearchKey, 'desc', 1, undefined, archiveHeight),
+			]);
+
+			if (fetchId !== overviewFetchIdRef.current) return;
+
+			// Fetch counts — use stats server if available, fall back to RPC on error.
+			let totalCellCount: bigint;
+
+			if (isStatsAvailable && statsClient && script) {
+				try {
+					const lockHash = scriptToLockHash(script);
+					const statsResult = await statsClient.getAllAddressStats(lockHash, archiveHeight);
+
+					if (fetchId !== overviewFetchIdRef.current) return;
+
+					if (statsResult) {
+						totalCellCount = fromHex(statsResult.core.live_cell_count);
+						setCellCount(totalCellCount);
+						setBalance(fromHex(statsResult.core.capacity));
+						setDaoCapacity(statsResult.dao ? fromHex(statsResult.dao.total_dao_deposit) : 0n);
+						setDaoCellCount(statsResult.dao ? fromHex(statsResult.dao.dao_cell_count) : 0n);
+					} else {
+						totalCellCount = 0n;
+						setCellCount(0n);
+						setBalance(0n);
+						setDaoCapacity(0n);
+						setDaoCellCount(0n);
+					}
+				} catch (statsErr) {
+					console.warn('Stats server error, falling back to RPC:', statsErr);
+					if (fetchId !== overviewFetchIdRef.current) return;
+					totalCellCount = await fetchCountsViaRpc();
+				}
+			} else {
+				totalCellCount = await fetchCountsViaRpc();
 			}
 
 			// Process oldest cell.

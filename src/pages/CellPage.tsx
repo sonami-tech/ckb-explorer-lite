@@ -4,6 +4,7 @@ import { encodeAddress } from '../lib/address';
 import { formatCkb, calculateCellSize, formatBytes } from '../lib/format';
 import { generateLink } from '../lib/router';
 import { fromHex } from '../lib/rpc';
+import { fetchCellData } from '../lib/cellFetcher';
 import { lookupWellKnownCell } from '../lib/wellKnown';
 import { ScriptLink } from '../components/ScriptLink';
 import { AddressDisplay } from '../components/AddressDisplay';
@@ -17,6 +18,7 @@ import { ScriptSection } from '../components/ScriptSection';
 import { BlockNumberDisplay } from '../components/BlockNumberDisplay';
 import { WellKnownCellInfo } from '../components/WellKnownCellInfo';
 import { InternalLink } from '../components/InternalLink';
+import { InfoIcon } from '../components/InfoIcon';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
 import type { RpcCellWithLifecycle } from '../types/rpc';
 
@@ -27,8 +29,10 @@ interface CellPageProps {
 
 export function CellPage({ txHash, index }: CellPageProps) {
 	const rpc = useRpc();
-	const { currentNetwork } = useNetwork();
+	const { currentNetwork, isArchiveSupported } = useNetwork();
 	const [cellData, setCellData] = useState<RpcCellWithLifecycle | null>(null);
+	const [hasLifecycleData, setHasLifecycleData] = useState(true);
+	const [cellStatus, setCellStatus] = useState<'live' | 'dead' | 'unknown'>('unknown');
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
 
@@ -50,19 +54,18 @@ export function CellPage({ txHash, index }: CellPageProps) {
 		setError(null);
 
 		try {
-			// Use getCellLifecycle which returns complete lifecycle info.
-			// No archive height needed - it returns the full history.
-			const result = await rpc.getCellLifecycle(txHash, index, true);
+			const result = await fetchCellData(rpc, txHash, index, isArchiveSupported, true);
 
 			// Ignore stale response if a newer fetch has started.
 			if (fetchId !== fetchIdRef.current) return;
 
 			if (result === null) {
-				// Cell never existed.
 				throw new Error(`${txHash}:${index}`);
 			}
 
-			setCellData(result);
+			setCellData(result.cell);
+			setHasLifecycleData(result.hasLifecycleData);
+			setCellStatus(result.status);
 		} catch (err) {
 			// Ignore stale errors if a newer fetch has started.
 			if (fetchId !== fetchIdRef.current) return;
@@ -73,23 +76,17 @@ export function CellPage({ txHash, index }: CellPageProps) {
 				setIsLoading(false);
 			}
 		}
-	}, [rpc, txHash, index]);
+	}, [rpc, txHash, index, isArchiveSupported]);
 
 	useEffect(() => {
 		fetchCell();
 	}, [fetchCell]);
 
-	// Derive block numbers from lifecycle data.
-	// These calculations must happen before any early returns to satisfy React Hooks rules.
-	const createdBlock = cellData ? Number(fromHex(cellData.created_block_number)) : null;
-	const consumedBlock = cellData?.consumed_block_number
+	const createdBlock = cellData && hasLifecycleData ? Number(fromHex(cellData.created_block_number)) : null;
+	const consumedBlock = cellData?.consumed_block_number && hasLifecycleData
 		? Number(fromHex(cellData.consumed_block_number))
 		: null;
 
-	// Derive status based on current state.
-	const status = consumedBlock === null ? 'live' : 'dead';
-
-	// Calculate cell size.
 	const cellSize = useMemo(
 		() => cellData ? calculateCellSize(cellData) : null,
 		[cellData]
@@ -115,6 +112,13 @@ export function CellPage({ txHash, index }: CellPageProps) {
 			</div>
 		);
 	}
+
+	const lifecyclePlaceholder = (
+		<span className="text-gray-400 dark:text-gray-500 flex items-center gap-1">
+			<span>—</span>
+			{!hasLifecycleData && <InfoIcon tooltip="Lifecycle data requires an archive node." />}
+		</span>
+	);
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
@@ -149,7 +153,7 @@ export function CellPage({ txHash, index }: CellPageProps) {
 						<OutPoint txHash={txHash} index={index} linkTo="transaction" />
 					</DetailRow>
 					<DetailRow label="Status">
-						<CellStatusIndicator status={status} />
+						<CellStatusIndicator status={cellStatus} />
 					</DetailRow>
 					{cellData && (
 						<DetailRow label="Capacity">
@@ -195,16 +199,18 @@ export function CellPage({ txHash, index }: CellPageProps) {
 							</span>
 						</DetailRow>
 					)}
-					{createdBlock !== null && (
-						<DetailRow label="Created at Block">
+					<DetailRow label="Created at Block">
+						{createdBlock !== null ? (
 							<BlockNumberDisplay blockNumber={createdBlock} linkTo={generateLink(`/block/${createdBlock}`)} />
-						</DetailRow>
-					)}
+						) : (
+							lifecyclePlaceholder
+						)}
+					</DetailRow>
 					<DetailRow label="Consumed at Block">
 						{consumedBlock !== null ? (
 							<BlockNumberDisplay blockNumber={consumedBlock} linkTo={generateLink(`/block/${consumedBlock}`)} />
 						) : (
-							<span className="text-gray-400 dark:text-gray-500">—</span>
+							lifecyclePlaceholder
 						)}
 					</DetailRow>
 				</div>
