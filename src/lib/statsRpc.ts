@@ -5,7 +5,7 @@
  * - No caching (stats queries are fast, pre-computed).
  * - In-flight deduplication only (prevent duplicate concurrent requests).
  * - Fail fast on errors (no silent fallbacks).
- * - Batch requests with set_block_height for archive queries.
+ * - Archive queries pass block_number as the last parameter (stats server does not support batch requests).
  */
 
 import type {
@@ -90,44 +90,6 @@ export function createStatsClient(statsUrl: string) {
 	}
 
 	/**
-	 * Send a batch JSON-RPC request with set_block_height for archive queries.
-	 */
-	async function sendArchiveRequestRaw<T>(
-		blockNumber: number,
-		method: string,
-		params: unknown[],
-	): Promise<T> {
-		const requests = [
-			buildRequest('set_block_height', [toHex(blockNumber)]),
-			buildRequest(method, params),
-		];
-
-		const response = await fetch(statsUrl, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(requests),
-		});
-
-		if (!response.ok) {
-			throw new Error(`Stats server HTTP error: ${response.status} ${response.statusText}`);
-		}
-
-		const json = (await response.json()) as JsonRpcResponse<T>[];
-
-		// Check for error in set_block_height response.
-		if (json[0]?.error) {
-			throw new RpcError(json[0].error.code, json[0].error.message, json[0].error.data);
-		}
-
-		// Check for error in the actual method response.
-		if (json[1]?.error) {
-			throw new RpcError(json[1].error.code, json[1].error.message, json[1].error.data);
-		}
-
-		return json[1].result as T;
-	}
-
-	/**
 	 * Request wrapper with in-flight deduplication (no caching).
 	 */
 	async function deduplicatedRequest<T>(
@@ -156,16 +118,16 @@ export function createStatsClient(statsUrl: string) {
 	}
 
 	/**
-	 * Send a request, using archive batch if blockNumber provided.
+	 * Send a request, appending blockNumber as the last param for archive queries.
+	 * The stats server accepts block_number as a trailing parameter rather than
+	 * via set_block_height batching (which it does not support).
 	 */
 	function sendRequest<T>(method: string, params: unknown[], blockNumber?: number): Promise<T> {
-		if (blockNumber !== undefined) {
-			return deduplicatedRequest(method, params, blockNumber, () =>
-				sendArchiveRequestRaw<T>(blockNumber, method, params),
-			);
-		}
-		return deduplicatedRequest(method, params, undefined, () =>
-			sendRequestRaw<T>(method, params),
+		const archiveParams = blockNumber !== undefined
+			? [...params, toHex(blockNumber)]
+			: params;
+		return deduplicatedRequest(method, archiveParams, blockNumber, () =>
+			sendRequestRaw<T>(method, archiveParams),
 		);
 	}
 

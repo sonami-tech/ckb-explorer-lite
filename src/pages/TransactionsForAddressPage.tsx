@@ -115,68 +115,136 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				}
 			}
 
-			// Check stats tx_history availability in parallel with overview stats.
-			const statsAvailablePromise = (isStatsAvailable && statsClient && script)
-				? statsClient.getAddressStats(scriptToLockHash(script), archiveHeight)
-					.catch(() => null)
-				: Promise.resolve(null);
+			// Use stats server when available, fall back to RPC.
+			if (isStatsAvailable && statsClient && script) {
+				const lockHash = scriptToLockHash(script);
+				const statsResult = await statsClient.getAllAddressStats(lockHash, archiveHeight);
 
-			// Fetch overview stats in parallel.
-			const [
-				balanceResult,
-				txCountResult,
-				firstTxResult,
-				lastTxResult,
-				statsResult,
-			] = await Promise.all([
-				rpc.getCellsCapacity(baseSearchKey, archiveHeight),
-				rpc.getTransactionsCount(baseSearchKey, archiveHeight),
-				rpc.getGroupedTransactions(baseSearchKey, 'asc', 1, undefined, archiveHeight),
-				rpc.getGroupedTransactions(baseSearchKey, 'desc', 1, undefined, archiveHeight),
-				statsAvailablePromise,
-			]);
+				if (fetchId !== overviewFetchIdRef.current) return;
 
-			if (fetchId !== overviewFetchIdRef.current) return;
+				if (statsResult) {
+					const balance = fromHex(statsResult.core.capacity);
+					const txCount = fromHex(statsResult.core.tx_count);
+					setTxHistoryAvailable(statsResult.core.tx_history_available);
 
-			// Process first activity.
-			let firstActivityData: typeof firstActivity = null;
-			if (firstTxResult.objects.length > 0) {
-				const firstTx = firstTxResult.objects[0];
-				const firstHeader = await rpc.getHeaderByNumber(BigInt(firstTx.block_number), archiveHeight);
-				firstActivityData = {
-					txHash: firstTx.tx_hash,
-					blockNumber: BigInt(firstTx.block_number),
-					timestamp: firstHeader ? Number(BigInt(firstHeader.timestamp)) : Date.now(),
-				};
-			}
+					// Get first/last activity from stats or RPC depending on tx_history_available.
+					let firstTx: { tx_hash: string; block_number: string } | null = null;
+					let lastTx: { tx_hash: string; block_number: string } | null = null;
 
-			// Process last activity.
-			let lastActivityData: typeof lastActivity = null;
-			if (lastTxResult.objects.length > 0) {
-				const lastTx = lastTxResult.objects[0];
-				// Only fetch header if different from first activity block.
-				let lastTimestamp: number;
-				if (firstActivityData && firstActivityData.blockNumber === BigInt(lastTx.block_number)) {
-					lastTimestamp = firstActivityData.timestamp;
+					if (statsResult.core.tx_history_available) {
+						const [oldestResult, newestResult] = await Promise.all([
+							statsClient.getAddressTransactions(lockHash, 0, 1, 'oldest', archiveHeight),
+							statsClient.getAddressTransactions(lockHash, 0, 1, 'newest', archiveHeight),
+						]);
+						if (oldestResult.transactions.length > 0) firstTx = oldestResult.transactions[0];
+						if (newestResult.transactions.length > 0) lastTx = newestResult.transactions[0];
+					} else {
+						const [firstTxResult, lastTxResult] = await Promise.all([
+							rpc.getGroupedTransactions(baseSearchKey, 'asc', 1, undefined, archiveHeight),
+							rpc.getGroupedTransactions(baseSearchKey, 'desc', 1, undefined, archiveHeight),
+						]);
+						if (firstTxResult.objects.length > 0) firstTx = firstTxResult.objects[0];
+						if (lastTxResult.objects.length > 0) lastTx = lastTxResult.objects[0];
+					}
+
+					if (fetchId !== overviewFetchIdRef.current) return;
+
+					// Process first/last activity timestamps from block headers.
+					let firstActivityData: typeof firstActivity = null;
+					if (firstTx) {
+						const firstHeader = await rpc.getHeaderByNumber(BigInt(firstTx.block_number), archiveHeight);
+						firstActivityData = {
+							txHash: firstTx.tx_hash,
+							blockNumber: BigInt(firstTx.block_number),
+							timestamp: firstHeader ? Number(BigInt(firstHeader.timestamp)) : Date.now(),
+						};
+					}
+
+					let lastActivityData: typeof lastActivity = null;
+					if (lastTx) {
+						let lastTimestamp: number;
+						if (firstActivityData && firstActivityData.blockNumber === BigInt(lastTx.block_number)) {
+							lastTimestamp = firstActivityData.timestamp;
+						} else {
+							const lastHeader = await rpc.getHeaderByNumber(BigInt(lastTx.block_number), archiveHeight);
+							lastTimestamp = lastHeader ? Number(BigInt(lastHeader.timestamp)) : Date.now();
+						}
+						lastActivityData = {
+							txHash: lastTx.tx_hash,
+							blockNumber: BigInt(lastTx.block_number),
+							timestamp: lastTimestamp,
+						};
+					}
+
+					if (fetchId !== overviewFetchIdRef.current) return;
+
+					setReferenceTimestamp(archiveTimestamp);
+					setBalance(balance);
+					setTotalTransactionCount(txCount);
+					setFirstActivity(firstActivityData);
+					setLastActivity(lastActivityData);
 				} else {
-					const lastHeader = await rpc.getHeaderByNumber(BigInt(lastTx.block_number), archiveHeight);
-					lastTimestamp = lastHeader ? Number(BigInt(lastHeader.timestamp)) : Date.now();
+					// Stats returned null — fall back to full RPC path.
+					setTxHistoryAvailable(false);
+					await fetchOverviewViaRpc();
 				}
-				lastActivityData = {
-					txHash: lastTx.tx_hash,
-					blockNumber: BigInt(lastTx.block_number),
-					timestamp: lastTimestamp,
-				};
+			} else {
+				// No stats server — full RPC path.
+				await fetchOverviewViaRpc();
 			}
 
-			if (fetchId !== overviewFetchIdRef.current) return;
+			async function fetchOverviewViaRpc() {
+				const [
+					balanceResult,
+					txCountResult,
+					firstTxResult,
+					lastTxResult,
+				] = await Promise.all([
+					rpc.getCellsCapacity(baseSearchKey, archiveHeight),
+					rpc.getTransactionsCount(baseSearchKey, archiveHeight),
+					rpc.getGroupedTransactions(baseSearchKey, 'asc', 1, undefined, archiveHeight),
+					rpc.getGroupedTransactions(baseSearchKey, 'desc', 1, undefined, archiveHeight),
+				]);
 
-			setReferenceTimestamp(archiveTimestamp);
-			setBalance(balanceResult);
-			setTotalTransactionCount(BigInt(txCountResult.count));
-			setFirstActivity(firstActivityData);
-			setLastActivity(lastActivityData);
-			setTxHistoryAvailable(statsResult?.tx_history_available ?? false);
+				if (fetchId !== overviewFetchIdRef.current) return;
+
+				let firstActivityData: typeof firstActivity = null;
+				if (firstTxResult.objects.length > 0) {
+					const firstTx = firstTxResult.objects[0];
+					const firstHeader = await rpc.getHeaderByNumber(BigInt(firstTx.block_number), archiveHeight);
+					firstActivityData = {
+						txHash: firstTx.tx_hash,
+						blockNumber: BigInt(firstTx.block_number),
+						timestamp: firstHeader ? Number(BigInt(firstHeader.timestamp)) : Date.now(),
+					};
+				}
+
+				let lastActivityData: typeof lastActivity = null;
+				if (lastTxResult.objects.length > 0) {
+					const lastTx = lastTxResult.objects[0];
+					let lastTimestamp: number;
+					if (firstActivityData && firstActivityData.blockNumber === BigInt(lastTx.block_number)) {
+						lastTimestamp = firstActivityData.timestamp;
+					} else {
+						const lastHeader = await rpc.getHeaderByNumber(BigInt(lastTx.block_number), archiveHeight);
+						lastTimestamp = lastHeader ? Number(BigInt(lastHeader.timestamp)) : Date.now();
+					}
+					lastActivityData = {
+						txHash: lastTx.tx_hash,
+						blockNumber: BigInt(lastTx.block_number),
+						timestamp: lastTimestamp,
+					};
+				}
+
+				if (fetchId !== overviewFetchIdRef.current) return;
+
+				setReferenceTimestamp(archiveTimestamp);
+				setBalance(balanceResult);
+				setTotalTransactionCount(BigInt(txCountResult.count));
+				setFirstActivity(firstActivityData);
+				setLastActivity(lastActivityData);
+				setTxHistoryAvailable(false);
+			}
 		} catch (err) {
 			if (fetchId !== overviewFetchIdRef.current) return;
 			setFetchError(err instanceof Error ? err : new Error('Failed to fetch address overview.'));

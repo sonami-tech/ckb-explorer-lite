@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import {
 	formatNumber,
@@ -67,6 +67,19 @@ export function HomePage() {
 
 	const networkType = currentNetwork?.type ?? 'mainnet';
 	const { statsClient, isStatsAvailable } = useStats();
+
+	// Clear stale data when archive height changes so boxes show loading
+	// indicators instead of data from a different block height.
+	const prevHeightRef = useRef<number | undefined>(archiveHeight);
+	useEffect(() => {
+		if (prevHeightRef.current !== archiveHeight) {
+			prevHeightRef.current = archiveHeight;
+			setNetworkStats(null);
+			setAvgBlockTime(0);
+			setGlobalStats(null);
+			setSupplyStats(null);
+		}
+	}, [archiveHeight]);
 
 	// Determine which block to use as the starting point for display.
 	// In archive mode, show blocks up to the archive height; otherwise show latest.
