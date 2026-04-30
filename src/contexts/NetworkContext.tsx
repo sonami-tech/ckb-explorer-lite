@@ -8,7 +8,8 @@ import {
 	useCallback,
 	type ReactNode,
 } from 'react';
-import { networks as configuredNetworks, type NetworkConfig } from '../config';
+import { type NetworkConfig, rpcPath } from '../config/loadConfig';
+import { useAppConfig } from './AppConfigContext';
 import { createRpcClient, type RpcClient } from '../lib/rpc';
 import { safeGetItem, safeSetItem } from '../lib/localStorage';
 
@@ -76,20 +77,21 @@ function updateUrlWithNetwork(networkName: string): void {
 }
 
 export function NetworkProvider({ children }: { children: ReactNode }) {
-	const networks = configuredNetworks;
+	const { networks, cacheEnabled } = useAppConfig();
 	const [selectedIndex, setSelectedIndex] = useState(() => getInitialNetworkIndex(networks));
 
 	const configError = networks.length === 0
-		? 'No networks configured. Add networks to src/config/networks.ts.'
+		? 'No networks configured. Add networks to config.json5.'
 		: null;
 
 	const currentNetwork = networks[selectedIndex] ?? null;
 
-	// Create RPC client when network changes.
+	// Create RPC client when network changes. The browser sees only the
+	// slug-derived proxy path; upstream URLs stay server-side.
 	const rpc = useMemo(() => {
 		if (!currentNetwork) return null;
-		return createRpcClient(currentNetwork.url);
-	}, [currentNetwork]);
+		return createRpcClient(rpcPath(currentNetwork.slug), { cacheEnabled });
+	}, [currentNetwork, cacheEnabled]);
 
 	const isArchiveSupported = currentNetwork?.isArchive ?? false;
 

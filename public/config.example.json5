@@ -1,0 +1,71 @@
+{
+  // Networks shown in the UI's network switcher. Each entry is self-contained:
+  // it declares its own RPC endpoint and optionally a stats server. Add, remove,
+  // or reorder entries freely. The first entry is selected by default on load.
+  //
+  // The `rpcUrl` and `statsUrl` fields can point to any reachable endpoint:
+  //   - Same host (http://127.0.0.1:PORT) for nodes running alongside this container.
+  //   - LAN address (http://192.168.x.x:PORT) for nodes on your private network.
+  //   - Public RPC (https://example.com) for community-hosted endpoints.
+  //
+  // The in-container nginx proxy generates a rate-limited /rpc/{slug} route
+  // per entry and a /rpc/stats/{slug} route for entries that declare statsUrl.
+  // The browser only ever talks to those proxy paths; the entrypoint writes
+  // a redacted config.public.json5 (slugs + names + types only) for the SPA
+  // to fetch, so upstream URLs never leak to clients.
+  networks: [
+    // Local archive mainnet — full historical state via set_block_height.
+    {
+      slug: 'mainnet-archive',
+      name: 'Mainnet Archive',
+      type: 'mainnet',
+      isArchive: true,
+      rpcUrl: 'http://127.0.0.1:8214',
+      statsUrl: 'http://127.0.0.1:8116',
+    },
+
+    // Local stock mainnet — pruned node, no historical queries.
+    {
+      slug: 'mainnet',
+      name: 'Mainnet',
+      type: 'mainnet',
+      isArchive: false,
+      rpcUrl: 'http://127.0.0.1:8114',
+      statsUrl: 'http://127.0.0.1:8116',
+    },
+
+    // Public mainnet RPC — no stats; community endpoint.
+    {
+      slug: 'mainnet-public',
+      name: 'Mainnet (Public RPC)',
+      type: 'mainnet',
+      isArchive: false,
+      rpcUrl: 'https://mainnet.ckb.dev',
+    },
+
+    // LAN testnet — node on another machine on your private network.
+    {
+      slug: 'testnet',
+      name: 'Testnet',
+      type: 'testnet',
+      isArchive: false,
+      rpcUrl: 'http://192.168.1.100:18114',
+      statsUrl: 'http://192.168.1.100:18116',
+    },
+
+    // Local devnet — typical for chain development; usually no stats server.
+    {
+      slug: 'devnet',
+      name: 'Devnet',
+      type: 'devnet',
+      isArchive: false,
+      rpcUrl: 'http://127.0.0.1:8118',
+    },
+  ],
+
+  // How often the UI polls for tip-block updates and home-page refresh (ms).
+  pollIntervalMs: 8000,
+
+  // Master switch for the in-memory RPC response cache. Disable for diagnostics.
+  cacheEnabled: true,
+}

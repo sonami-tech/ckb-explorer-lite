@@ -283,9 +283,25 @@ function getCache(): RpcCache {
 }
 
 /**
- * Create an RPC client bound to a specific URL.
+ * Options for createRpcClient. `cacheEnabled` is sourced from runtime config
+ * (config.public.json5) per-instance; the other cache parameters live in
+ * CACHE_CONFIG since they aren't operator-tunable.
  */
-export function createRpcClient(rpcUrl: string) {
+export interface RpcClientOptions {
+	cacheEnabled: boolean;
+}
+
+/**
+ * Create an RPC client bound to a specific same-origin proxy path.
+ *
+ * `proxyPath` is the browser-visible slug-derived path (e.g. /rpc/mainnet);
+ * the upstream URL never reaches the browser. The factory closes over
+ * opts.cacheEnabled, so the cache toggle is captured per-client with no
+ * module mutable state.
+ */
+export function createRpcClient(proxyPath: string, opts: RpcClientOptions) {
+	const rpcUrl = proxyPath;
+	const { cacheEnabled } = opts;
 	let requestId = 0;
 	const cache = getCache();
 
@@ -374,8 +390,8 @@ export function createRpcClient(rpcUrl: string) {
 		archiveHeight: number | undefined,
 		fetcher: () => Promise<T>,
 	): Promise<T> {
-		// Skip cache if disabled.
-		if (!CACHE_CONFIG.enabled) {
+		// Skip cache if disabled (per-client value from runtime config).
+		if (!cacheEnabled) {
 			return fetcher();
 		}
 
@@ -631,6 +647,7 @@ export function createRpcClient(rpcUrl: string) {
 
 		/**
 		 * Get count of live cells matching search key.
+		 * Archive-fork extension — only call on archive-enabled networks.
 		 * @param searchKey - Indexer search key.
 		 * @param height - Optional archive height for historical query.
 		 */
@@ -646,6 +663,7 @@ export function createRpcClient(rpcUrl: string) {
 
 		/**
 		 * Get count of distinct transactions matching search key.
+		 * Archive-fork extension — only call on archive-enabled networks.
 		 * @param searchKey - Indexer search key.
 		 * @param height - Optional archive height for historical query.
 		 */

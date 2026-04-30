@@ -6,12 +6,6 @@
  */
 
 /**
- * Polling interval for refreshing blockchain data (milliseconds).
- * Used for tip block updates and home page refresh.
- */
-export const POLL_INTERVAL_MS = 8000;
-
-/**
  * Number of items to display in home page lists.
  */
 export const HOME_ITEMS_TO_SHOW = 10;
@@ -19,10 +13,11 @@ export const HOME_ITEMS_TO_SHOW = 10;
 /**
  * RPC request cache configuration.
  * See src/CACHE_POLICY.md for detailed cache policy documentation.
+ *
+ * `cacheEnabled` is loaded from runtime config (config.public.json5) and
+ * passed into createRpcClient per-instance, so it is intentionally absent here.
  */
 export const CACHE_CONFIG = {
-	/** Enable or disable the RPC cache. */
-	enabled: true,
 	/** Maximum number of entries in the LRU cache. */
 	maxEntries: 1000,
 	/** Blocks within this distance from tip are considered shallow and may reorg. */

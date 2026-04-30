@@ -9,7 +9,7 @@ import {
 	type ReactNode,
 } from 'react';
 import { useNetwork } from './NetworkContext';
-import { POLL_INTERVAL_MS } from '../config';
+import { useAppConfig } from './AppConfigContext';
 
 
 interface ArchiveContextValue {
@@ -60,6 +60,7 @@ const ArchiveContext = createContext<ArchiveContextValue | null>(null);
 
 export function ArchiveProvider({ children }: { children: ReactNode }) {
 	const { rpc, currentNetwork, isArchiveSupported } = useNetwork();
+	const { pollIntervalMs } = useAppConfig();
 
 	const [archiveHeight, setArchiveHeightState] = useState<number | undefined>(undefined);
 	const [tipBlockNumber, setTipBlockNumber] = useState<bigint | null>(null);
@@ -67,8 +68,8 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	// Track previous network URL to detect network changes.
-	const prevNetworkUrlRef = useRef<string | null>(null);
+	// Track previous network slug to detect network changes.
+	const prevNetworkSlugRef = useRef<string | null>(null);
 
 	// Sync archive height state from URL without modifying URL.
 	// This is called on initial load, popstate (back/forward), and SPA navigation.
@@ -107,9 +108,9 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
 
 	// Clear archive height when network changes or when archive not supported.
 	useEffect(() => {
-		const currentUrl = currentNetwork?.url ?? null;
+		const currentSlug = currentNetwork?.slug ?? null;
 
-		if (prevNetworkUrlRef.current !== null && prevNetworkUrlRef.current !== currentUrl) {
+		if (prevNetworkSlugRef.current !== null && prevNetworkSlugRef.current !== currentSlug) {
 			// Network changed - clear archive height.
 			setArchiveHeightState(undefined);
 			setTipBlockNumber(null);
@@ -121,8 +122,8 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
 			setArchiveHeightState(undefined);
 		}
 
-		prevNetworkUrlRef.current = currentUrl;
-	}, [currentNetwork?.url, isArchiveSupported, archiveHeight]);
+		prevNetworkSlugRef.current = currentSlug;
+	}, [currentNetwork?.slug, isArchiveSupported, archiveHeight]);
 
 	// Update URL when archive height changes.
 	const setArchiveHeight = useCallback((height: number | undefined) => {
@@ -185,9 +186,9 @@ export function ArchiveProvider({ children }: { children: ReactNode }) {
 
 	// Poll for tip updates.
 	useEffect(() => {
-		const interval = setInterval(refreshTip, POLL_INTERVAL_MS);
+		const interval = setInterval(refreshTip, pollIntervalMs);
 		return () => clearInterval(interval);
-	}, [refreshTip]);
+	}, [refreshTip, pollIntervalMs]);
 
 	// Check if height exceeds tip.
 	const isHeightBeyondTip = archiveHeight !== undefined &&

@@ -1,7 +1,7 @@
 {
   "name": "ckb-explorer-lite",
   "private": true,
-  "version": "0.8.9056",
+  "version": "0.8.9147",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
   "dependencies": {
     "@ckb-ccc/core": "^1.12.5",
     "@floating-ui/react-dom": "^2.1.6",
+    "json5": "^2.2.3",
     "navigo": "^8.11.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"

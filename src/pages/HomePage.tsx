@@ -23,7 +23,8 @@ import { ErrorDisplay, ConnectionError } from '../components/ErrorDisplay';
 import { RelativeTime } from '../components/RelativeTime';
 import type { RpcBlock } from '../types/rpc';
 import type { StatsAllGlobalResponse, StatsSupplyResponse } from '../types/stats';
-import { POLL_INTERVAL_MS, HOME_ITEMS_TO_SHOW } from '../config';
+import { HOME_ITEMS_TO_SHOW } from '../config';
+import { useAppConfig } from '../contexts/AppConfigContext';
 import { BRAND } from '../lib/badgeStyles';
 
 interface BlockInfo {
@@ -55,6 +56,7 @@ interface NetworkStats {
 export function HomePage() {
 	const rpc = useRpc();
 	const { isArchiveSupported, currentNetwork } = useNetwork();
+	const { pollIntervalMs } = useAppConfig();
 	const { archiveHeight, tipBlockNumber, isLoading: archiveLoading, error: archiveError } = useArchive();
 	const [blocks, setBlocks] = useState<BlockInfo[]>([]);
 	const [transactions, setTransactions] = useState<TransactionInfo[]>([]);
@@ -218,10 +220,10 @@ export function HomePage() {
 
 		// Only poll for updates when viewing latest blocks.
 		if (archiveHeight === undefined) {
-			const interval = setInterval(fetchBlocks, POLL_INTERVAL_MS);
+			const interval = setInterval(fetchBlocks, pollIntervalMs);
 			return () => clearInterval(interval);
 		}
-	}, [fetchBlocks, archiveHeight]);
+	}, [fetchBlocks, archiveHeight, pollIntervalMs]);
 
 	// Fetch and poll stats (when stats server available).
 	useEffect(() => {
@@ -231,10 +233,10 @@ export function HomePage() {
 
 		// Only poll for updates when viewing latest blocks.
 		if (archiveHeight === undefined) {
-			const interval = setInterval(fetchStats, POLL_INTERVAL_MS);
+			const interval = setInterval(fetchStats, pollIntervalMs);
 			return () => clearInterval(interval);
 		}
-	}, [fetchStats, isStatsAvailable, archiveHeight]);
+	}, [fetchStats, isStatsAvailable, archiveHeight, pollIntervalMs]);
 
 	// Show connection error if initial load fails.
 	if (archiveError && !archiveLoading) {

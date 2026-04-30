@@ -1,37 +1,102 @@
 import { defineConfig } from 'vite'
+import { readFileSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import JSON5 from 'json5'
 import react from '@vitejs/plugin-react'
 import updateVersionPlugin from './vite-plugin-update-version.js'
 
-// https://vite.dev/config/
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const configPath = resolve(__dirname, 'public/config.json5')
+
+interface NetworkConfig {
+  slug: string
+  rpcUrl: string
+  statsUrl?: string
+}
+
+let runtimeConfig: { networks: NetworkConfig[] }
+try {
+  runtimeConfig = JSON5.parse(readFileSync(configPath, 'utf-8'))
+} catch (err) {
+  if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+    console.error('\n  public/config.json5 not found.')
+    console.error('  Run: cp public/config.example.json5 public/config.json5\n')
+    process.exit(1)
+  }
+  throw err
+}
+
+// Regex-anchored exact-match keys (^/rpc/{slug}$) match nginx `location =`
+// semantics; default Vite proxy keys are prefix-match and would leak
+// /rpc/{slug}XYZ to the upstream. `changeOrigin: true` rewrites Host like
+// nginx's `proxy_set_header Host`. `rewrite: () => '/'` strips the prefix
+// to match the entrypoint's `rewrite ^ / break;`.
+const proxy: Record<string, { target: string; changeOrigin: boolean; rewrite: (p: string) => string; secure?: boolean }> = {}
+for (const n of runtimeConfig.networks) {
+  proxy[`^/rpc/${n.slug}$`] = {
+    target: n.rpcUrl,
+    changeOrigin: true,
+    rewrite: () => '/',
+    secure: true,
+  }
+  if (n.statsUrl) {
+    proxy[`^/rpc/stats/${n.slug}$`] = {
+      target: n.statsUrl,
+      changeOrigin: true,
+      rewrite: () => '/',
+    }
+  }
+}
+
+// Dev-only: serve a redacted config.public.json5 from public/config.json5 so
+// the SPA can load it the same way it does in production. The browser never
+// sees rpcUrl/statsUrl values.
+function publicConfigPlugin() {
+  return {
+    name: 'serve-public-config',
+    configureServer(server: import('vite').ViteDevServer) {
+      server.middlewares.use((req, res, next) => {
+        // Block direct access to the full config (which lives in public/ for
+        // vite.config.ts to read). Mirrors nginx's `location = /config.json5
+        // { return 404; }` in production.
+        if (req.url === '/config.json5' || req.url?.startsWith('/config.json5?')) {
+          res.statusCode = 404
+          res.end('Not Found')
+          return
+        }
+        if (req.url !== '/config.public.json5') return next()
+        try {
+          const raw = JSON5.parse(readFileSync(configPath, 'utf-8'))
+          const redacted = {
+            networks: raw.networks.map((e: { slug: string; name: string; type: string; isArchive: boolean; statsUrl?: string }) => ({
+              slug: e.slug,
+              name: e.name,
+              type: e.type,
+              isArchive: e.isArchive,
+              hasStats: e.statsUrl != null,
+            })),
+            pollIntervalMs: raw.pollIntervalMs,
+            cacheEnabled: raw.cacheEnabled,
+          }
+          res.setHeader('Content-Type', 'application/json')
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+          res.end(JSON.stringify(redacted))
+        } catch (err) {
+          res.statusCode = 500
+          res.end(`config.public.json5 generation failed: ${(err as Error).message}`)
+        }
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [updateVersionPlugin(), react()],
+  plugins: [updateVersionPlugin(), react(), publicConfigPlugin()],
   server: {
     port: 5273,
     host: true,
     allowedHosts: ['explorer.ckbdev.com'],
-    proxy: {
-      // Proxy CKB node RPC requests to avoid CORS and enable external access.
-      '/rpc/archive': {
-        target: 'http://192.168.0.74:8114',
-        changeOrigin: true,
-        rewrite: () => '/',
-      },
-      '/rpc/mainnet': {
-        target: 'http://192.168.0.73:8114',
-        changeOrigin: true,
-        rewrite: () => '/',
-      },
-      '/rpc/testnet': {
-        target: 'http://192.168.0.73:18114',
-        changeOrigin: true,
-        rewrite: () => '/',
-      },
-      // Proxy stats server requests.
-      '/rpc/stats': {
-        target: 'http://127.0.0.1:8116',
-        changeOrigin: true,
-        rewrite: () => '/',
-      },
-    },
+    proxy,
   },
 })

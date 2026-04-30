@@ -15,6 +15,9 @@ dist-ssr
 # Environment
 .env
 
+# Local runtime config (copy public/config.example.json5 to public/config.json5)
+public/config.json5
+
 # Playwright MCP
 .playwright-mcp/
 
@@ -28,3 +31,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary scratch files
+tmp/
+
+# Claude Code session state
+.claude/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Other lockfiles (this project uses bun)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

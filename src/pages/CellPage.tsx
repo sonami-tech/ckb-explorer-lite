@@ -153,7 +153,11 @@ export function CellPage({ txHash, index }: CellPageProps) {
 						<OutPoint txHash={txHash} index={index} linkTo="transaction" />
 					</DetailRow>
 					<DetailRow label="Status">
-						<CellStatusIndicator status={cellStatus} />
+						{cellStatus === 'unknown' ? (
+							<span className="text-gray-500 dark:text-gray-400">Loading…</span>
+						) : (
+							<CellStatusIndicator status={cellStatus} />
+						)}
 					</DetailRow>
 					{cellData && (
 						<DetailRow label="Capacity">

@@ -2,12 +2,13 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useNetwork } from './NetworkContext';
 import { createStatsClient, type StatsClient } from '../lib/statsRpc';
+import { statsPath } from '../config/loadConfig';
 
 interface StatsContextValue {
-	/** Stats client instance, or null if no statsUrl configured. */
+	/** Stats client instance, or null when the current network has no stats backend. */
 	statsClient: StatsClient | null;
 
-	/** True when statsUrl is configured for the current network. */
+	/** True when the current network has a stats backend configured. */
 	isStatsAvailable: boolean;
 }
 
@@ -16,12 +17,14 @@ const StatsContext = createContext<StatsContextValue | null>(null);
 export function StatsProvider({ children }: { children: ReactNode }) {
 	const { currentNetwork } = useNetwork();
 
-	// Create stats client when network or statsUrl changes.
-	const statsUrl = currentNetwork?.statsUrl;
+	// Build the slug-derived stats proxy path; null when the network has no
+	// stats backend (browser never sees an upstream URL).
 	const statsClient = useMemo(() => {
-		if (!statsUrl) return null;
-		return createStatsClient(statsUrl);
-	}, [statsUrl]);
+		if (!currentNetwork) return null;
+		const path = statsPath(currentNetwork.slug, currentNetwork.hasStats);
+		if (!path) return null;
+		return createStatsClient(path);
+	}, [currentNetwork]);
 
 	const isStatsAvailable = statsClient !== null;
 
