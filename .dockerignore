@@ -1,0 +1,48 @@
+# Version control
+.git
+.gitignore
+.github
+
+# Docker (don't copy into own build context)
+Dockerfile
+.dockerignore
+
+# Dependencies (rebuilt in image)
+node_modules
+
+# Build outputs (rebuilt in image)
+dist
+dist-ssr
+
+# Logs
+*.log
+logs
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editor / OS cruft
+.vscode
+.idea
+.DS_Store
+
+# Project-specific scratch
+tmp
+.playwright-mcp
+.claude
+
+# Documentation (not needed in runtime image)
+*.md
+docs
+
+# Build caches
+.eslintcache
+*.tsbuildinfo
+coverage
+
+# Other lockfiles (this project uses bun)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
