@@ -32,7 +32,7 @@ interface AddressPageProps {
 
 export function AddressPage({ address }: AddressPageProps) {
 	const rpc = useRpc();
-	const { currentNetwork } = useNetwork();
+	const { currentNetwork, isArchiveSupported } = useNetwork();
 	const { archiveHeight } = useArchive();
 	const { statsClient, isStatsAvailable } = useStats();
 	const networkType = currentNetwork?.type ?? 'mainnet';
@@ -86,19 +86,20 @@ export function AddressPage({ address }: AddressPageProps) {
 			}
 
 			// RPC fallback path — used when stats server is unavailable or errors.
+			// Count methods are archive-fork extensions; skip them on non-archive networks.
 			async function fetchDataViaRpc() {
 				const [rpcBalanceResult, rpcCellsCountResult, rpcTxCountResult, groupedTxsResult] = await Promise.all([
 					rpc.getCellsCapacity(searchKey, archiveHeight),
-					rpc.getCellsCount(searchKey, archiveHeight),
-					rpc.getTransactionsCount(searchKey, archiveHeight),
+					isArchiveSupported ? rpc.getCellsCount(searchKey, archiveHeight) : Promise.resolve(null),
+					isArchiveSupported ? rpc.getTransactionsCount(searchKey, archiveHeight) : Promise.resolve(null),
 					rpc.getGroupedTransactions(searchKey, 'desc', PAGE_SIZE_CONFIG.preview, undefined, archiveHeight),
 				]);
 
 				if (fetchId !== fetchIdRef.current) return;
 
 				setBalance(rpcBalanceResult);
-				setCellCount(BigInt(rpcCellsCountResult.count));
-				setTransactionCount(BigInt(rpcTxCountResult.count));
+				setCellCount(rpcCellsCountResult ? BigInt(rpcCellsCountResult.count) : null);
+				setTransactionCount(rpcTxCountResult ? BigInt(rpcTxCountResult.count) : null);
 				setReferenceTimestamp(archiveTimestamp);
 
 				const enriched = await enrichTransactions(groupedTxsResult.objects);
@@ -167,7 +168,7 @@ export function AddressPage({ address }: AddressPageProps) {
 				setIsLoading(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, enrichTransactions, statsClient, isStatsAvailable]);
+	}, [rpc, script, archiveHeight, enrichTransactions, statsClient, isStatsAvailable, isArchiveSupported]);
 
 	useEffect(() => {
 		if (script) {
@@ -278,7 +279,7 @@ export function AddressPage({ address }: AddressPageProps) {
 					<DetailRow label="Transactions">
 						<div className="flex items-center gap-3">
 							<span className="font-mono text-gray-900 dark:text-white">
-								{transactionCount !== null ? formatNumber(transactionCount) : '...'}
+								{transactionCount !== null ? formatNumber(transactionCount) : 'N/A'}
 							</span>
 							<button
 								onClick={() => navigate(generateLink(`/address/${address}/transactions`))}
@@ -292,7 +293,7 @@ export function AddressPage({ address }: AddressPageProps) {
 					<DetailRow label="Live Cells">
 						<div className="flex items-center gap-3">
 							<span className="font-mono text-gray-900 dark:text-white">
-								{cellCount !== null ? formatNumber(cellCount) : '...'}
+								{cellCount !== null ? formatNumber(cellCount) : 'N/A'}
 							</span>
 							<button
 								onClick={() => navigate(generateLink(`/address/${address}/cells`))}

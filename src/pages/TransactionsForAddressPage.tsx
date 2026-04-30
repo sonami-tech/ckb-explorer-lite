@@ -39,7 +39,7 @@ const STORAGE_KEY = 'ckb-explorer-txs-page-size';
 
 export function TransactionsForAddressPage({ address }: TransactionsForAddressPageProps) {
 	const rpc = useRpc();
-	const { currentNetwork } = useNetwork();
+	const { currentNetwork, isArchiveSupported } = useNetwork();
 	const { archiveHeight } = useArchive();
 	const networkType = currentNetwork?.type ?? 'mainnet';
 	const { statsClient, isStatsAvailable } = useStats();
@@ -193,6 +193,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				await fetchOverviewViaRpc();
 			}
 
+			// getTransactionsCount is an archive-fork extension; skip on non-archive networks.
 			async function fetchOverviewViaRpc() {
 				const [
 					balanceResult,
@@ -201,7 +202,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 					lastTxResult,
 				] = await Promise.all([
 					rpc.getCellsCapacity(baseSearchKey, archiveHeight),
-					rpc.getTransactionsCount(baseSearchKey, archiveHeight),
+					isArchiveSupported ? rpc.getTransactionsCount(baseSearchKey, archiveHeight) : Promise.resolve(null),
 					rpc.getGroupedTransactions(baseSearchKey, 'asc', 1, undefined, archiveHeight),
 					rpc.getGroupedTransactions(baseSearchKey, 'desc', 1, undefined, archiveHeight),
 				]);
@@ -240,7 +241,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 
 				setReferenceTimestamp(archiveTimestamp);
 				setBalance(balanceResult);
-				setTotalTransactionCount(BigInt(txCountResult.count));
+				setTotalTransactionCount(txCountResult ? BigInt(txCountResult.count) : null);
 				setFirstActivity(firstActivityData);
 				setLastActivity(lastActivityData);
 				setTxHistoryAvailable(false);
@@ -253,7 +254,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				setIsLoadingOverview(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, isStatsAvailable, statsClient]);
+	}, [rpc, script, archiveHeight, isStatsAvailable, statsClient, isArchiveSupported]);
 
 	// Fetch filtered transaction count and first page of transactions.
 	const fetchTransactionData = useCallback(async () => {
@@ -300,14 +301,15 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 					filter: indexerFilter,
 				};
 
+				// getTransactionsCount is an archive-fork extension; skip on non-archive networks.
 				const [txCountResult, groupedTxsResult] = await Promise.all([
-					rpc.getTransactionsCount(searchKey, archiveHeight),
+					isArchiveSupported ? rpc.getTransactionsCount(searchKey, archiveHeight) : Promise.resolve(null),
 					rpc.getGroupedTransactions(searchKey, sort.direction, pageSize, undefined, archiveHeight),
 				]);
 
 				if (fetchId !== txFetchIdRef.current) return;
 
-				setFilteredTransactionCount(BigInt(txCountResult.count));
+				setFilteredTransactionCount(txCountResult ? BigInt(txCountResult.count) : null);
 
 				if (groupedTxsResult.last_cursor) {
 					cursorCacheRef.current.set(pageSize, groupedTxsResult.last_cursor);
@@ -338,7 +340,7 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 				setIsLoadingTransactions(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, pageSize, enrichTransactions, filters, sort.direction, networkType, fetchError, useStatsMode, statsClient]);
+	}, [rpc, script, archiveHeight, pageSize, enrichTransactions, filters, sort.direction, networkType, fetchError, useStatsMode, statsClient, isArchiveSupported]);
 
 	// Fetch overview data when script changes.
 	useEffect(() => {

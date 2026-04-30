@@ -42,7 +42,7 @@ const STORAGE_KEY = 'ckb-explorer-cells-page-size';
 
 export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 	const rpc = useRpc();
-	const { currentNetwork } = useNetwork();
+	const { currentNetwork, isArchiveSupported } = useNetwork();
 	const { archiveHeight } = useArchive();
 	const { statsClient, isStatsAvailable } = useStats();
 	const networkType = currentNetwork?.type ?? 'mainnet';
@@ -122,6 +122,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 			};
 
 			// RPC fallback for counts/balance — used when stats server is unavailable or errors.
+			// Count methods are archive-fork extensions; skip them on non-archive networks.
 			async function fetchCountsViaRpc(): Promise<bigint> {
 				const daoScript = getDaoTypeScript();
 				const daoSearchKey: IndexerSearchKey = {
@@ -140,18 +141,18 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 					daoCellCountResult,
 				] = await Promise.all([
 					rpc.getCellsCapacity(baseSearchKey, archiveHeight),
-					rpc.getCellsCount(baseSearchKey, archiveHeight),
+					isArchiveSupported ? rpc.getCellsCount(baseSearchKey, archiveHeight) : Promise.resolve(null),
 					rpc.getCellsCapacity(daoSearchKey, archiveHeight),
-					rpc.getCellsCount(daoSearchKey, archiveHeight),
+					isArchiveSupported ? rpc.getCellsCount(daoSearchKey, archiveHeight) : Promise.resolve(null),
 				]);
 
 				if (fetchId !== overviewFetchIdRef.current) return 0n;
 
-				const count = BigInt(cellCountResult.count);
-				setCellCount(count);
+				const count = cellCountResult ? BigInt(cellCountResult.count) : 0n;
+				setCellCount(cellCountResult ? count : null);
 				setBalance(balanceResult);
 				setDaoCapacity(daoCapacityResult);
-				setDaoCellCount(BigInt(daoCellCountResult.count));
+				setDaoCellCount(daoCellCountResult ? BigInt(daoCellCountResult.count) : null);
 
 				return count;
 			}
@@ -285,7 +286,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 				setIsLoadingOverview(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, networkType, isStatsAvailable, statsClient]);
+	}, [rpc, script, archiveHeight, networkType, isStatsAvailable, statsClient, isArchiveSupported]);
 
 	// Fetch filtered cell count and first page of cells.
 	const fetchCellList = useCallback(async () => {
@@ -316,8 +317,9 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 			};
 
 			// Fetch cell count and first page in parallel.
+			// getCellsCount is an archive-fork extension; skip on non-archive networks.
 			const [cellCountResult, cellsResult] = await Promise.all([
-				rpc.getCellsCount(searchKey, archiveHeight),
+				isArchiveSupported ? rpc.getCellsCount(searchKey, archiveHeight) : Promise.resolve(null),
 				rpc.getCells(searchKey, sort.direction, pageSize, undefined, archiveHeight),
 			]);
 
@@ -331,7 +333,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 
 			// Note: When lock script filter is active, the count from indexer may not match
 			// the actual filtered count. We use the indexer count as an approximation.
-			setFilteredCellCount(BigInt(cellCountResult.count));
+			setFilteredCellCount(cellCountResult ? BigInt(cellCountResult.count) : null);
 
 			// Cache the cursor for the next page.
 			if (cellsResult.last_cursor) {
@@ -364,7 +366,7 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 				setIsLoadingCells(false);
 			}
 		}
-	}, [rpc, script, archiveHeight, pageSize, filters, sort.direction, networkType, fetchError]);
+	}, [rpc, script, archiveHeight, pageSize, filters, sort.direction, networkType, fetchError, isArchiveSupported]);
 
 	// Fetch overview data when script changes.
 	useEffect(() => {
