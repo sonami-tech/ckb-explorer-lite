@@ -152,6 +152,12 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 				throw new Error(hash);
 			}
 
+			// Clear per-input/celldep caches in the same render as setTxData so
+			// new tx rows never momentarily render against the previous tx's
+			// cached entries (avoids a one-frame flash of stale data).
+			setInputCellData(new Map());
+			setInputErrors(new Map());
+			setCellDepData(new Map());
 			setTxData(result as RpcTransactionWithStatus & { transaction: RpcTransaction });
 
 			// Fetch block header for timestamp if transaction is committed.
@@ -424,19 +430,16 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		}
 	}, [paginatedCellDeps, cellDepsStartIndex, fetchCellDepData]);
 
-	// Reset pagination AND per-input/per-celldep caches when the transaction
-	// changes. Without clearing the Maps, entries keyed by the previous
-	// transaction's input/celldep indices could render against the new tx's
-	// rows whenever indices happen to overlap.
+	// Reset pagination and prefetch flag when the transaction changes.
+	// The per-input/celldep caches are cleared synchronously inside
+	// fetchTransaction so they land in the same render as setTxData,
+	// preventing a one-frame flash of stale entries against new rows.
 	useEffect(() => {
 		setFeePrefetchComplete(false);
 		setInputsPage(1);
 		setOutputsPage(1);
 		setCellDepsPage(1);
 		setHeaderDepsPage(1);
-		setInputCellData(new Map());
-		setInputErrors(new Map());
-		setCellDepData(new Map());
 	}, [txData]);
 
 	if (isLoading) {
