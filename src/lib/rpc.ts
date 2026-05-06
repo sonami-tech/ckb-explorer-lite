@@ -101,7 +101,9 @@ class RpcCache {
 	private accessOrder: string[] = [];
 	private inFlight = new Map<string, Promise<unknown>>();
 	private stats = { hits: 0, misses: 0, evictions: 0 };
-	private lastKnownTip: bigint | null = null;
+	// Per-network tip tracking. Each network has its own height; sharing one
+	// field would let policy heuristics flap right after a network switch.
+	private lastKnownTipByNetwork = new Map<string, bigint>();
 
 	/**
 	 * Build a cache key from network, method, params, and archive height.
@@ -114,9 +116,12 @@ class RpcCache {
 	}
 
 	/**
-	 * Determine the cache policy for a request.
+	 * Determine the cache policy for a request. Depth heuristics use the tip
+	 * tracked for the requesting network, so a switch between networks at
+	 * different heights doesn't temporarily mis-classify policy.
 	 */
 	getCachePolicy(
+		networkId: string,
 		method: string,
 		params: unknown[],
 		archiveHeight?: number,
@@ -131,8 +136,10 @@ class RpcCache {
 			return 'lru';
 		}
 
+		const tip = this.lastKnownTipByNetwork.get(networkId);
+
 		// For depth-dependent methods, check if we have tip info.
-		if (this.lastKnownTip === null) {
+		if (tip === undefined) {
 			// Tip unknown, use short TTL to be safe.
 			return 'short-ttl';
 		}
@@ -141,14 +148,14 @@ class RpcCache {
 
 		// Check archive height depth.
 		if (archiveHeight !== undefined) {
-			const depth = this.lastKnownTip - BigInt(archiveHeight);
+			const depth = tip - BigInt(archiveHeight);
 			return depth > threshold ? 'lru' : 'short-ttl';
 		}
 
 		// For getBlockByNumber without archive, check the block number parameter.
 		if (method === 'get_block_by_number' && params[0]) {
 			const blockNum = BigInt(params[0] as string);
-			const depth = this.lastKnownTip - blockNum;
+			const depth = tip - blockNum;
 			return depth > threshold ? 'lru' : 'short-ttl';
 		}
 
@@ -228,10 +235,10 @@ class RpcCache {
 	}
 
 	/**
-	 * Update the last known tip for depth calculations.
+	 * Update the last known tip for the given network's depth calculations.
 	 */
-	updateTip(tip: bigint): void {
-		this.lastKnownTip = tip;
+	updateTip(networkId: string, tip: bigint): void {
+		this.lastKnownTipByNetwork.set(networkId, tip);
 	}
 
 	/**
@@ -426,7 +433,7 @@ export function createRpcClient(proxyPath: string, opts: RpcClientOptions) {
 
 			// Don't cache null results.
 			if (result !== null) {
-				const policy = cache.getCachePolicy(method, params, archiveHeight);
+				const policy = cache.getCachePolicy(networkId, method, params, archiveHeight);
 				cache.set(key, result, policy);
 			}
 
@@ -471,7 +478,7 @@ export function createRpcClient(proxyPath: string, opts: RpcClientOptions) {
 		 */
 		async getTipHeader(): Promise<RpcBlockHeader> {
 			const header = await sendRequest<RpcBlockHeader>('get_tip_header', []);
-			cache.updateTip(BigInt(header.number));
+			cache.updateTip(networkId, BigInt(header.number));
 			return header;
 		},
 
