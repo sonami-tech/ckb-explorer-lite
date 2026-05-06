@@ -127,9 +127,23 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 	const fetchTransaction = useCallback(async () => {
 		const fetchId = ++fetchIdRef.current;
 
+		// Reset every piece of per-transaction state synchronously at fetch
+		// start so a failed or in-flight fetch can't leave the previous
+		// transaction's derived flags (feePrefetchComplete, page indexes,
+		// per-input caches) alive under a new transaction's view. Doing this
+		// up front — not after await — keeps the reset atomic with the
+		// loading state and survives error paths.
 		setIsLoading(true);
 		setError(null);
 		setBlockTimestamp(null);
+		setInputCellData(new Map());
+		setInputErrors(new Map());
+		setCellDepData(new Map());
+		setFeePrefetchComplete(false);
+		setInputsPage(1);
+		setOutputsPage(1);
+		setCellDepsPage(1);
+		setHeaderDepsPage(1);
 
 		try {
 			if (!isValidHex(hash) || hash.length !== 66) {
@@ -152,12 +166,6 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 				throw new Error(hash);
 			}
 
-			// Clear per-input/celldep caches in the same render as setTxData so
-			// new tx rows never momentarily render against the previous tx's
-			// cached entries (avoids a one-frame flash of stale data).
-			setInputCellData(new Map());
-			setInputErrors(new Map());
-			setCellDepData(new Map());
 			setTxData(result as RpcTransactionWithStatus & { transaction: RpcTransaction });
 
 			// Fetch block header for timestamp if transaction is committed.
@@ -429,18 +437,6 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 			fetchCellDepData(paginatedCellDeps, cellDepsStartIndex);
 		}
 	}, [paginatedCellDeps, cellDepsStartIndex, fetchCellDepData]);
-
-	// Reset pagination and prefetch flag when the transaction changes.
-	// The per-input/celldep caches are cleared synchronously inside
-	// fetchTransaction so they land in the same render as setTxData,
-	// preventing a one-frame flash of stale entries against new rows.
-	useEffect(() => {
-		setFeePrefetchComplete(false);
-		setInputsPage(1);
-		setOutputsPage(1);
-		setCellDepsPage(1);
-		setHeaderDepsPage(1);
-	}, [txData]);
 
 	if (isLoading) {
 		return (
