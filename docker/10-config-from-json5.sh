@@ -53,7 +53,7 @@ while [ "$i" -lt "$count" ]; do
   cat >> "$PROXY_INCLUDE" <<EOF
 # $slug
 location = /rpc/$slug {
-  limit_req zone=rpc burst=100 nodelay;
+  limit_req zone=rpc burst=200 nodelay;
   set \$upstream_$var "$rpc";
   rewrite ^ / break;
   proxy_pass \$upstream_$var;
@@ -69,7 +69,7 @@ EOF
     stats_host=$(host_of "$stats")
     cat >> "$PROXY_INCLUDE" <<EOF
 location = /rpc/stats/$slug {
-  limit_req zone=rpc burst=100 nodelay;
+  limit_req zone=rpc burst=200 nodelay;
   set \$upstream_stats_$var "$stats";
   rewrite ^ / break;
   proxy_pass \$upstream_stats_$var;
