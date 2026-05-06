@@ -144,6 +144,12 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		setOutputsPage(1);
 		setCellDepsPage(1);
 		setHeaderDepsPage(1);
+		// fetchPageInputs and fetchCellDepData skip their finally setState
+		// when their captured fetchId is stale, so a prior in-flight fetch
+		// that bails leaves these flags true. Reset them here so the new
+		// fetch's render starts from a clean loading-false baseline.
+		setInputsLoading(false);
+		setCellDepsLoading(false);
 
 		try {
 			if (!isValidHex(hash) || hash.length !== 66) {
