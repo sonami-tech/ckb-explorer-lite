@@ -84,12 +84,15 @@ const SHORT_TTL_METHODS = new Set([
 ]);
 
 /**
- * Methods that are always immutable (hash-based lookups).
+ * Methods that are always immutable. Hash-addressed; the response cannot
+ * change once the resource exists. Methods whose response goes through a
+ * one-way state transition (pending → committed, live → consumed) are
+ * NOT listed here — they are handled by the response-aware branch in
+ * getCachePolicy so a transitional response gets short-ttl while a
+ * terminal response gets lru.
  */
 const IMMUTABLE_METHODS = new Set([
-	'get_block',           // getBlockByHash
-	'get_transaction',
-	'get_cell_lifecycle',  // Cell lifecycle never changes after consumption.
+	'get_block', // getBlockByHash — orphan blocks remain valid by hash.
 ]);
 
 /**
@@ -119,16 +122,40 @@ class RpcCache {
 	 * Determine the cache policy for a request. Depth heuristics use the tip
 	 * tracked for the requesting network, so a switch between networks at
 	 * different heights doesn't temporarily mis-classify policy.
+	 *
+	 * For state-transition methods (get_cell_lifecycle, get_transaction),
+	 * the result shape decides the policy: a terminal state (consumed
+	 * cell, committed/rejected tx) is truly immutable; a transitional
+	 * state (live cell, pending/proposed tx) can change and uses short-ttl
+	 * so the cache can pick up the transition.
 	 */
 	getCachePolicy(
 		networkId: string,
 		method: string,
 		params: unknown[],
 		archiveHeight?: number,
+		result?: unknown,
 	): CachePolicy {
 		// Always short TTL methods.
 		if (SHORT_TTL_METHODS.has(method)) {
 			return 'short-ttl';
+		}
+
+		// State-transition methods: classify by response content.
+		if (method === 'get_cell_lifecycle') {
+			// Cells move one-way from live to consumed; once consumed_block_number
+			// is set, the response is permanent. While live, it can change.
+			const consumed = (result as { consumed_block_number?: string | null } | null | undefined)
+				?.consumed_block_number;
+			return consumed != null ? 'lru' : 'short-ttl';
+		}
+		if (method === 'get_transaction') {
+			// Transactions move one-way from pending/proposed to committed
+			// (or rejected). Committed/rejected responses are immutable;
+			// in-flight states can change.
+			const status = (result as { tx_status?: { status?: string } } | null | undefined)
+				?.tx_status?.status;
+			return status === 'committed' || status === 'rejected' ? 'lru' : 'short-ttl';
 		}
 
 		// Immutable methods (hash-based lookups).
@@ -433,7 +460,7 @@ export function createRpcClient(proxyPath: string, opts: RpcClientOptions) {
 
 			// Don't cache null results.
 			if (result !== null) {
-				const policy = cache.getCachePolicy(networkId, method, params, archiveHeight);
+				const policy = cache.getCachePolicy(networkId, method, params, archiveHeight, result);
 				cache.set(key, result, policy);
 			}
 
