@@ -25,17 +25,17 @@ function Router() {
 		case 'home':
 			return <HomePage />;
 		case 'block':
-			return <BlockPage id={route.id} />;
+			return <BlockPage key={route.id} id={route.id} />;
 		case 'transaction':
-			return <TransactionPage hash={route.hash} />;
+			return <TransactionPage key={route.hash} hash={route.hash} />;
 		case 'address':
-			return <AddressPage address={route.address} />;
+			return <AddressPage key={route.address} address={route.address} />;
 		case 'address-transactions':
-			return <TransactionsForAddressPage address={route.address} />;
+			return <TransactionsForAddressPage key={route.address} address={route.address} />;
 		case 'address-cells':
-			return <CellsForAddressPage address={route.address} />;
+			return <CellsForAddressPage key={route.address} address={route.address} />;
 		case 'cell':
-			return <CellPage txHash={route.txHash} index={route.index} />;
+			return <CellPage key={`${route.txHash}-${route.index}`} txHash={route.txHash} index={route.index} />;
 		case 'resources':
 			return <WellKnownResourcesPage />;
 		case 'test-links':
