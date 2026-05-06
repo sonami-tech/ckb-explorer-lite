@@ -175,15 +175,23 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 	}, [rpc, hash]);
 
 	const fetchPageInputs = useCallback(async (inputs: RpcCellInput[], startIndex: number) => {
+		// Capture the parent fetchTransaction's id at start; if the transaction
+		// or network changes mid-flight, any new fetchTransaction increments the
+		// id and this response must not commit to the now-different page.
+		const fetchId = fetchIdRef.current;
+
 		setInputsLoading(true);
 
 		try {
 			const results = await fetchInputCells(inputs, startIndex, rpc, isArchiveSupported);
+			if (fetchId !== fetchIdRef.current) return;
 			mergeInputResults(results, setInputCellData, setInputErrors);
 		} catch (error) {
 			console.error('Failed to fetch input cell data:', error);
 		} finally {
-			setInputsLoading(false);
+			if (fetchId === fetchIdRef.current) {
+				setInputsLoading(false);
+			}
 		}
 	}, [rpc, isArchiveSupported]);
 
@@ -191,6 +199,8 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		cellDeps: { out_point: { tx_hash: string; index: string }; dep_type: string }[],
 		startIndex: number
 	) => {
+		const fetchId = fetchIdRef.current;
+
 		setCellDepsLoading(true);
 
 		try {
@@ -214,6 +224,8 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 
 			const results = await Promise.all(promises);
 
+			if (fetchId !== fetchIdRef.current) return;
+
 			setCellDepData(prev => {
 				const dataMap = new Map(prev);
 				results.forEach(result => {
@@ -226,7 +238,9 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		} catch (error) {
 			console.error('Failed to fetch cell dep data:', error);
 		} finally {
-			setCellDepsLoading(false);
+			if (fetchId === fetchIdRef.current) {
+				setCellDepsLoading(false);
+			}
 		}
 	}, [rpc, isArchiveSupported]);
 
@@ -390,8 +404,13 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 			return;
 		}
 
+		// Capture id so a network or hash change during prefetch can drop the
+		// stale results before they merge into the current transaction's state.
+		const fetchId = fetchIdRef.current;
+
 		const prefetchAllInputs = async () => {
 			const results = await fetchInputCells(transaction.inputs, 0, rpc, isArchiveSupported);
+			if (fetchId !== fetchIdRef.current) return;
 			mergeInputResults(results, setInputCellData, setInputErrors);
 			setFeePrefetchComplete(true);
 		};
@@ -405,13 +424,19 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		}
 	}, [paginatedCellDeps, cellDepsStartIndex, fetchCellDepData]);
 
-	// Reset pagination when transaction changes.
+	// Reset pagination AND per-input/per-celldep caches when the transaction
+	// changes. Without clearing the Maps, entries keyed by the previous
+	// transaction's input/celldep indices could render against the new tx's
+	// rows whenever indices happen to overlap.
 	useEffect(() => {
 		setFeePrefetchComplete(false);
 		setInputsPage(1);
 		setOutputsPage(1);
 		setCellDepsPage(1);
 		setHeaderDepsPage(1);
+		setInputCellData(new Map());
+		setInputErrors(new Map());
+		setCellDepData(new Map());
 	}, [txData]);
 
 	if (isLoading) {
