@@ -19,6 +19,7 @@ import { AddressDisplay } from '../components/AddressDisplay';
 import { InternalLink } from '../components/InternalLink';
 import { ScriptSection } from '../components/ScriptSection';
 import { ScriptLink } from '../components/ScriptLink';
+import { FieldValue, buildFieldState } from '../components/FieldValue';
 import { PAGE_SIZE_CONFIG } from '../config/defaults';
 import { TransactionRow, type EnrichedTransaction } from '../components/TransactionRow';
 import { useAddressScript } from '../hooks/useAddressScript';
@@ -211,6 +212,35 @@ export function AddressPage({ address }: AddressPageProps) {
 		);
 	}
 
+	const balanceState = buildFieldState({
+		value: balance,
+		uncomputableReason: 'Balance fetch did not return a value.',
+	});
+	const transactionCountState = buildFieldState({
+		supported: isArchiveSupported,
+		supportedReason: 'Transaction count requires an archive node.',
+		value: transactionCount,
+		uncomputableReason: 'Transaction count fetch did not return a value.',
+	});
+	const cellCountState = buildFieldState({
+		supported: isArchiveSupported,
+		supportedReason: 'Live cell count requires an archive node.',
+		value: cellCount,
+		uncomputableReason: 'Live cell count fetch did not return a value.',
+	});
+	const typedCellCountState = buildFieldState({
+		value: typedStats === null ? null : fromHex(typedStats.typed_cell_count),
+	});
+	const daoActiveDepositsState = buildFieldState({
+		value: daoStats === null ? null : fromHex(daoStats.active_deposits),
+	});
+	const daoPendingWithdrawalsState = buildFieldState({
+		value: daoStats === null ? null : fromHex(daoStats.pending_withdrawals),
+	});
+	const daoRealizedCompensationState = buildFieldState({
+		value: daoStats === null ? null : fromHex(daoStats.realized_compensation),
+	});
+
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
 			{/* Header. */}
@@ -271,16 +301,23 @@ export function AddressPage({ address }: AddressPageProps) {
 					)}
 
 					<DetailRow label="Balance">
-						<span className="text-lg font-semibold text-nervos">
-							{balance !== null ? formatCkb(balance) : '...'}
-						</span>
+						<FieldValue
+							state={balanceState}
+							format={(v) => formatCkb(v)}
+							formatEmpty={() => formatCkb(0n)}
+							width="medium"
+							className="text-lg font-semibold text-nervos"
+						/>
 					</DetailRow>
 
 					<DetailRow label="Transactions">
 						<div className="flex items-center gap-3">
-							<span className="font-mono text-gray-900 dark:text-white">
-								{transactionCount !== null ? formatNumber(transactionCount) : 'N/A'}
-							</span>
+							<FieldValue
+								state={transactionCountState}
+								format={(v) => formatNumber(v)}
+								width="narrow"
+								className="font-mono text-gray-900 dark:text-white"
+							/>
 							<button
 								onClick={() => navigate(generateLink(`/address/${address}/transactions`))}
 								className="text-sm text-nervos hover:text-nervos-dark"
@@ -292,9 +329,12 @@ export function AddressPage({ address }: AddressPageProps) {
 
 					<DetailRow label="Live Cells">
 						<div className="flex items-center gap-3">
-							<span className="font-mono text-gray-900 dark:text-white">
-								{cellCount !== null ? formatNumber(cellCount) : 'N/A'}
-							</span>
+							<FieldValue
+								state={cellCountState}
+								format={(v) => formatNumber(v)}
+								width="narrow"
+								className="font-mono text-gray-900 dark:text-white"
+							/>
 							<button
 								onClick={() => navigate(generateLink(`/address/${address}/cells`))}
 								className="text-sm text-nervos hover:text-nervos-dark"
@@ -306,9 +346,12 @@ export function AddressPage({ address }: AddressPageProps) {
 
 					{isStatsAvailable && (
 						<DetailRow label="Typed Cells">
-							<span className="font-mono text-gray-900 dark:text-white">
-								{typedStats ? formatNumber(fromHex(typedStats.typed_cell_count)) : '...'}
-							</span>
+							<FieldValue
+								state={typedCellCountState}
+								format={(v) => formatNumber(v)}
+								width="narrow"
+								className="font-mono text-gray-900 dark:text-white"
+							/>
 						</DetailRow>
 					)}
 				</div>
@@ -322,19 +365,31 @@ export function AddressPage({ address }: AddressPageProps) {
 					</div>
 					<div className="divide-y divide-gray-200 dark:divide-gray-700">
 						<DetailRow label="Active Deposits">
-							<span className="text-nervos font-semibold">
-								{daoStats ? formatCkb(fromHex(daoStats.active_deposits)) : '...'}
-							</span>
+							<FieldValue
+								state={daoActiveDepositsState}
+								format={(v) => formatCkb(v)}
+								formatEmpty={() => formatCkb(0n)}
+								width="medium"
+								className="text-nervos font-semibold"
+							/>
 						</DetailRow>
 						<DetailRow label="Pending Withdrawals">
-							<span className="font-mono text-gray-900 dark:text-white">
-								{daoStats ? formatCkb(fromHex(daoStats.pending_withdrawals)) : '...'}
-							</span>
+							<FieldValue
+								state={daoPendingWithdrawalsState}
+								format={(v) => formatCkb(v)}
+								formatEmpty={() => formatCkb(0n)}
+								width="medium"
+								className="font-mono text-gray-900 dark:text-white"
+							/>
 						</DetailRow>
 						<DetailRow label="Realized Compensation">
-							<span className="font-mono text-gray-900 dark:text-white">
-								{daoStats ? formatCkb(fromHex(daoStats.realized_compensation)) : '...'}
-							</span>
+							<FieldValue
+								state={daoRealizedCompensationState}
+								format={(v) => formatCkb(v)}
+								formatEmpty={() => formatCkb(0n)}
+								width="medium"
+								className="font-mono text-gray-900 dark:text-white"
+							/>
 						</DetailRow>
 					</div>
 				</div>

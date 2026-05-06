@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useNetwork, useRpc } from '../../contexts/NetworkContext';
 import { useArchive } from '../../contexts/ArchiveContext';
 import { getNetworkEvents, type NetworkEvent } from '../../config';
-import { formatNumber } from '../../lib/format';
+import { formatNumber, formatShortDate } from '../../lib/format';
 import { EventMarker } from './EventMarker';
 import { EventInfoCard } from './EventInfoCard';
 import { Tooltip } from '../Tooltip';
@@ -26,18 +26,6 @@ function blockToPosition(blockNumber: number, tipBlock: number): number {
 function positionToBlock(position: number, tipBlock: number): number {
 	return Math.round((position / 100) * tipBlock);
 }
-
-/**
- * Format date for display.
- */
-function formatDate(date: Date): string {
-	return date.toLocaleDateString('en-US', {
-		year: 'numeric',
-		month: 'short',
-		day: 'numeric',
-	});
-}
-
 
 /**
  * Time slider component for scrubbing through blockchain history.
@@ -111,7 +99,7 @@ export function TimeSlider({ className = '' }: TimeSliderProps) {
 	// Format the selected block's actual date for display.
 	const formattedDate = useMemo(() => {
 		if (selectedBlockTimestamp === null) return null;
-		return formatDate(new Date(selectedBlockTimestamp));
+		return formatShortDate(selectedBlockTimestamp);
 	}, [selectedBlockTimestamp]);
 
 	/**

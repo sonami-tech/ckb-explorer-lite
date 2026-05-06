@@ -172,6 +172,18 @@ export function formatAbsoluteTime(timestamp: bigint | number): string {
 }
 
 /**
+ * Format a Unix timestamp as a short en-US date (e.g. "May 6, 2026").
+ */
+export function formatShortDate(timestamp: bigint | number): string {
+	const ts = typeof timestamp === 'bigint' ? Number(timestamp) : timestamp;
+	return new Date(ts).toLocaleDateString('en-US', {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric',
+	});
+}
+
+/**
  * Format epoch number to human readable format.
  * CKB epoch encoding: (length << 40) | (index << 24) | number
  * - Bits 0-23: epoch number (24 bits)

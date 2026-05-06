@@ -19,7 +19,7 @@ import { WitnessSection } from '../components/WitnessSection';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
 import { Pagination } from '../components/Pagination';
 import { TransactionStatusIndicator } from '../components/OptionIndicator';
-import { InfoIcon } from '../components/InfoIcon';
+import { FieldValue, buildFieldState, type FieldState } from '../components/FieldValue';
 import { TransactionInput, TransactionOutput, CellDepItem } from '../components/transaction';
 import type { RpcTransaction, RpcTransactionWithStatus, RpcCellInput, RpcCellWithLifecycle } from '../types/rpc';
 import { TRANSACTION_SECTION_PAGINATION, FEE_CALCULATION_MAX_INPUTS, MIRANA_HARDFORK_BLOCK } from '../config/defaults';
@@ -439,6 +439,16 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 		return null;
 	}
 
+	const transactionFeeState: FieldState<bigint> = feeUnavailableReason !== null
+		? { kind: 'uncomputable', reason: feeUnavailableReason }
+		: transactionFee === undefined
+			? { kind: 'loading' }
+			: { kind: 'value', value: transactionFee as bigint };
+	const cyclesState = buildFieldState<bigint>({
+		value: cycles,
+		uncomputableReason: cyclesUnavailableReason ?? 'Cycles unavailable.',
+	});
+
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
 			{/* Header. */}
@@ -495,30 +505,20 @@ export function TransactionPage({ hash }: TransactionPageProps) {
 						</span>
 					</DetailRow>
 					<DetailRow label="Transaction Fee">
-						{feeUnavailableReason ? (
-							<span className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
-								N/A
-								<InfoIcon tooltip={feeUnavailableReason} />
-							</span>
-						) : transactionFee === undefined ? (
-							<div className="h-5 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-						) : (
-							<span className="font-mono text-sm text-gray-900 dark:text-white">
-								{formatCkb(transactionFee as bigint)}
-							</span>
-						)}
+						<FieldValue
+							state={transactionFeeState}
+							format={(v) => formatCkb(v)}
+							width="medium"
+							className="font-mono text-sm text-gray-900 dark:text-white"
+						/>
 					</DetailRow>
 					<DetailRow label="Cycles">
-						{cycles !== null ? (
-							<span className="font-mono text-sm text-gray-700 dark:text-gray-300">
-								{formatNumber(cycles)}
-							</span>
-						) : (
-							<span className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
-								N/A
-								<InfoIcon tooltip={cyclesUnavailableReason!} />
-							</span>
-						)}
+						<FieldValue
+							state={cyclesState}
+							format={(v) => formatNumber(v)}
+							width="medium"
+							className="font-mono text-sm text-gray-700 dark:text-gray-300"
+						/>
 					</DetailRow>
 				</div>
 			</div>

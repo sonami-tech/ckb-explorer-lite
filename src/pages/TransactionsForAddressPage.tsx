@@ -3,12 +3,13 @@ import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import { useStats } from '../contexts/StatsContext';
 import { scriptToLockHash } from '../lib/lockHash';
 import { RpcError, fromHex } from '../lib/rpc';
-import { formatNumber, formatActivitySpan, formatCkb } from '../lib/format';
+import { formatNumber, formatActivitySpan, formatCkb, formatShortDate } from '../lib/format';
 import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
 import { generateLink } from '../lib/router';
 import { useArchive } from '../contexts/ArchiveContext';
 import { SkeletonDetail, SkeletonTransactionItem } from '../components/Skeleton';
+import { FieldValue, buildFieldState, type FieldState } from '../components/FieldValue';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { InternalLink } from '../components/InternalLink';
 import { Pagination } from '../components/Pagination';
@@ -624,6 +625,42 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 		);
 	}
 
+	const balanceState = buildFieldState({
+		loading: isLoadingOverview,
+		value: balance,
+		uncomputableReason: 'Balance fetch did not return a value.',
+	});
+	const totalTransactionCountState = buildFieldState({
+		supported: isArchiveSupported || isStatsAvailable,
+		supportedReason: 'Transaction count requires an archive node or stats server.',
+		loading: isLoadingOverview,
+		value: totalTransactionCount,
+		uncomputableReason: 'Transaction count fetch did not return a value.',
+	});
+
+	type Activity = NonNullable<typeof firstActivity>;
+	type ActivitySpan = { first: Activity; last: Activity };
+	const activitySpanState: FieldState<ActivitySpan> = isLoadingOverview
+		? { kind: 'loading' }
+		: !firstActivity || !lastActivity
+			? { kind: 'empty' }
+			: firstActivity.txHash === lastActivity.txHash
+				? { kind: 'uncomputable', reason: 'Activity span requires at least two transactions; only one transaction exists.' }
+				: { kind: 'value', value: { first: firstActivity, last: lastActivity } };
+
+	const firstActivityState: FieldState<Activity> = isLoadingOverview
+		? { kind: 'loading' }
+		: firstActivity === null
+			? { kind: 'empty' }
+			: { kind: 'value', value: firstActivity };
+	const lastActivityState: FieldState<Activity> = isLoadingOverview
+		? { kind: 'loading' }
+		: lastActivity === null
+			? { kind: 'empty' }
+			: firstActivity?.txHash === lastActivity.txHash
+				? { kind: 'uncomputable', reason: 'Last activity same as first; only one transaction exists.' }
+				: { kind: 'value', value: lastActivity };
+
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
 			{/* Header with breadcrumb. */}
@@ -661,74 +698,81 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 					</DetailRow>
 
 					<DetailRow label="Total Balance">
-						<span className="text-lg font-semibold text-nervos">
-							{balance !== null ? formatCkb(balance) : '...'}
-						</span>
+						<FieldValue
+							state={balanceState}
+							format={(v) => formatCkb(v)}
+							formatEmpty={() => formatCkb(0n)}
+							width="medium"
+							className="text-lg font-semibold text-nervos"
+						/>
 					</DetailRow>
 
 					<DetailRow label="Transactions">
-						<span className="font-mono text-gray-900 dark:text-white">
-							{totalTransactionCount !== null ? formatNumber(totalTransactionCount) : '...'}
-						</span>
+						<FieldValue
+							state={totalTransactionCountState}
+							format={(v) => formatNumber(v)}
+							width="narrow"
+							className="font-mono text-gray-900 dark:text-white"
+						/>
 					</DetailRow>
 
 					<DetailRow label="Activity Span">
-						{firstActivity && lastActivity ? (
-							<span className="text-gray-900 dark:text-white">
-								{formatActivitySpan(
-									firstActivity.blockNumber,
-									lastActivity.blockNumber,
-									firstActivity.timestamp,
-									lastActivity.timestamp
-								)}
-							</span>
-						) : (
-							<span className="text-gray-500 dark:text-gray-400">...</span>
-						)}
+						<FieldValue
+							state={activitySpanState}
+							format={({ first, last }) => formatActivitySpan(
+								first.blockNumber,
+								last.blockNumber,
+								first.timestamp,
+								last.timestamp,
+							)}
+							formatEmpty={() => 'No activity'}
+							width="wide"
+							className="text-gray-900 dark:text-white"
+						/>
 					</DetailRow>
 
 					<DetailRow label="First Activity">
-						{firstActivity ? (
-							<span className="text-gray-900 dark:text-white">
-								<InternalLink
-									href={generateLink(`/tx/${firstActivity.txHash}`)}
-									className="text-nervos hover:text-nervos-dark"
-								>
-									{formatNumber(firstActivity.blockNumber)}
-								</InternalLink>
-								<span className="text-gray-500 dark:text-gray-400 ml-2">
-									({new Date(firstActivity.timestamp).toLocaleDateString('en-US', {
-										year: 'numeric',
-										month: 'short',
-										day: 'numeric',
-									})})
-								</span>
-							</span>
-						) : (
-							<span className="text-gray-500 dark:text-gray-400">...</span>
-						)}
+						<FieldValue
+							state={firstActivityState}
+							format={(activity) => (
+								<>
+									<InternalLink
+										href={generateLink(`/tx/${activity.txHash}`)}
+										className="text-nervos hover:text-nervos-dark"
+									>
+										{formatNumber(activity.blockNumber)}
+									</InternalLink>
+									<span className="text-gray-500 dark:text-gray-400 ml-2">
+										({formatShortDate(activity.timestamp)})
+									</span>
+								</>
+							)}
+							formatEmpty={() => 'No activity'}
+							width="wide"
+							className="text-gray-900 dark:text-white"
+						/>
 					</DetailRow>
 
 					<DetailRow label="Last Activity">
-						{lastActivity ? (
-							<span className="text-gray-900 dark:text-white">
-								<InternalLink
-									href={generateLink(`/tx/${lastActivity.txHash}`)}
-									className="text-nervos hover:text-nervos-dark"
-								>
-									{formatNumber(lastActivity.blockNumber)}
-								</InternalLink>
-								<span className="text-gray-500 dark:text-gray-400 ml-2">
-									({new Date(lastActivity.timestamp).toLocaleDateString('en-US', {
-										year: 'numeric',
-										month: 'short',
-										day: 'numeric',
-									})})
-								</span>
-							</span>
-						) : (
-							<span className="text-gray-500 dark:text-gray-400">...</span>
-						)}
+						<FieldValue
+							state={lastActivityState}
+							format={(activity) => (
+								<>
+									<InternalLink
+										href={generateLink(`/tx/${activity.txHash}`)}
+										className="text-nervos hover:text-nervos-dark"
+									>
+										{formatNumber(activity.blockNumber)}
+									</InternalLink>
+									<span className="text-gray-500 dark:text-gray-400 ml-2">
+										({formatShortDate(activity.timestamp)})
+									</span>
+								</>
+							)}
+							formatEmpty={() => 'No activity'}
+							width="wide"
+							className="text-gray-900 dark:text-white"
+						/>
 					</DetailRow>
 				</div>
 			</div>
@@ -737,15 +781,15 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
 					<h2 className="font-semibold text-gray-900 dark:text-white">
-						Transactions {filteredTransactionCount !== null ? (
+						Transactions {filteredTransactionCount !== null && (
 							(totalPages > 1 || isFiltered) ? (
 								isFiltered
-									? `(${Number(filteredTransactionCount) === 0 ? 0 : startIndex + 1}-${endIndex} of ${formatNumber(filteredTransactionCount)}, ${formatNumber(totalTransactionCount!)} total)`
+									? `(${Number(filteredTransactionCount) === 0 ? 0 : startIndex + 1}-${endIndex} of ${formatNumber(filteredTransactionCount)}${totalTransactionCount !== null ? `, ${formatNumber(totalTransactionCount)} total` : ''})`
 									: `(${startIndex + 1}-${endIndex} of ${formatNumber(filteredTransactionCount)})`
 							) : (
 								`(${formatNumber(filteredTransactionCount)})`
 							)
-						) : '(...)'}
+						)}
 					</h2>
 					<FilterSortButton
 						onClick={() => setFilterModalOpen(true)}

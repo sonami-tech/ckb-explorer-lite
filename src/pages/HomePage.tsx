@@ -321,7 +321,6 @@ export function HomePage() {
 							state={tipBlockState}
 							format={(v) => formatNumber(v)}
 							width="medium"
-							label={archiveHeight !== undefined ? 'archive height' : 'tip block'}
 						/>
 					</StatItem>
 					<StatItem label="Avg Block Time">
@@ -329,7 +328,6 @@ export function HomePage() {
 							state={avgBlockTimeState}
 							format={(v) => `${v.toFixed(2)}s`}
 							width="narrow"
-							label="average block time"
 						/>
 					</StatItem>
 				</StatGroup>
@@ -350,7 +348,6 @@ export function HomePage() {
 								</>
 							) : null}
 							width="medium"
-							label="epoch progress"
 						/>
 					</StatItem>
 					<StatItem label="Est. Time Left">
@@ -358,7 +355,6 @@ export function HomePage() {
 							state={estTimeLeftState}
 							format={(seconds) => formatDuration(seconds)}
 							width="medium"
-							label="estimated time left"
 						/>
 					</StatItem>
 				</StatGroup>
@@ -370,7 +366,6 @@ export function HomePage() {
 							state={hashRateState}
 							format={({ difficulty, avgBlockTime }) => formatHashRate(difficulty, avgBlockTime)}
 							width="medium"
-							label="hash rate"
 						/>
 					</StatItem>
 					<StatItem label="Difficulty">
@@ -378,7 +373,6 @@ export function HomePage() {
 							state={difficultyState}
 							format={(v) => formatDifficulty(v)}
 							width="medium"
-							label="difficulty"
 						/>
 					</StatItem>
 				</StatGroup>
@@ -392,7 +386,6 @@ export function HomePage() {
 									state={totalAddressesState}
 									format={(v) => formatNumber(v)}
 									width="medium"
-									label="total addresses"
 								/>
 							</StatItem>
 							<StatItem label="Active Addresses">
@@ -400,7 +393,6 @@ export function HomePage() {
 									state={activeAddressesState}
 									format={(v) => formatNumber(v)}
 									width="medium"
-									label="active addresses"
 								/>
 							</StatItem>
 						</StatGroup>
@@ -412,7 +404,6 @@ export function HomePage() {
 									state={totalLiveCellsState}
 									format={(v) => formatNumber(v)}
 									width="medium"
-									label="total live cells"
 								/>
 							</StatItem>
 							<StatItem label="DAO Cells">
@@ -420,7 +411,6 @@ export function HomePage() {
 									state={daoCellsState}
 									format={(v) => formatNumber(v)}
 									width="medium"
-									label="DAO cells"
 								/>
 							</StatItem>
 						</StatGroup>
@@ -432,7 +422,6 @@ export function HomePage() {
 									state={circulatingState}
 									format={(v) => formatCkb(v, 0)}
 									width="medium"
-									label="circulating supply"
 								/>
 							</StatItem>
 							<StatItem label="DAO Locked">
@@ -440,7 +429,6 @@ export function HomePage() {
 									state={daoLockedState}
 									format={(v) => formatCkb(v, 0)}
 									width="medium"
-									label="DAO locked supply"
 								/>
 							</StatItem>
 						</StatGroup>

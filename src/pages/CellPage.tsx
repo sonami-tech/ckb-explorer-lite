@@ -18,8 +18,8 @@ import { ScriptSection } from '../components/ScriptSection';
 import { BlockNumberDisplay } from '../components/BlockNumberDisplay';
 import { WellKnownCellInfo } from '../components/WellKnownCellInfo';
 import { InternalLink } from '../components/InternalLink';
-import { InfoIcon } from '../components/InfoIcon';
 import { ArchiveHeightWarning } from '../components/ArchiveHeightWarning';
+import { FieldValue, buildFieldState } from '../components/FieldValue';
 import type { RpcCellWithLifecycle } from '../types/rpc';
 
 interface CellPageProps {
@@ -113,12 +113,19 @@ export function CellPage({ txHash, index }: CellPageProps) {
 		);
 	}
 
-	const lifecyclePlaceholder = (
-		<span className="text-gray-400 dark:text-gray-500 flex items-center gap-1">
-			<span>—</span>
-			{!hasLifecycleData && <InfoIcon tooltip="Lifecycle data requires an archive node." />}
-		</span>
-	);
+	const lifecycleReason = 'Lifecycle data requires an archive node.';
+	const createdBlockState = buildFieldState({
+		supported: hasLifecycleData,
+		supportedReason: lifecycleReason,
+		value: createdBlock,
+		isEmpty: () => createdBlock === null,
+	});
+	const consumedBlockState = buildFieldState({
+		supported: hasLifecycleData,
+		supportedReason: lifecycleReason,
+		value: consumedBlock,
+		isEmpty: () => consumedBlock === null,
+	});
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
@@ -153,11 +160,14 @@ export function CellPage({ txHash, index }: CellPageProps) {
 						<OutPoint txHash={txHash} index={index} linkTo="transaction" />
 					</DetailRow>
 					<DetailRow label="Status">
-						{cellStatus === 'unknown' ? (
-							<span className="text-gray-500 dark:text-gray-400">Loading…</span>
-						) : (
-							<CellStatusIndicator status={cellStatus} />
-						)}
+						<FieldValue
+							state={cellStatus === 'unknown'
+								? { kind: 'loading' }
+								: { kind: 'value', value: cellStatus }
+							}
+							format={(s) => <CellStatusIndicator status={s} />}
+							width="narrow"
+						/>
 					</DetailRow>
 					{cellData && (
 						<DetailRow label="Capacity">
@@ -204,18 +214,24 @@ export function CellPage({ txHash, index }: CellPageProps) {
 						</DetailRow>
 					)}
 					<DetailRow label="Created at Block">
-						{createdBlock !== null ? (
-							<BlockNumberDisplay blockNumber={createdBlock} linkTo={generateLink(`/block/${createdBlock}`)} />
-						) : (
-							lifecyclePlaceholder
-						)}
+						<FieldValue
+							state={createdBlockState}
+							format={(block) => (
+								<BlockNumberDisplay blockNumber={block} linkTo={generateLink(`/block/${block}`)} />
+							)}
+							formatEmpty={() => 'Unknown'}
+							width="medium"
+						/>
 					</DetailRow>
 					<DetailRow label="Consumed at Block">
-						{consumedBlock !== null ? (
-							<BlockNumberDisplay blockNumber={consumedBlock} linkTo={generateLink(`/block/${consumedBlock}`)} />
-						) : (
-							lifecyclePlaceholder
-						)}
+						<FieldValue
+							state={consumedBlockState}
+							format={(block) => (
+								<BlockNumberDisplay blockNumber={block} linkTo={generateLink(`/block/${block}`)} />
+							)}
+							formatEmpty={() => 'Not consumed'}
+							width="medium"
+						/>
 					</DetailRow>
 				</div>
 			</div>

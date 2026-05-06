@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
-import { formatNumber, formatActivitySpan, formatCkb } from '../lib/format';
+import { formatNumber, formatActivitySpan, formatCkb, formatShortDate } from '../lib/format';
 import { DetailRow } from '../components/DetailRow';
 import { AddressDisplay } from '../components/AddressDisplay';
 import { getDaoTypeScript } from '../lib/wellKnown';
@@ -10,6 +10,7 @@ import { useStats } from '../contexts/StatsContext';
 import { scriptToLockHash } from '../lib/lockHash';
 import { fromHex } from '../lib/rpc';
 import { SkeletonDetail, SkeletonCellItem } from '../components/Skeleton';
+import { FieldValue, buildFieldState, type FieldState } from '../components/FieldValue';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { InternalLink } from '../components/InternalLink';
 import { Pagination } from '../components/Pagination';
@@ -20,7 +21,6 @@ import { FilterSortButton } from '../components/FilterSortButton';
 import { LiveCellFilterModal } from '../components/LiveCellFilterModal';
 import { ActiveFilterChips, type FilterChip } from '../components/ActiveFilterChips';
 import { CellRow } from '../components/CellRow';
-import { InfoIcon } from '../components/InfoIcon';
 import { getTypeScriptGroup, getLockScriptGroups, NO_TYPE_SCRIPT_GROUP } from '../lib/scriptGroups';
 import {
 	DEFAULT_LIVE_CELL_FILTERS,
@@ -666,6 +666,54 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 		);
 	}
 
+	const balanceState = buildFieldState({
+		loading: isLoadingOverview,
+		value: balance,
+		uncomputableReason: 'Balance fetch did not return a value.',
+	});
+	const cellCountState = buildFieldState({
+		supported: isArchiveSupported,
+		supportedReason: 'Live cell count requires an archive node.',
+		loading: isLoadingOverview,
+		value: cellCount,
+		uncomputableReason: 'Live cell count fetch did not return a value.',
+	});
+	const daoCellCountState = buildFieldState({
+		supported: isArchiveSupported,
+		supportedReason: 'DAO cell count requires an archive node.',
+		loading: isLoadingOverview,
+		value: daoCellCount,
+		uncomputableReason: 'DAO cell count fetch did not return a value.',
+	});
+	const daoCapacityState = buildFieldState({
+		loading: isLoadingOverview,
+		value: daoCapacity,
+		uncomputableReason: 'DAO locked capacity fetch did not return a value.',
+	});
+
+	type CellSummary = NonNullable<typeof oldestCell>;
+	type ActivitySpan = { oldest: CellSummary; newest: CellSummary };
+	const activitySpanState: FieldState<ActivitySpan> = isLoadingOverview
+		? { kind: 'loading' }
+		: !oldestCell || !newestCell
+			? { kind: 'empty' }
+			: isSingleCell
+				? { kind: 'uncomputable', reason: 'Activity span requires at least two cells; only one live cell exists.' }
+				: { kind: 'value', value: { oldest: oldestCell, newest: newestCell } };
+
+	const oldestCellState: FieldState<CellSummary> = isLoadingOverview
+		? { kind: 'loading' }
+		: oldestCell === null
+			? { kind: 'empty' }
+			: { kind: 'value', value: oldestCell };
+	const newestCellState: FieldState<CellSummary> = isLoadingOverview
+		? { kind: 'loading' }
+		: newestCell === null
+			? { kind: 'empty' }
+			: isSingleCell
+				? { kind: 'uncomputable', reason: 'Newest cell same as oldest; only one live cell exists.' }
+				: { kind: 'value', value: newestCell };
+
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
 			{/* Header with breadcrumb. */}
@@ -703,111 +751,109 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 					</DetailRow>
 
 					<DetailRow label="Total Capacity">
-						<span className="text-lg font-semibold text-nervos">
-							{balance !== null ? formatCkb(balance) : '...'}
-						</span>
+						<FieldValue
+							state={balanceState}
+							format={(v) => formatCkb(v)}
+							formatEmpty={() => formatCkb(0n)}
+							width="medium"
+							className="text-lg font-semibold text-nervos"
+						/>
 					</DetailRow>
 
 					<DetailRow label="Live Cells">
-						<span className="font-mono text-gray-900 dark:text-white">
-							{cellCount !== null ? formatNumber(cellCount) : '...'}
-						</span>
+						<FieldValue
+							state={cellCountState}
+							format={(v) => formatNumber(v)}
+							width="narrow"
+							className="font-mono text-gray-900 dark:text-white"
+						/>
 					</DetailRow>
 
 					<DetailRow label="DAO Cells">
-						<span className="text-gray-900 dark:text-white">
-							{daoCellCount !== null
-								? `${formatNumber(daoCellCount)} cell${daoCellCount === 1n ? '' : 's'}`
-								: '...'}
-						</span>
+						<FieldValue
+							state={daoCellCountState}
+							format={(v) => `${formatNumber(v)} cell${v === 1n ? '' : 's'}`}
+							formatEmpty={() => '0 cells'}
+							width="narrow"
+							className="text-gray-900 dark:text-white"
+						/>
 					</DetailRow>
 
 					<DetailRow label="DAO Locked">
-						{daoCapacity !== null && balance !== null ? (
-							<span className="text-gray-900 dark:text-white">
-								{formatCkb(daoCapacity)}
-								{daoCapacity > 0n && balance > 0n && (
-									<span className="text-gray-500 dark:text-gray-400 ml-2">
-										({(Math.floor(Number((daoCapacity * 100000n) / balance)) / 1000).toFixed(2)}% of balance)
-									</span>
-								)}
-							</span>
-						) : (
-							<span className="text-gray-500 dark:text-gray-400">...</span>
-						)}
+						<FieldValue
+							state={daoCapacityState}
+							format={(v) => (
+								<span className="text-gray-900 dark:text-white">
+									{formatCkb(v)}
+									{v > 0n && balance !== null && balance > 0n && (
+										<span className="text-gray-500 dark:text-gray-400 ml-2">
+											({(Math.floor(Number((v * 100000n) / balance)) / 1000).toFixed(2)}% of balance)
+										</span>
+									)}
+								</span>
+							)}
+							formatEmpty={() => formatCkb(0n)}
+							width="medium"
+						/>
 					</DetailRow>
 
 					<DetailRow label="Activity Span">
-						{oldestCell && newestCell ? (
-							isSingleCell ? (
-								<span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
-									<span>—</span>
-									<InfoIcon tooltip="Only one live cell exists." />
-								</span>
-							) : (
-								<span className="text-gray-900 dark:text-white">
-									{formatActivitySpan(
-										oldestCell.blockNumber,
-										newestCell.blockNumber,
-										oldestCell.timestamp,
-										newestCell.timestamp
-									)}
-								</span>
-							)
-						) : (
-							<span className="text-gray-500 dark:text-gray-400">...</span>
-						)}
+						<FieldValue
+							state={activitySpanState}
+							format={({ oldest, newest }) => formatActivitySpan(
+								oldest.blockNumber,
+								newest.blockNumber,
+								oldest.timestamp,
+								newest.timestamp,
+							)}
+							formatEmpty={() => 'No activity'}
+							width="wide"
+							className="text-gray-900 dark:text-white"
+						/>
 					</DetailRow>
 
 					<DetailRow label="Oldest Cell">
-						{oldestCell ? (
-							<span className="text-gray-900 dark:text-white">
-								<InternalLink
-									href={generateLink(`/cell/${oldestCell.txHash}/${oldestCell.index}`)}
-									className="text-nervos hover:text-nervos-dark"
-								>
-									{formatNumber(oldestCell.blockNumber)}
-								</InternalLink>
-								<span className="text-gray-500 dark:text-gray-400 ml-2">
-									({new Date(oldestCell.timestamp).toLocaleDateString('en-US', {
-										year: 'numeric',
-										month: 'short',
-										day: 'numeric',
-									})})
-								</span>
-							</span>
-						) : (
-							<span className="text-gray-500 dark:text-gray-400">...</span>
-						)}
+						<FieldValue
+							state={oldestCellState}
+							format={(cell) => (
+								<>
+									<InternalLink
+										href={generateLink(`/cell/${cell.txHash}/${cell.index}`)}
+										className="text-nervos hover:text-nervos-dark"
+									>
+										{formatNumber(cell.blockNumber)}
+									</InternalLink>
+									<span className="text-gray-500 dark:text-gray-400 ml-2">
+										({formatShortDate(cell.timestamp)})
+									</span>
+								</>
+							)}
+							formatEmpty={() => 'No cells'}
+							width="wide"
+							className="text-gray-900 dark:text-white"
+						/>
 					</DetailRow>
 
 					<DetailRow label="Newest Cell">
-						{newestCell ? (
-							isSingleCell ? (
-								<span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
-									<span>—</span>
-									<InfoIcon tooltip="Only one live cell exists." />
-								</span>
-							) : (
-								<span className="text-gray-900 dark:text-white">
+						<FieldValue
+							state={newestCellState}
+							format={(cell) => (
+								<>
 									<InternalLink
-										href={generateLink(`/cell/${newestCell.txHash}/${newestCell.index}`)}
+										href={generateLink(`/cell/${cell.txHash}/${cell.index}`)}
 										className="text-nervos hover:text-nervos-dark"
 									>
-										{formatNumber(newestCell.blockNumber)}
+										{formatNumber(cell.blockNumber)}
 									</InternalLink>
 									<span className="text-gray-500 dark:text-gray-400 ml-2">
-										({new Date(newestCell.timestamp).toLocaleDateString('en-US', {
-											year: 'numeric',
-											month: 'short',
-											day: 'numeric',
-										})})
+										({formatShortDate(cell.timestamp)})
 									</span>
-								</span>
-							)
-						) : (
-							<span className="text-gray-500 dark:text-gray-400">...</span>
-						)}
+								</>
+							)}
+							formatEmpty={() => 'No cells'}
+							width="wide"
+							className="text-gray-900 dark:text-white"
+						/>
 					</DetailRow>
 				</div>
 			</div>
@@ -816,15 +862,15 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
 				<div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
 					<h2 className="font-semibold text-gray-900 dark:text-white">
-						Live Cells {filteredCellCount !== null ? (
+						Live Cells {filteredCellCount !== null && (
 							(totalPages > 1 || isFiltered) ? (
 								isFiltered
-									? `(${Number(filteredCellCount) === 0 ? 0 : startIndex + 1}-${endIndex} of ${formatNumber(filteredCellCount)}, ${formatNumber(cellCount!)} total)`
+									? `(${Number(filteredCellCount) === 0 ? 0 : startIndex + 1}-${endIndex} of ${formatNumber(filteredCellCount)}${cellCount !== null ? `, ${formatNumber(cellCount)} total` : ''})`
 									: `(${startIndex + 1}-${endIndex} of ${formatNumber(filteredCellCount)})`
 							) : (
 								`(${formatNumber(filteredCellCount)})`
 							)
-						) : '(...)'}
+						)}
 					</h2>
 					<FilterSortButton
 						onClick={() => setFilterModalOpen(true)}
