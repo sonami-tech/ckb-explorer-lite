@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRpc, useNetwork } from '../contexts/NetworkContext';
 import {
 	formatNumber,
@@ -20,6 +20,7 @@ import { useArchive } from '../contexts/ArchiveContext';
 import { useStats } from '../contexts/StatsContext';
 import { SkeletonBlockItem, SkeletonTransactionItem } from '../components/Skeleton';
 import { ErrorDisplay, ConnectionError } from '../components/ErrorDisplay';
+import { FieldValue, loadingOrValue, type FieldState } from '../components/FieldValue';
 import { RelativeTime } from '../components/RelativeTime';
 import type { RpcBlock } from '../types/rpc';
 import type { StatsAllGlobalResponse, StatsSupplyResponse } from '../types/stats';
@@ -68,20 +69,30 @@ export function HomePage() {
 	const [supplyStats, setSupplyStats] = useState<StatsSupplyResponse | null>(null);
 
 	const networkType = currentNetwork?.type ?? 'mainnet';
+	const networkSlug = currentNetwork?.slug ?? '';
 	const { statsClient, isStatsAvailable } = useStats();
 
-	// Clear stale data when archive height changes so boxes show loading
-	// indicators instead of data from a different block height.
-	const prevHeightRef = useRef<number | undefined>(archiveHeight);
+	// Clear stale data and invalidate in-flight responses when the network or
+	// archive height changes so boxes show loading indicators instead of data
+	// from the previous network/height. The version ref lets late responses
+	// from a previous fetch detect they are stale and bail out before commit.
+	const fetchKey = `${networkSlug}:${archiveHeight ?? 'latest'}`;
+	const prevFetchKeyRef = useRef<string>(fetchKey);
+	const requestVersionRef = useRef(0);
 	useEffect(() => {
-		if (prevHeightRef.current !== archiveHeight) {
-			prevHeightRef.current = archiveHeight;
+		if (prevFetchKeyRef.current !== fetchKey) {
+			prevFetchKeyRef.current = fetchKey;
+			requestVersionRef.current++;
+			setBlocks([]);
+			setTransactions([]);
+			setIsLoadingBlocks(true);
+			setBlocksError(null);
 			setNetworkStats(null);
 			setAvgBlockTime(0);
 			setGlobalStats(null);
 			setSupplyStats(null);
 		}
-	}, [archiveHeight]);
+	}, [fetchKey]);
 
 	// Determine which block to use as the starting point for display.
 	// In archive mode, show blocks up to the archive height; otherwise show latest.
@@ -93,8 +104,11 @@ export function HomePage() {
 	const fetchBlocks = useCallback(async () => {
 		if (displayTip === null) return;
 
+		// Capture version at start; if a network/height change bumps it before
+		// we resolve, our results belong to a stale network and must be dropped.
+		const myVersion = requestVersionRef.current;
+
 		try {
-			setBlocksError(null);
 			const blockPromises: Promise<RpcBlock | null>[] = [];
 
 			// Fetch blocks starting from displayTip with transaction hashes.
@@ -108,31 +122,30 @@ export function HomePage() {
 			const results = await Promise.all(blockPromises);
 			const validBlocks = results.filter((block): block is RpcBlock => block !== null);
 
-			// Calculate average block time from timestamps.
-			// Requires at least 2 blocks to calculate an average.
+			// Compute the next average block time, network stats, blocks, and
+			// transactions from the response. We compute everything first, then
+			// commit in a single guarded block at the end so a stale response
+			// can't partially overwrite fresh state.
+			let nextAvgBlockTime = 0;
 			if (validBlocks.length >= 2) {
 				const firstTimestamp = BigInt(validBlocks[0].header.timestamp);
 				const lastTimestamp = BigInt(validBlocks[validBlocks.length - 1].header.timestamp);
 				const timeDiff = Number(firstTimestamp - lastTimestamp) / 1000; // Convert ms to seconds.
 				const blockCount = validBlocks.length - 1;
-				setAvgBlockTime(blockCount > 0 ? timeDiff / blockCount : 0);
-			} else {
-				// Reset to 0 when viewing single block (e.g., genesis).
-				setAvgBlockTime(0);
+				nextAvgBlockTime = blockCount > 0 ? timeDiff / blockCount : 0;
 			}
 
-			// Extract epoch and difficulty info from the first block's header.
-			// This ensures we show correct values for historical blocks.
+			let nextNetworkStats: NetworkStats | null = null;
 			if (validBlocks.length > 0) {
 				const epochParsed = parseEpoch(validBlocks[0].header.epoch);
 				// Compute difficulty from the block header's compact_target for historical accuracy.
 				const historicalDifficulty = compactTargetToDifficulty(validBlocks[0].header.compact_target);
-				setNetworkStats({
+				nextNetworkStats = {
 					difficulty: historicalDifficulty,
 					epochNumber: epochParsed.number,
 					epochIndex: epochParsed.index,
 					epochLength: epochParsed.length,
-				});
+				};
 			}
 
 			// Extract block info with miner and reward.
@@ -187,11 +200,17 @@ export function HomePage() {
 				}
 			}
 
+			// Single commit gate — bail if a network or height change has occurred.
+			if (myVersion !== requestVersionRef.current) return;
+			setBlocksError(null);
+			setAvgBlockTime(nextAvgBlockTime);
+			setNetworkStats(nextNetworkStats);
 			setBlocks(blockInfos);
 			setTransactions(txInfos.slice(0, HOME_ITEMS_TO_SHOW));
+			setIsLoadingBlocks(false);
 		} catch (err) {
+			if (myVersion !== requestVersionRef.current) return;
 			setBlocksError(err instanceof Error ? err : new Error('Failed to fetch blocks.'));
-		} finally {
 			setIsLoadingBlocks(false);
 		}
 	}, [rpc, displayTip, archiveHeight, networkType]);
@@ -200,11 +219,15 @@ export function HomePage() {
 	const fetchStats = useCallback(async () => {
 		if (!statsClient) return;
 
+		const myVersion = requestVersionRef.current;
+
 		try {
 			const [globalResult, supplyResult] = await Promise.all([
 				statsClient.getAllGlobalStats(archiveHeight),
 				statsClient.getCirculatingSupply(archiveHeight),
 			]);
+			// Drop the response if a network or height change happened mid-flight.
+			if (myVersion !== requestVersionRef.current) return;
 			setGlobalStats(globalResult);
 			setSupplyStats(supplyResult);
 		} catch (err) {
@@ -238,6 +261,19 @@ export function HomePage() {
 		}
 	}, [fetchStats, isStatsAvailable, archiveHeight, pollIntervalMs]);
 
+	// Memoize hex→bigint conversions across polls — avoid re-parsing the same
+	// hex strings on every interval tick or unrelated re-render.
+	const parsedGlobalStats = useMemo(() => globalStats === null ? null : {
+		totalAddresses: fromHex(globalStats.core.total_addresses),
+		activeAddresses: fromHex(globalStats.core.active_addresses),
+		totalLiveCells: fromHex(globalStats.core.total_live_cells),
+		daoCells: fromHex(globalStats.core.dao_cells),
+	}, [globalStats]);
+	const parsedSupplyStats = useMemo(() => supplyStats === null ? null : {
+		circulating: fromHex(supplyStats.circulating),
+		daoLocked: fromHex(supplyStats.dao_locked),
+	}, [supplyStats]);
+
 	// Show connection error if initial load fails.
 	if (archiveError && !archiveLoading) {
 		return (
@@ -246,6 +282,30 @@ export function HomePage() {
 			</div>
 		);
 	}
+
+	const tipBlockState = loadingOrValue(displayTip);
+	const avgBlockTimeState = loadingOrValue(avgBlockTime > 0 ? avgBlockTime : null);
+	const epochProgressState = loadingOrValue(networkStats);
+	const difficultyState = loadingOrValue(networkStats?.difficulty);
+
+	const estTimeLeftState: FieldState<number> = !networkStats
+		? { kind: 'loading' }
+		: avgBlockTime <= 0 || networkStats.epochLength <= 0n
+			? { kind: 'uncomputable', reason: 'Time estimate requires block time and epoch length data.' }
+			: { kind: 'value', value: Number(networkStats.epochLength - networkStats.epochIndex) * avgBlockTime };
+
+	const hashRateState: FieldState<{ difficulty: string; avgBlockTime: number }> = !networkStats
+		? { kind: 'loading' }
+		: avgBlockTime <= 0
+			? { kind: 'uncomputable', reason: 'Hash rate requires average block time.' }
+			: { kind: 'value', value: { difficulty: networkStats.difficulty, avgBlockTime } };
+
+	const totalAddressesState = loadingOrValue(parsedGlobalStats?.totalAddresses);
+	const activeAddressesState = loadingOrValue(parsedGlobalStats?.activeAddresses);
+	const totalLiveCellsState = loadingOrValue(parsedGlobalStats?.totalLiveCells);
+	const daoCellsState = loadingOrValue(parsedGlobalStats?.daoCells);
+	const circulatingState = loadingOrValue(parsedSupplyStats?.circulating);
+	const daoLockedState = loadingOrValue(parsedSupplyStats?.daoLocked);
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 py-6">
@@ -257,43 +317,69 @@ export function HomePage() {
 				{/* Block stats. */}
 				<StatGroup title={`Blocks${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
 					<StatItem label={archiveHeight !== undefined ? 'Archive Height' : 'Tip Block'}>
-						{displayTip !== null ? formatNumber(displayTip) : '...'}
+						<FieldValue
+							state={tipBlockState}
+							format={(v) => formatNumber(v)}
+							width="medium"
+							label={archiveHeight !== undefined ? 'archive height' : 'tip block'}
+						/>
 					</StatItem>
 					<StatItem label="Avg Block Time">
-						{avgBlockTime > 0 ? `${avgBlockTime.toFixed(2)}s` : '...'}
+						<FieldValue
+							state={avgBlockTimeState}
+							format={(v) => `${v.toFixed(2)}s`}
+							width="narrow"
+							label="average block time"
+						/>
 					</StatItem>
 				</StatGroup>
 
 				{/* Epoch stats. */}
 				<StatGroup title={`Epoch${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
 					<StatItem label="Progress">
-						{networkStats
-							? <>
-								{formatNumber(networkStats.epochNumber)}
-								{networkStats.epochLength > 0n && (
-									<span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-1">
-										{networkStats.epochIndex.toString()}/{networkStats.epochLength.toString()}
-									</span>
-								)}
-							</>
-							: '...'}
+						<FieldValue
+							state={epochProgressState}
+							format={(stats) => stats !== null ? (
+								<>
+									{formatNumber(stats.epochNumber)}
+									{stats.epochLength > 0n && (
+										<span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-1">
+											{stats.epochIndex.toString()}/{stats.epochLength.toString()}
+										</span>
+									)}
+								</>
+							) : null}
+							width="medium"
+							label="epoch progress"
+						/>
 					</StatItem>
 					<StatItem label="Est. Time Left">
-						{networkStats && avgBlockTime > 0 && networkStats.epochLength > 0n
-							? formatDuration(Number(networkStats.epochLength - networkStats.epochIndex) * avgBlockTime)
-							: '—'}
+						<FieldValue
+							state={estTimeLeftState}
+							format={(seconds) => formatDuration(seconds)}
+							width="medium"
+							label="estimated time left"
+						/>
 					</StatItem>
 				</StatGroup>
 
 				{/* Mining stats. */}
 				<StatGroup title={`Mining${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
 					<StatItem label="Hash Rate">
-						{networkStats && avgBlockTime > 0
-							? formatHashRate(networkStats.difficulty, avgBlockTime)
-							: '...'}
+						<FieldValue
+							state={hashRateState}
+							format={({ difficulty, avgBlockTime }) => formatHashRate(difficulty, avgBlockTime)}
+							width="medium"
+							label="hash rate"
+						/>
 					</StatItem>
 					<StatItem label="Difficulty">
-						{networkStats ? formatDifficulty(networkStats.difficulty) : '...'}
+						<FieldValue
+							state={difficultyState}
+							format={(v) => formatDifficulty(v)}
+							width="medium"
+							label="difficulty"
+						/>
 					</StatItem>
 				</StatGroup>
 
@@ -302,30 +388,60 @@ export function HomePage() {
 						{/* Network stats from stats server. */}
 						<StatGroup title={`Network${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
 							<StatItem label="Total Addresses">
-								{globalStats ? formatNumber(fromHex(globalStats.core.total_addresses)) : '...'}
+								<FieldValue
+									state={totalAddressesState}
+									format={(v) => formatNumber(v)}
+									width="medium"
+									label="total addresses"
+								/>
 							</StatItem>
 							<StatItem label="Active Addresses">
-								{globalStats ? formatNumber(fromHex(globalStats.core.active_addresses)) : '...'}
+								<FieldValue
+									state={activeAddressesState}
+									format={(v) => formatNumber(v)}
+									width="medium"
+									label="active addresses"
+								/>
 							</StatItem>
 						</StatGroup>
 
 						{/* Cell stats from stats server. */}
 						<StatGroup title={`Cells${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
 							<StatItem label="Total Live Cells">
-								{globalStats ? formatNumber(fromHex(globalStats.core.total_live_cells)) : '...'}
+								<FieldValue
+									state={totalLiveCellsState}
+									format={(v) => formatNumber(v)}
+									width="medium"
+									label="total live cells"
+								/>
 							</StatItem>
 							<StatItem label="DAO Cells">
-								{globalStats ? formatNumber(fromHex(globalStats.core.dao_cells)) : '...'}
+								<FieldValue
+									state={daoCellsState}
+									format={(v) => formatNumber(v)}
+									width="medium"
+									label="DAO cells"
+								/>
 							</StatItem>
 						</StatGroup>
 
 						{/* Supply stats from stats server. */}
 						<StatGroup title={`Supply${archiveHeight !== undefined ? ` @ Block ${formatNumber(archiveHeight)}` : ''}`}>
 							<StatItem label="Circulating">
-								{supplyStats ? formatCkb(fromHex(supplyStats.circulating), 0) : '...'}
+								<FieldValue
+									state={circulatingState}
+									format={(v) => formatCkb(v, 0)}
+									width="medium"
+									label="circulating supply"
+								/>
 							</StatItem>
 							<StatItem label="DAO Locked">
-								{supplyStats ? formatCkb(fromHex(supplyStats.dao_locked), 0) : '...'}
+								<FieldValue
+									state={daoLockedState}
+									format={(v) => formatCkb(v, 0)}
+									width="medium"
+									label="DAO locked supply"
+								/>
 							</StatItem>
 						</StatGroup>
 					</>

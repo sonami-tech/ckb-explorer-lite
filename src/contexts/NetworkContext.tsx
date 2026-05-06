@@ -90,7 +90,10 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
 	// slug-derived proxy path; upstream URLs stay server-side.
 	const rpc = useMemo(() => {
 		if (!currentNetwork) return null;
-		return createRpcClient(rpcPath(currentNetwork.slug), { cacheEnabled });
+		return createRpcClient(rpcPath(currentNetwork.slug), {
+			cacheEnabled,
+			networkId: currentNetwork.slug,
+		});
 	}, [currentNetwork, cacheEnabled]);
 
 	const isArchiveSupported = currentNetwork?.isArchive ?? false;

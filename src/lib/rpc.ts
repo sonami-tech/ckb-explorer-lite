@@ -104,11 +104,13 @@ class RpcCache {
 	private lastKnownTip: bigint | null = null;
 
 	/**
-	 * Build a cache key from method, params, and archive height.
+	 * Build a cache key from network, method, params, and archive height.
+	 * The network prefix prevents cache entries from one network being
+	 * returned for an identical request on another network.
 	 */
-	buildKey(method: string, params: unknown[], archiveHeight?: number): string {
+	buildKey(networkId: string, method: string, params: unknown[], archiveHeight?: number): string {
 		const heightPart = archiveHeight !== undefined ? `:${archiveHeight}` : '';
-		return `${method}:${JSON.stringify(params)}${heightPart}`;
+		return `${networkId}:${method}:${JSON.stringify(params)}${heightPart}`;
 	}
 
 	/**
@@ -289,6 +291,12 @@ function getCache(): RpcCache {
  */
 export interface RpcClientOptions {
 	cacheEnabled: boolean;
+	/**
+	 * Stable network identity used to scope cache keys. The shared global
+	 * cache prefixes every key with this id so requests for the same
+	 * method/params on different networks never collide.
+	 */
+	networkId: string;
 }
 
 /**
@@ -296,12 +304,12 @@ export interface RpcClientOptions {
  *
  * `proxyPath` is the browser-visible slug-derived path (e.g. /rpc/mainnet);
  * the upstream URL never reaches the browser. The factory closes over
- * opts.cacheEnabled, so the cache toggle is captured per-client with no
- * module mutable state.
+ * opts.cacheEnabled and opts.networkId, so cache keys are scoped per-network
+ * with no module mutable state.
  */
 export function createRpcClient(proxyPath: string, opts: RpcClientOptions) {
 	const rpcUrl = proxyPath;
-	const { cacheEnabled } = opts;
+	const { cacheEnabled, networkId } = opts;
 	let requestId = 0;
 	const cache = getCache();
 
@@ -395,7 +403,7 @@ export function createRpcClient(proxyPath: string, opts: RpcClientOptions) {
 			return fetcher();
 		}
 
-		const key = cache.buildKey(method, params, archiveHeight);
+		const key = cache.buildKey(networkId, method, params, archiveHeight);
 
 		// Check result cache first.
 		const cached = cache.get<T>(key);
