@@ -98,6 +98,16 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 
 		setIsLoadingOverview(true);
 		setFetchError(null);
+		// Clear overview data at fetch start so a TimeSlider-driven
+		// archiveHeight refetch doesn't render stale balance/activity
+		// values against a freshly-loaded transaction list while the
+		// overview request is still in flight. The "..." placeholders in
+		// the JSX render correctly while these are null.
+		setBalance(null);
+		setTotalTransactionCount(null);
+		setFirstActivity(null);
+		setLastActivity(null);
+		setReferenceTimestamp(undefined);
 
 		try {
 			// Unfiltered search key for address-level stats.
@@ -265,6 +275,13 @@ export function TransactionsForAddressPage({ address }: TransactionsForAddressPa
 
 		setIsLoadingTransactions(true);
 		setCurrentPage(1);
+		// Clear transaction list and derived counts/tip at fetch start so a
+		// height-driven refetch doesn't briefly render the previous height's
+		// rows. Empty state is gated by !isLoadingTransactions so clearing
+		// transactions to [] won't flash "no transactions".
+		setTransactions([]);
+		setFilteredTransactionCount(null);
+		setTipBlockNumber(null);
 
 		// Reset cursor cache when fetching fresh data.
 		cursorCacheRef.current = new Map([[0, null]]);
