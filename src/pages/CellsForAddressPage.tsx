@@ -112,6 +112,18 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 
 		setIsLoadingOverview(true);
 		setFetchError(null);
+		// Clear overview data at fetch start so a TimeSlider-driven
+		// archiveHeight refetch doesn't render stale balance/cell stats
+		// against a freshly-loaded cell list while the overview request
+		// is still in flight. The "..." placeholders in the JSX render
+		// correctly while these are null.
+		setBalance(null);
+		setCellCount(null);
+		setDaoCellCount(null);
+		setDaoCapacity(null);
+		setOldestCell(null);
+		setNewestCell(null);
+		setPresentScripts(null);
 
 		try {
 			// Unfiltered search key for address-level stats.
@@ -296,6 +308,16 @@ export function CellsForAddressPage({ address }: CellsForAddressPageProps) {
 
 		setIsLoadingCells(true);
 		setCurrentPage(1);
+		// Clear cell list and derived counts/tip at fetch start so a
+		// height-driven refetch doesn't briefly render the previous
+		// height's rows. cellTimestamps is content-addressed by block
+		// number — same block always has the same timestamp — so it does
+		// not need clearing and skipping the reset avoids identity churn.
+		// Empty state is gated by !isLoadingCells so clearing cells to []
+		// won't flash "no cells".
+		setCells([]);
+		setFilteredCellCount(null);
+		setTipBlockNumber(null);
 
 		// Reset cursor cache when fetching fresh data.
 		cursorCacheRef.current = new Map([[0, null]]);
